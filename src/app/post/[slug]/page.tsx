@@ -11,7 +11,8 @@ import { getPostBySlug } from '@/app/actions/postActions';
 import { notFound } from 'next/navigation';
 
 export default async function PostDetail({ params }: { params: { slug: string } }) {
-    const post = await getPostBySlug(params.slug);
+    const decodedSlug = decodeURIComponent(params.slug);
+    const post = await getPostBySlug(decodedSlug);
 
     if (!post) {
         notFound();

@@ -6,6 +6,7 @@ import { Search, Edit2, Trash2, Loader2, ExternalLink } from 'lucide-react';
 import { getPosts, deletePost } from '@/app/actions/postActions';
 import { cn } from "@/lib/utils";
 import toast, { Toaster } from 'react-hot-toast';
+import Link from 'next/link';
 
 export default function AdminDashboard() {
     const [posts, setPosts] = useState<any[]>([]);
@@ -123,9 +124,13 @@ export default function AdminDashboard() {
                                                 </td>
                                                 <td className="px-8 py-8 text-right">
                                                     <div className="flex items-center justify-end gap-6 opacity-40 group-hover:opacity-100 transition-opacity">
-                                                        <button className="text-white hover:text-accent-green transition-colors">
+                                                        <Link
+                                                            href={`/post/${post.slug}`}
+                                                            target="_blank"
+                                                            className="text-white hover:text-accent-green transition-colors"
+                                                        >
                                                             <ExternalLink size={14} />
-                                                        </button>
+                                                        </Link>
                                                         <button className="text-white hover:text-accent-green transition-colors">
                                                             <Edit2 size={14} />
                                                         </button>

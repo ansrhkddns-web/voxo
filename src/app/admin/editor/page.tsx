@@ -64,7 +64,16 @@ export default function EditorPage() {
 
         setIsPublishing(true);
         try {
-            const slug = title.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+            const generateSlug = (text: string) => {
+                return text
+                    .toLowerCase()
+                    .trim()
+                    .replace(/[^\w\sㄱ-ㅎㅏ-ㅣ가-힣-]/g, '') // Allow English, numbers, Korean, spaces, hyphens
+                    .replace(/\s+/g, '-') // Replace spaces with hyphens
+                    .replace(/-+/g, '-'); // Replace multiple hyphens with single one
+            };
+
+            const slug = generateSlug(title);
             await createPost({
                 title,
                 content,
