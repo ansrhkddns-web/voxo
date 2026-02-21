@@ -93,78 +93,70 @@ export async function getSpotifyData(uriOrUrl: string) {
     }
 }
 
-export async function getArtistStats(uriOrUrl: string) {
-    if (!uriOrUrl) return { error: "No URI provided" };
+export async function getArtistStats(uriOrUrl: string, artistName?: string) {
+    if (!uriOrUrl && !artistName) return { error: "No URI or Artist Name provided" };
 
-    const parsed = parseSpotifyId(uriOrUrl);
-    if (!parsed) {
-        return { error: `Invalid format: ${uriOrUrl.substring(0, 20)}...` };
-    }
+    const parsed = uriOrUrl ? parseSpotifyId(uriOrUrl) : null;
 
     try {
         const token = await getAccessToken();
         if (!token) return { error: "Authentication failed (Check keys)" };
 
-        const { type, id } = parsed;
-        let artistId = (type === 'artist') ? id : null;
-
         const fetchOptions = { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' as RequestCache };
+        let artistId = (parsed?.type === 'artist') ? parsed.id : null;
 
-        console.log(`VOXO_DEBUG: Resolving ${type} ID: ${id}`);
+        // Resolution Phase 1: Try resolving via Link
+        if (!artistId && parsed) {
+            const { type, id } = parsed;
+            console.log(`VOXO_DEBUG: Resolving ${type} ID: ${id}`);
 
-        // Resolution Phase
-        if (type === 'track') {
-            const res = await fetch(`https://api.spotify.com/v1/tracks/${id}`, fetchOptions);
-            if (res.ok) {
-                const data = await res.json();
-                artistId = data.artists?.[0]?.id || null;
-                if (!artistId) console.warn("VOXO_DEBUG: No artist found in track metadata", data);
-            } else {
-                const errText = await res.text();
-                console.error(`VOXO_DEBUG: Track resolution failed (${res.status}): ${errText}`);
+            if (type === 'track') {
+                const res = await fetch(`https://api.spotify.com/v1/tracks/${id}`, fetchOptions);
+                if (res.ok) {
+                    const data = await res.json();
+                    artistId = data.artists?.[0]?.id || null;
+                }
+            } else if (type === 'album') {
+                const res = await fetch(`https://api.spotify.com/v1/albums/${id}`, fetchOptions);
+                if (res.ok) {
+                    const data = await res.json();
+                    artistId = data.artists?.[0]?.id || null;
+                }
+            } else if (type === 'playlist') {
+                const res = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks?limit=1`, fetchOptions);
+                if (res.ok) {
+                    const data = await res.json();
+                    artistId = data.items?.[0]?.track?.artists?.[0]?.id || null;
+                }
             }
-        } else if (type === 'album') {
-            const res = await fetch(`https://api.spotify.com/v1/albums/${id}`, fetchOptions);
-            if (res.ok) {
-                const data = await res.json();
-                artistId = data.artists?.[0]?.id || null;
-                if (!artistId) console.warn("VOXO_DEBUG: No artist found in album metadata", data);
-            } else {
-                const errText = await res.text();
-                console.error(`VOXO_DEBUG: Album resolution failed (${res.status}): ${errText}`);
-            }
-        } else if (type === 'playlist') {
-            const res = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks?limit=1`, fetchOptions);
-            if (res.ok) {
-                const data = await res.json();
-                artistId = data.items?.[0]?.track?.artists?.[0]?.id || null;
-                if (!artistId) console.warn("VOXO_DEBUG: No artist found in playlist metadata", data);
-            } else {
-                const errText = await res.text();
-                console.error(`VOXO_DEBUG: Playlist resolution failed (${res.status}): ${errText}`);
+        }
+
+        // Resolution Phase 2: Fallback to Search by Name
+        if (!artistId && artistName) {
+            console.log(`VOXO_DEBUG: Falling back to search for artist: ${artistName}`);
+            const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(artistName)}&type=artist&limit=1`, fetchOptions);
+            if (searchRes.ok) {
+                const searchData = await searchRes.json();
+                artistId = searchData.artists?.items?.[0]?.id || null;
             }
         }
 
         if (!artistId) {
-            return { error: `Could not resolve artist for ${type}` };
+            return { error: `Could not reach artist signal for ${artistName || parsed?.type || 'unknown'}` };
         }
 
-        // Fetch Phase
+        // Fetch Phase: Details + Top Tracks
         const [artistRes, topTracksRes] = await Promise.all([
             fetch(`https://api.spotify.com/v1/artists/${artistId}`, fetchOptions),
             fetch(`https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=US`, fetchOptions)
         ]);
 
         if (!artistRes.ok) {
-            const errText = await artistRes.text();
-            console.error(`VOXO_DEBUG: Artist fetch failed (${artistRes.status}): ${errText}`);
             return { error: `Spotify API error: ${artistRes.status}` };
         }
 
         const artistData = await artistRes.json();
         const topTracksData = topTracksRes.ok ? await topTracksRes.json() : { tracks: [] };
-
-        if (!artistData) return { error: "Artist metadata empty" };
 
         return {
             name: artistData.name,

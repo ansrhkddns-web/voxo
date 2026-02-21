@@ -48,8 +48,10 @@ export default async function PostDetail({ params }: { params: any }) {
         notFound();
     }
 
-    // Fetch Spotify Artist Stats if URI exists
-    const artistStats = post.spotify_uri ? await getArtistStats(post.spotify_uri) : null;
+    // Fetch Spotify Artist Stats if URI exists (with artist name fallback)
+    const artistStats = (post.spotify_uri || post.artist_name)
+        ? await getArtistStats(post.spotify_uri || '', post.artist_name || '')
+        : null;
 
     const formattedDate = new Date(post.created_at).toLocaleDateString('en-US', {
         month: 'short',
