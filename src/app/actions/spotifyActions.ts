@@ -164,8 +164,8 @@ export async function getArtistStats(
 
         // All paths exhausted
         const hint = artistSpotifyId
-            ? "Check Artist ID in admin editor"
-            : "Add Spotify Artist ID in admin editor to bypass API restrictions";
+            ? "API RESTRICTION: Direct ID fetch failed. Check ID correctness."
+            : "ID REQUIRED: Spotify 2026 Policy blocks auto-search. Enter Artist ID in Admin.";
         return { error: hint };
 
     } catch (error: any) {
