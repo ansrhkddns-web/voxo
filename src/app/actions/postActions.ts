@@ -77,10 +77,14 @@ export async function getPostBySlug(slug: string) {
     const { data, error } = await supabase
         .from('posts')
         .select('*, categories(name)')
-        .eq('slug', slug)
-        .single();
+        .ilike('slug', slug)
+        .eq('is_published', true)
+        .maybeSingle();
 
-    if (error) return null;
+    if (error) {
+        console.error("Error fetching post by slug:", error);
+        return null;
+    }
     return data;
 }
 
