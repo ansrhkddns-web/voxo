@@ -7,8 +7,10 @@ import { getPosts, deletePost } from '@/app/actions/postActions';
 import { cn } from "@/lib/utils";
 import toast, { Toaster } from 'react-hot-toast';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function AdminDashboard() {
+    const router = useRouter();
     const [posts, setPosts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -124,21 +126,20 @@ export default function AdminDashboard() {
                                                 </td>
                                                 <td className="px-8 py-8 text-right">
                                                     <div className="flex items-center justify-end gap-6 opacity-40 group-hover:opacity-100 transition-opacity">
-                                                        <Link
-                                                            href={`/post/${post.slug}`}
-                                                            target="_blank"
-                                                            className="text-white hover:text-accent-green transition-colors"
+                                                        <button
+                                                            onClick={() => window.open(`/post/${post.slug}`, '_blank')}
+                                                            className="text-white hover:text-accent-green transition-colors cursor-pointer p-2"
                                                             title="Shortcut: Preview"
                                                         >
                                                             <ExternalLink size={14} />
-                                                        </Link>
-                                                        <Link
-                                                            href={`/admin/editor?id=${post.id}`}
-                                                            className="text-white hover:text-accent-green transition-colors"
+                                                        </button>
+                                                        <button
+                                                            onClick={() => router.push(`/admin/editor?id=${post.id}`)}
+                                                            className="text-white hover:text-accent-green transition-colors cursor-pointer p-2"
                                                             title="Shortcut: Recalibrate"
                                                         >
                                                             <Edit2 size={14} />
-                                                        </Link>
+                                                        </button>
                                                         <button
                                                             onClick={() => handleDelete(post.id)}
                                                             className="text-white hover:text-red-500 transition-colors"
