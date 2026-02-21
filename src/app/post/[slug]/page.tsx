@@ -10,8 +10,9 @@ import { Clock } from 'lucide-react';
 import { getPostBySlug } from '@/app/actions/postActions';
 import { notFound } from 'next/navigation';
 
-export default async function PostDetail({ params }: { params: { slug: string } }) {
-    const decodedSlug = decodeURIComponent(params.slug);
+export default async function PostDetail({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params;
+    const decodedSlug = decodeURIComponent(slug);
     const post = await getPostBySlug(decodedSlug);
 
     if (!post) {
