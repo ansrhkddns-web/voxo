@@ -30,6 +30,8 @@ export default function SpotifyEmbed({ uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvE
     const embedUrl = type && id
         ? `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`
         : '';
+    const isTrack = type === 'track';
+    const embedHeight = isTrack ? "152" : "380";
 
     return (
         <div className="my-12 group">
@@ -40,7 +42,7 @@ export default function SpotifyEmbed({ uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvE
                         style={{ borderRadius: '12px' }}
                         src={embedUrl}
                         width="100%"
-                        height="152"
+                        height={embedHeight}
                         frameBorder="0"
                         allowFullScreen={true}
                         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"

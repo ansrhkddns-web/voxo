@@ -4,18 +4,33 @@ const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
 async function getAccessToken() {
-    const response = await fetch('https://accounts.spotify.com/api/token', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            Authorization: `Basic ${Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')}`,
-        },
-        body: 'grant_type=client_credentials',
-        cache: 'no-store',
-    });
+    if (!CLIENT_ID || !CLIENT_SECRET) {
+        console.error("VOXO_SYSTEM: Spotify Credentials Missing");
+        return null;
+    }
 
-    const data = await response.json();
-    return data.access_token;
+    try {
+        const response = await fetch('https://accounts.spotify.com/api/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Authorization: `Basic ${Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')}`,
+            },
+            body: 'grant_type=client_credentials',
+            cache: 'no-store',
+        });
+
+        if (!response.ok) {
+            console.error("VOXO_SYSTEM: Spotify Token Fetch Failed ->", response.status);
+            return null;
+        }
+
+        const data = await response.json();
+        return data.access_token;
+    } catch (error) {
+        console.error("VOXO_SYSTEM: Spotify Token error ->", error);
+        return null;
+    }
 }
 
 export async function getSpotifyData(uri: string) {
@@ -23,6 +38,8 @@ export async function getSpotifyData(uri: string) {
 
     try {
         const token = await getAccessToken();
+        if (!token) return null;
+
         let type = '';
         let id = '';
 
@@ -31,10 +48,15 @@ export async function getSpotifyData(uri: string) {
             type = parts[1];
             id = parts[2];
         } else if (uri.includes('open.spotify.com')) {
-            const url = new URL(uri);
-            const pathParts = url.pathname.split('/').filter(Boolean);
-            type = pathParts[0];
-            id = pathParts[1];
+            try {
+                const url = new URL(uri);
+                const pathParts = url.pathname.split('/').filter(Boolean);
+                type = pathParts[0];
+                id = pathParts[1];
+            } catch (e) {
+                console.error("VOXO_SYSTEM: Failed to parse Spotify URL ->", uri);
+                return null;
+            }
         }
 
         if (!type || !id) return null;
@@ -46,7 +68,7 @@ export async function getSpotifyData(uri: string) {
         if (!response.ok) return null;
         return response.json();
     } catch (error) {
-        console.error("Spotify API Error:", error);
+        console.error("VOXO_SYSTEM: Spotify API Error ->", error);
         return null;
     }
 }
@@ -56,6 +78,8 @@ export async function getArtistStats(uriOrUrl: string) {
 
     try {
         const token = await getAccessToken();
+        if (!token) return null;
+
         let type = '';
         let id = '';
 
@@ -64,15 +88,20 @@ export async function getArtistStats(uriOrUrl: string) {
             type = parts[1];
             id = parts[2];
         } else if (uriOrUrl.includes('open.spotify.com')) {
-            const url = new URL(uriOrUrl);
-            const pathParts = url.pathname.split('/').filter(Boolean);
-            type = pathParts[0];
-            id = pathParts[1];
+            try {
+                const url = new URL(uriOrUrl);
+                const pathParts = url.pathname.split('/').filter(Boolean);
+                type = pathParts[0];
+                id = pathParts[1];
+            } catch (e) {
+                console.error("VOXO_SYSTEM: Failed to parse Spotify URL ->", uriOrUrl);
+                return null;
+            }
         }
 
         if (!type || !id) return null;
 
-        let artistId = id;
+        let artistId = (type === 'artist') ? id : null;
 
         // If it's a track or album, find the artist ID first
         if (type === 'track' || type === 'album') {
@@ -81,9 +110,14 @@ export async function getArtistStats(uriOrUrl: string) {
             });
             if (itemResponse.ok) {
                 const itemData = await itemResponse.json();
-                artistId = itemData.artists[0].id;
+                artistId = itemData.artists?.[0]?.id || null;
             }
+        } else if (type === 'playlist') {
+            // Playlists don't have a single primary artist easily accessible via ID.
+            return null;
         }
+
+        if (!artistId) return null;
 
         // Fetch Artist Details
         const artistResponse = await fetch(`https://api.spotify.com/v1/artists/${artistId}`, {
@@ -106,14 +140,14 @@ export async function getArtistStats(uriOrUrl: string) {
             genres: artistData.genres.slice(0, 3),
             image: artistData.images[0]?.url,
             external_url: artistData.external_urls.spotify,
-            topTracks: topTracksData.tracks.slice(0, 3).map((t: any) => ({
+            topTracks: (topTracksData.tracks || []).slice(0, 3).map((t: any) => ({
                 id: t.id,
                 title: t.name,
                 duration: formatDuration(t.duration_ms)
             }))
         };
     } catch (error) {
-        console.error("Spotify Artist Stats Error:", error);
+        console.error("VOXO_SYSTEM: Spotify Artist Stats Error ->", error);
         return null;
     }
 }
