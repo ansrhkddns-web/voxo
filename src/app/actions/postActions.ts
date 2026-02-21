@@ -14,6 +14,18 @@ export async function getPosts() {
     return data;
 }
 
+export async function getPostById(id: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('posts')
+        .select('*, categories(name)')
+        .eq('id', id)
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
 export async function createPost(formData: any) {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
