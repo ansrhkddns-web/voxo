@@ -40,23 +40,24 @@ create table subscribers (
 alter table categories enable row level security;
 create policy "Categories are viewable by everyone" on categories for select using (true);
 create policy "Categories are manageable by admins" on categories for all 
-  using (auth.role() = 'service_role' or (auth.jwt() ->> 'email') = 'admin@voxo.com');
+  using (auth.role() = 'authenticated');
 
 -- Posts: Only published posts are viewable by everyone
 alter table posts enable row level security;
 create policy "Published posts are viewable by everyone" on posts for select using (is_published = true);
 create policy "Admins can view all posts" on posts for select 
-  using (auth.role() = 'service_role' or (auth.jwt() ->> 'email') = 'admin@voxo.com');
+  using (auth.role() = 'authenticated');
 create policy "Admins can manage all posts" on posts for all 
-  using (auth.role() = 'service_role' or (auth.jwt() ->> 'email') = 'admin@voxo.com');
+  using (auth.role() = 'authenticated');
 
 -- Subscribers: Only Admins can view/manage
 alter table subscribers enable row level security;
 create policy "New subscriptions allowed for everyone" on subscribers for insert with check (true);
 create policy "Only admins can view subscribers" on subscribers for select 
-  using (auth.role() = 'service_role' or (auth.jwt() ->> 'email') = 'admin@voxo.com');
+  using (auth.role() = 'authenticated');
 create policy "Only admins can manage subscribers" on subscribers for all 
-  using (auth.role() = 'service_role' or (auth.jwt() ->> 'email') = 'admin@voxo.com');
+  using (auth.role() = 'authenticated');
+
 
 -- 5. Storage Buckets (Images)
 -- Run these in Supabase Dashboard:

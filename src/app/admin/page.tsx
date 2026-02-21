@@ -131,24 +131,34 @@ export default function AdminDashboard() {
                                                 </td>
                                                 <td className="px-8 py-8 text-right">
                                                     <div className="flex items-center justify-end gap-2 relative z-10 font-display">
-                                                        <a
-                                                            href={`/post/${post.slug}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-white/60 hover:text-accent-green transition-colors p-3 hover:bg-white/5"
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                window.open(`/post/${post.slug}`, '_blank');
+                                                            }}
+                                                            className="text-white/60 hover:text-accent-green transition-colors p-3 hover:bg-white/5 cursor-pointer"
                                                             title="Shortcut: Preview"
                                                         >
                                                             <ExternalLink size={14} />
-                                                        </a>
-                                                        <Link
-                                                            href={`/admin/editor?id=${post.id}`}
-                                                            className="text-white/60 hover:text-accent-green transition-colors p-3 hover:bg-white/5"
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                window.location.href = `/admin/editor?id=${post.id}`;
+                                                            }}
+                                                            className="text-white/60 hover:text-accent-green transition-colors p-3 hover:bg-white/5 cursor-pointer"
                                                             title="Shortcut: Recalibrate"
                                                         >
                                                             <Edit2 size={14} />
-                                                        </Link>
+                                                        </button>
                                                         <button
-                                                            onClick={() => handleDelete(post.id)}
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                handleDelete(post.id);
+                                                            }}
                                                             className="text-white/60 hover:text-red-500 transition-colors p-3 hover:bg-white/5 cursor-pointer"
                                                         >
                                                             <Trash2 size={14} />

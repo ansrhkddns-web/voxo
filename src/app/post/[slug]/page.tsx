@@ -10,8 +10,16 @@ import { Clock } from 'lucide-react';
 import { getPostBySlug } from '@/app/actions/postActions';
 import { notFound } from 'next/navigation';
 
-export default async function PostDetail({ params }: { params: Promise<{ slug: string }> }) {
-    const { slug } = await params;
+export default async function PostDetail({ params }: { params: any }) {
+    // Robust params handling for various Next.js 15/16 environments
+    const resolvedParams = params instanceof Promise ? await params : params;
+    const slug = resolvedParams?.slug;
+
+    if (!slug) {
+        console.error("No slug found in params:", resolvedParams);
+        notFound();
+    }
+
     const decodedSlug = decodeURIComponent(slug);
     const post = await getPostBySlug(decodedSlug);
 
