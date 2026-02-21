@@ -68,75 +68,77 @@ function parseSpotifyId(input: string) {
 
 /**
  * Gets artist stats by Spotify Artist ID directly.
- * This is the primary and most reliable method - no track/search APIs needed.
+ * Now returns diagnostic info if it fails.
  */
 async function getArtistById(artistId: string, fetchOptions: RequestInit) {
-    const [artistRes, albumsRes] = await Promise.all([
-        fetch(`https://api.spotify.com/v1/artists/${artistId}`, fetchOptions),
-        fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?limit=5&include_groups=album,single&market=US`, fetchOptions)
-    ]);
+    try {
+        const artistRes = await fetch(`https://api.spotify.com/v1/artists/${artistId}`, fetchOptions);
 
-    if (!artistRes.ok) {
-        const errBody = await artistRes.text();
-        console.error(`VOXO_DEBUG: Artist fetch failed (${artistRes.status}). Body: ${errBody}`);
-        return null;
+        if (!artistRes.ok) {
+            const errBody = await artistRes.text();
+            console.error(`VOXO_DEBUG: Artist fetch failed (${artistRes.status}). Body: ${errBody}`);
+            return { error: `Spotify API Error (${artistRes.status}): ${errBody.substring(0, 50)}` };
+        }
+
+        const albumsRes = await fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?limit=5&include_groups=album,single&market=US`, fetchOptions);
+
+        const artistData = await artistRes.json();
+        const albumsData = albumsRes.ok ? await albumsRes.json() : { items: [] };
+
+        return {
+            name: artistData.name,
+            followers: artistData.followers?.total || 0,
+            genres: artistData.genres?.slice(0, 3) || [],
+            image: artistData.images?.[0]?.url,
+            secondary_image: artistData.images?.[1]?.url || artistData.images?.[0]?.url,
+            popularity: artistData.popularity,
+            external_url: artistData.external_urls?.spotify || `https://open.spotify.com/artist/${artistId}`,
+            topTracks: [],
+            latestReleases: (albumsData.items || []).slice(0, 3).map((a: any) => ({
+                id: a.id,
+                name: a.name,
+                release_date: a.release_date,
+                image: a.images?.[0]?.url,
+                type: a.album_group || a.album_type
+            }))
+        };
+    } catch (e: any) {
+        return { error: `Internal fetch exception: ${e.message}` };
     }
-
-    const artistData = await artistRes.json();
-    const albumsData = albumsRes.ok ? await albumsRes.json() : { items: [] };
-
-    return {
-        name: artistData.name,
-        followers: artistData.followers?.total || 0,
-        genres: artistData.genres?.slice(0, 3) || [],
-        image: artistData.images?.[0]?.url,
-        secondary_image: artistData.images?.[1]?.url || artistData.images?.[0]?.url,
-        popularity: artistData.popularity,
-        external_url: artistData.external_urls?.spotify || `https://open.spotify.com/artist/${artistId}`,
-        // NOTE: top-tracks endpoint deprecated in Development Mode (Spotify Feb 2026)
-        // We now use latest albums/singles as the primary data source
-        topTracks: [] as { id: string; name: string; duration: string; }[],
-        latestReleases: (albumsData.items || []).slice(0, 3).map((a: any) => ({
-            id: a.id,
-            name: a.name,
-            release_date: a.release_date,
-            image: a.images?.[0]?.url,
-            type: a.album_group || a.album_type
-        }))
-    };
 }
 
 export async function getArtistStats(
     uriOrUrl: string,
     artistName?: string,
-    artistSpotifyId?: string  // NEW: Direct artist ID from DB
+    artistSpotifyId?: string
 ) {
     try {
         const token = await getAccessToken();
-        if (!token) return { error: "Token acquisition failed" };
+        if (!token) return { error: "Token acquisition failed. Check Credentials." };
 
         const fetchOptions = { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' as RequestInit['cache'] };
 
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // PATH 1: Direct Artist ID (Most Reliable - bypass track/search APIs)
+        // PATH 1: Direct Artist ID (Most Reliable)
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         if (artistSpotifyId && artistSpotifyId.trim().length > 0) {
             const result = await getArtistById(artistSpotifyId.trim(), fetchOptions);
-            if (result) return result;
+            // If result has data (name), return it. If it has error string, return that.
+            if (result && 'name' in result) return result;
+            if (result && 'error' in result) return result;
         }
 
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // PATH 2: If URI points directly to an artist profile
+        // PATH 2: URI direct artist
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         const parsed = uriOrUrl ? parseSpotifyId(uriOrUrl) : null;
         if (parsed?.type === 'artist') {
             const result = await getArtistById(parsed.id, fetchOptions);
-            if (result) return result;
+            if (result && 'name' in result) return result;
         }
 
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-        // PATH 3: Resolve via Track/Album link 
-        // (May fail with 403 if Spotify Development Mode restrictions apply)
+        // PATH 3: Resolve via Link
         // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
         if (parsed && parsed.type !== 'artist') {
             const { type, id } = parsed;
@@ -154,11 +156,8 @@ export async function getArtistStats(
 
                 if (resolvedArtistId) {
                     const result = await getArtistById(resolvedArtistId, fetchOptions);
-                    if (result) return result;
+                    if (result && 'name' in result) return result;
                 }
-            } else {
-                const errBody = await res.text();
-                console.error(`VOXO_DEBUG: Path3 link resolution failed (${res.status}): ${errBody}`);
             }
         }
 
