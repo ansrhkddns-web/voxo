@@ -14,12 +14,15 @@ import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
 import TiptapEditor from "@/components/admin/TiptapEditor";
 import { getCategories } from '@/app/actions/categoryActions';
-import { createPost } from '@/app/actions/postActions';
+import { createPost, getPostById, updatePost } from '@/app/actions/postActions';
 import { uploadImage } from '@/app/actions/uploadActions';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function EditorPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const postId = searchParams.get('id');
+
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [category, setCategory] = useState('');
@@ -31,14 +34,33 @@ export default function EditorPage() {
     const [categories, setCategories] = useState<any[]>([]);
     const [isPublishing, setIsPublishing] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [loading, setLoading] = useState(!!postId);
 
     useEffect(() => {
         const fetch = async () => {
             const data = await getCategories();
             setCategories(data);
+
+            if (postId) {
+                try {
+                    const post = await getPostById(postId);
+                    setTitle(post.title);
+                    setContent(post.content);
+                    setCategory(post.category_id);
+                    setSpotifyUri(post.spotify_uri || '');
+                    setRating(post.rating?.toString() || '8.0');
+                    setArtistName(post.artist_name || '');
+                    setTags(post.tags?.join(', ') || '');
+                    setCoverUrl(post.cover_image || '');
+                } catch (error) {
+                    toast.error('Failed to load archive sequence');
+                } finally {
+                    setLoading(false);
+                }
+            }
         };
         fetch();
-    }, []);
+    }, [postId]);
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -74,7 +96,7 @@ export default function EditorPage() {
             };
 
             const slug = generateSlug(title);
-            await createPost({
+            const postData = {
                 title,
                 content,
                 category_id: category,
@@ -85,8 +107,15 @@ export default function EditorPage() {
                 tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
                 is_published: !isDraft,
                 slug
-            });
-            toast.success(isDraft ? 'Draft sequence saved' : 'Unit published successfully');
+            };
+
+            if (postId) {
+                await updatePost(postId, postData);
+                toast.success(isDraft ? 'Archive updated' : 'Unit recalibrated successfully');
+            } else {
+                await createPost(postData);
+                toast.success(isDraft ? 'Draft sequence saved' : 'Unit published successfully');
+            }
             router.push('/admin');
         } catch (error) {
             toast.error('Sync failed');
@@ -94,6 +123,17 @@ export default function EditorPage() {
             setIsPublishing(false);
         }
     };
+
+    if (loading) {
+        return (
+            <div className="flex min-h-screen bg-black items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="animate-spin text-accent-green" size={32} strokeWidth={1} />
+                    <p className="text-[10px] uppercase tracking-[0.4em] text-gray-500 font-display">Decryption in progress...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex min-h-screen bg-black text-white selection:bg-accent-green/30">

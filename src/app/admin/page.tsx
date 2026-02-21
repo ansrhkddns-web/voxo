@@ -128,12 +128,17 @@ export default function AdminDashboard() {
                                                             href={`/post/${post.slug}`}
                                                             target="_blank"
                                                             className="text-white hover:text-accent-green transition-colors"
+                                                            title="Shortcut: Preview"
                                                         >
                                                             <ExternalLink size={14} />
                                                         </Link>
-                                                        <button className="text-white hover:text-accent-green transition-colors">
+                                                        <Link
+                                                            href={`/admin/editor?id=${post.id}`}
+                                                            className="text-white hover:text-accent-green transition-colors"
+                                                            title="Shortcut: Recalibrate"
+                                                        >
                                                             <Edit2 size={14} />
-                                                        </button>
+                                                        </Link>
                                                         <button
                                                             onClick={() => handleDelete(post.id)}
                                                             className="text-white hover:text-red-500 transition-colors"
