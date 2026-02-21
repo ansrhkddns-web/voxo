@@ -11,14 +11,14 @@ export async function uploadImage(file: File) {
     const filePath = `covers/${fileName}`;
 
     const { data, error } = await supabase.storage
-        .from('images') // Ensure this bucket exists in Supabase
+        .from('posts') // Ensure this bucket exists in Supabase
         .upload(filePath, file);
 
     if (error) throw error;
 
     // Get public URL
     const { data: { publicUrl } } = supabase.storage
-        .from('images')
+        .from('posts')
         .getPublicUrl(filePath);
 
     return publicUrl;
