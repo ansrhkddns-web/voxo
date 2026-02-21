@@ -110,13 +110,18 @@ export default function AdminDashboard() {
                                         posts.map((post) => (
                                             <tr key={post.id} className="hover:bg-white/[0.02] transition-colors group">
                                                 <td className="px-8 py-8">
-                                                    <p className="text-white text-sm font-light tracking-wide uppercase group-hover:text-accent-green transition-colors">{post.title}</p>
-                                                    <p className="text-gray-600 text-[8px] mt-1 tracking-widest">{post.id.toUpperCase()}</p>
+                                                    <Link
+                                                        href={`/admin/editor?id=${post.id}`}
+                                                        className="block group/title"
+                                                    >
+                                                        <p className="text-white text-sm font-light tracking-wide uppercase group-hover/title:text-accent-green transition-colors">{post.title}</p>
+                                                        <p className="text-gray-600 text-[8px] mt-1 tracking-widest">{post.id.toUpperCase()}</p>
+                                                    </Link>
                                                 </td>
-                                                <td className="px-8 py-8">
+                                                <td className="px-8 py-8 font-display">
                                                     <span className="text-gray-400 text-[10px] uppercase tracking-widest">{post.categories?.name || 'GENERIC'}</span>
                                                 </td>
-                                                <td className="px-8 py-8">
+                                                <td className="px-8 py-8 font-display">
                                                     <span className={cn(
                                                         "text-[9px] uppercase tracking-widest",
                                                         post.is_published ? "text-accent-green" : "text-gray-600"
@@ -125,24 +130,26 @@ export default function AdminDashboard() {
                                                     </span>
                                                 </td>
                                                 <td className="px-8 py-8 text-right">
-                                                    <div className="flex items-center justify-end gap-6 opacity-40 group-hover:opacity-100 transition-opacity">
-                                                        <button
-                                                            onClick={() => window.open(`/post/${post.slug}`, '_blank')}
-                                                            className="text-white hover:text-accent-green transition-colors cursor-pointer p-2"
+                                                    <div className="flex items-center justify-end gap-2 relative z-10 font-display">
+                                                        <a
+                                                            href={`/post/${post.slug}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-white/60 hover:text-accent-green transition-colors p-3 hover:bg-white/5"
                                                             title="Shortcut: Preview"
                                                         >
                                                             <ExternalLink size={14} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => router.push(`/admin/editor?id=${post.id}`)}
-                                                            className="text-white hover:text-accent-green transition-colors cursor-pointer p-2"
+                                                        </a>
+                                                        <Link
+                                                            href={`/admin/editor?id=${post.id}`}
+                                                            className="text-white/60 hover:text-accent-green transition-colors p-3 hover:bg-white/5"
                                                             title="Shortcut: Recalibrate"
                                                         >
                                                             <Edit2 size={14} />
-                                                        </button>
+                                                        </Link>
                                                         <button
                                                             onClick={() => handleDelete(post.id)}
-                                                            className="text-white hover:text-red-500 transition-colors"
+                                                            className="text-white/60 hover:text-red-500 transition-colors p-3 hover:bg-white/5 cursor-pointer"
                                                         >
                                                             <Trash2 size={14} />
                                                         </button>
