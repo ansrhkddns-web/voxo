@@ -33,35 +33,54 @@ async function getAccessToken() {
     }
 }
 
-export async function getSpotifyData(uri: string) {
-    if (!uri) return null;
+/**
+ * Robust helper to extract Spotify Type and ID from diverse URL/URI formats
+ */
+function parseSpotifyId(input: string) {
+    if (!input) return null;
+
+    // Handle URI format: spotify:track:xxx
+    if (input.startsWith('spotify:')) {
+        const parts = input.split(':');
+        if (parts.length >= 3) {
+            return { type: parts[1], id: parts[2] };
+        }
+    }
+
+    // Handle URL format: https://open.spotify.com/intl-ko/track/xxx?si=...
+    if (input.includes('open.spotify.com')) {
+        try {
+            const url = new URL(input);
+            const pathParts = url.pathname.split('/').filter(Boolean);
+
+            // Search for type keyword
+            const supportedTypes = ['track', 'album', 'artist', 'playlist'];
+            const typeIndex = pathParts.findIndex(p => supportedTypes.includes(p));
+
+            if (typeIndex !== -1 && pathParts[typeIndex + 1]) {
+                return {
+                    type: pathParts[typeIndex],
+                    id: pathParts[typeIndex + 1]
+                };
+            }
+        } catch (e) {
+            console.error("VOXO_SYSTEM: URL Parsing Exception ->", input);
+        }
+    }
+
+    console.warn("VOXO_SYSTEM: Unrecognized Spotify format ->", input);
+    return null;
+}
+
+export async function getSpotifyData(uriOrUrl: string) {
+    const parsed = parseSpotifyId(uriOrUrl);
+    if (!parsed) return null;
 
     try {
         const token = await getAccessToken();
         if (!token) return null;
 
-        let type = '';
-        let id = '';
-
-        if (uri.startsWith('spotify:')) {
-            const parts = uri.split(':');
-            type = parts[1];
-            id = parts[2];
-        } else if (uri.includes('open.spotify.com')) {
-            try {
-                const url = new URL(uri);
-                const pathParts = url.pathname.split('/').filter(Boolean);
-                type = pathParts[0];
-                id = pathParts[1];
-            } catch (e) {
-                console.error("VOXO_SYSTEM: Failed to parse Spotify URL ->", uri);
-                return null;
-            }
-        }
-
-        if (!type || !id) return null;
-
-        const response = await fetch(`https://api.spotify.com/v1/${type}s/${id}`, {
+        const response = await fetch(`https://api.spotify.com/v1/${parsed.type}s/${parsed.id}`, {
             headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -74,65 +93,66 @@ export async function getSpotifyData(uri: string) {
 }
 
 export async function getArtistStats(uriOrUrl: string) {
-    if (!uriOrUrl) return null;
+    const parsed = parseSpotifyId(uriOrUrl);
+    if (!parsed) return null;
 
     try {
         const token = await getAccessToken();
         if (!token) return null;
 
-        let type = '';
-        let id = '';
+        const { type, id } = parsed;
+        let artistId = (type === 'artist') ? id : null;
 
-        if (uriOrUrl.startsWith('spotify:')) {
-            const parts = uriOrUrl.split(':');
-            type = parts[1];
-            id = parts[2];
-        } else if (uriOrUrl.includes('open.spotify.com')) {
-            try {
-                const url = new URL(uriOrUrl);
-                const pathParts = url.pathname.split('/').filter(Boolean);
-                type = pathParts[0];
-                id = pathParts[1];
-            } catch (e) {
-                console.error("VOXO_SYSTEM: Failed to parse Spotify URL ->", uriOrUrl);
-                return null;
+        // Resolution Phase: Find the primary artist ID
+        if (type === 'track') {
+            const res = await fetch(`https://api.spotify.com/v1/tracks/${id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                artistId = data.artists?.[0]?.id || null;
+            }
+        } else if (type === 'album') {
+            const res = await fetch(`https://api.spotify.com/v1/albums/${id}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                artistId = data.artists?.[0]?.id || null;
+            }
+        } else if (type === 'playlist') {
+            // For playlists, try to resolve to the artist of the FIRST track
+            const res = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks?limit=1`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                artistId = data.items?.[0]?.track?.artists?.[0]?.id || null;
             }
         }
 
-        if (!type || !id) return null;
-
-        let artistId = (type === 'artist') ? id : null;
-
-        // If it's a track or album, find the artist ID first
-        if (type === 'track' || type === 'album') {
-            const itemResponse = await fetch(`https://api.spotify.com/v1/${type}s/${id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (itemResponse.ok) {
-                const itemData = await itemResponse.json();
-                artistId = itemData.artists?.[0]?.id || null;
-            }
-        } else if (type === 'playlist') {
-            // Playlists don't have a single primary artist easily accessible via ID.
+        if (!artistId) {
+            console.warn("VOXO_SYSTEM: Could not resolve Artist ID for ->", { type, id });
             return null;
         }
 
-        if (!artistId) return null;
+        // Fetch Phase: Details + Top Tracks
+        const [artistRes, topTracksRes] = await Promise.all([
+            fetch(`https://api.spotify.com/v1/artists/${artistId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            }),
+            fetch(`https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=KR`, {
+                headers: { Authorization: `Bearer ${token}` },
+            })
+        ]);
 
-        // Fetch Artist Details
-        const artistResponse = await fetch(`https://api.spotify.com/v1/artists/${artistId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
+        if (!artistRes.ok) {
+            console.error("VOXO_SYSTEM: Artist Fetch Failed ->", artistRes.status);
+            return null;
+        }
 
-        // Fetch Top Tracks
-        const topTracksResponse = await fetch(`https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=US`, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!artistResponse.ok) return null;
-
-        const artistData = await artistResponse.json();
-        const topTracksData = await topTracksResponse.json();
+        const artistData = await artistRes.json();
+        const topTracksData = await topTracksRes.json();
 
         return {
             name: artistData.name,
@@ -147,7 +167,7 @@ export async function getArtistStats(uriOrUrl: string) {
             }))
         };
     } catch (error) {
-        console.error("VOXO_SYSTEM: Spotify Artist Stats Error ->", error);
+        console.error("VOXO_SYSTEM: getArtistStats Critical Error ->", error);
         return null;
     }
 }
