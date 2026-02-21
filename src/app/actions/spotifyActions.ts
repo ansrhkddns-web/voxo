@@ -39,9 +39,8 @@ async function getAccessToken() {
  */
 function parseSpotifyId(input: string) {
     if (!input) return null;
-    const trimmed = input.trim().replace(/\/$/, ''); // Remove trailing slashes and spaces
+    const trimmed = input.trim().replace(/\/$/, '');
 
-    // Handle URI format: spotify:track:xxx
     if (trimmed.startsWith('spotify:')) {
         const parts = trimmed.split(':');
         if (parts.length >= 3) {
@@ -49,13 +48,10 @@ function parseSpotifyId(input: string) {
         }
     }
 
-    // Handle URL format: https://open.spotify.com/intl-ko/track/xxx?si=...
     if (trimmed.includes('open.spotify.com')) {
         try {
             const url = new URL(trimmed);
             const pathParts = url.pathname.split('/').filter(Boolean);
-
-            // Search for type keyword
             const supportedTypes = ['track', 'album', 'artist', 'playlist'];
             const typeIndex = pathParts.findIndex(p => supportedTypes.includes(p));
 
@@ -108,8 +104,6 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string) {
         // Resolution Phase 1: Try resolving via Link
         if (!artistId && parsed) {
             const { type, id } = parsed;
-            console.log(`VOXO_DEBUG: Resolving ${type} ID: ${id}`);
-
             if (type === 'track') {
                 const res = await fetch(`https://api.spotify.com/v1/tracks/${id}`, fetchOptions);
                 if (res.ok) {
@@ -133,7 +127,6 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string) {
 
         // Resolution Phase 2: Fallback to Search by Name
         if (!artistId && artistName) {
-            console.log(`VOXO_DEBUG: Falling back to search for artist: ${artistName}`);
             const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(artistName)}&type=artist&limit=1`, fetchOptions);
             if (searchRes.ok) {
                 const searchData = await searchRes.json();
@@ -142,32 +135,43 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string) {
         }
 
         if (!artistId) {
-            return { error: `Could not reach artist signal for ${artistName || parsed?.type || 'unknown'}` };
+            return { error: `Resolution Failure: ${artistName || 'Artist'}` };
         }
 
-        // Fetch Phase: Details + Top Tracks
-        const [artistRes, topTracksRes] = await Promise.all([
+        // Expanded Fetch Phase: Details + Top Tracks + Latest Releases
+        const [artistRes, topTracksRes, albumsRes] = await Promise.all([
             fetch(`https://api.spotify.com/v1/artists/${artistId}`, fetchOptions),
-            fetch(`https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=US`, fetchOptions)
+            fetch(`https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=US`, fetchOptions),
+            fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?limit=5&include_groups=album,single`, fetchOptions)
         ]);
 
         if (!artistRes.ok) {
-            return { error: `Spotify API error: ${artistRes.status}` };
+            return { error: `Spotify API Error: ${artistRes.status}` };
         }
 
         const artistData = await artistRes.json();
         const topTracksData = topTracksRes.ok ? await topTracksRes.json() : { tracks: [] };
+        const albumsData = albumsRes.ok ? await albumsRes.json() : { items: [] };
 
         return {
             name: artistData.name,
             followers: artistData.followers?.total || 0,
             genres: artistData.genres?.slice(0, 3) || [],
-            image: artistData.images?.[0]?.url,
+            image: artistData.images?.[0]?.url, // Primary photo
+            secondary_image: artistData.images?.[1]?.url || artistData.images?.[0]?.url, // Secondary for creative layouts
+            popularity: artistData.popularity, // 0-100
             external_url: artistData.external_urls?.spotify || `https://open.spotify.com/artist/${artistId}`,
             topTracks: (topTracksData.tracks || []).slice(0, 3).map((t: any) => ({
                 id: t.id,
-                title: t.name,
+                name: t.name,
                 duration: formatDuration(t.duration_ms)
+            })),
+            latestReleases: (albumsData.items || []).slice(0, 2).map((a: any) => ({
+                id: a.id,
+                name: a.name,
+                release_date: a.release_date,
+                image: a.images?.[0]?.url,
+                type: a.album_group || a.album_type
             }))
         };
     } catch (error: any) {
