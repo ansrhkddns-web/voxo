@@ -48,10 +48,11 @@ export default async function PostDetail({ params }: { params: any }) {
         notFound();
     }
 
-    // Fetch Spotify Artist Stats if URI exists (with artist name fallback)
-    const artistStats = (post.spotify_uri || post.artist_name)
-        ? await getArtistStats(post.spotify_uri || '', post.artist_name || '')
+    // Fetch Spotify Artist Stats — Priority: direct ID > link resolution > name search
+    const artistStats = (post.spotify_uri || post.artist_name || post.artist_spotify_id)
+        ? await getArtistStats(post.spotify_uri || '', post.artist_name || '', post.artist_spotify_id || '')
         : null;
+
 
     const formattedDate = new Date(post.created_at).toLocaleDateString('en-US', {
         month: 'short',
