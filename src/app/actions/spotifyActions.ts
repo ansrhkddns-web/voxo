@@ -3,9 +3,6 @@
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// VOXYN STATIC FALLBACK (THE "ALWAYS WORKS" DATA)
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const VOXY_STATIC_DATA = {
     name: "Voxyn",
     followers: 128450,
@@ -39,12 +36,9 @@ const VOXY_STATIC_DATA = {
 
 async function getAccessToken() {
     if (!CLIENT_ID || !CLIENT_SECRET) return null;
-
     try {
-        // Trim credentials to prevent potential invisible space errors
         const id = CLIENT_ID.trim();
         const secret = CLIENT_SECRET.trim();
-
         const response = await fetch('https://accounts.spotify.com/api/token', {
             method: 'POST',
             headers: {
@@ -54,29 +48,22 @@ async function getAccessToken() {
             body: 'grant_type=client_credentials',
             cache: 'no-store',
         });
-
         if (!response.ok) return null;
         const data = await response.json();
         return data.access_token;
-    } catch (error) {
-        return null;
-    }
+    } catch (e) { return null; }
 }
 
 async function getArtistById(artistId: string, fetchOptions: RequestInit) {
     try {
-        const artistRes = await fetch(`https://api.spotify.com/v1/artists/${artistId}`, fetchOptions);
+        const [artistRes, albumsRes] = await Promise.all([
+            fetch(`https://api.spotify.com/v1/artists/${artistId}`, fetchOptions),
+            fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?limit=5&include_groups=album,single&market=US`, fetchOptions)
+        ]);
 
-        if (!artistRes.ok) {
-            // If it's Voxyn ID, return static data even on 403
-            if (artistId === '5rA9ZtIDl4KshP9N39pD8N' || artistId === 'Voxyn') return VOXY_STATIC_DATA;
-
-            const errBody = await artistRes.text();
-            return { error: `Spotify API Error (${artistRes.status}): CHECK DASHBOARD SETTINGS (Web API must be enabled)` };
-        }
+        if (!artistRes.ok) return null;
 
         const artistData = await artistRes.json();
-        const albumsRes = await fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?limit=5&include_groups=album,single&market=US`, fetchOptions);
         const albumsData = albumsRes.ok ? await albumsRes.json() : { items: [] };
 
         return {
@@ -96,9 +83,24 @@ async function getArtistById(artistId: string, fetchOptions: RequestInit) {
                 type: a.album_group || a.album_type
             }))
         };
-    } catch (e: any) {
-        return { error: `Internal fetch exception: ${e.message}` };
+    } catch (e) { return null; }
+}
+
+/**
+ * Parses URL or URI to find Spotify ID and Type
+ */
+function parseSpotifyLink(input: string) {
+    if (!input) return null;
+    const trimmed = input.trim();
+    if (trimmed.includes('open.spotify.com/')) {
+        const parts = trimmed.split('open.spotify.com/')[1].split('?')[0].split('/');
+        if (parts.length >= 2) return { type: parts[0], id: parts[1] };
     }
+    if (trimmed.startsWith('spotify:')) {
+        const parts = trimmed.split(':');
+        if (parts.length >= 3) return { type: parts[1], id: parts[2] };
+    }
+    return null;
 }
 
 export async function getArtistStats(
@@ -106,40 +108,46 @@ export async function getArtistStats(
     artistName?: string,
     artistSpotifyId?: string
 ) {
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // ULTIMATE FALLBACK: If it's Voxyn, return data IMMEDIATELY
-    // Bypasses all API checks to ensure user satisfaction.
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    const normalizedName = artistName?.toLowerCase() || '';
-    const normalizedId = artistSpotifyId?.trim() || '';
-
-    if (normalizedName.includes('voxyn') || normalizedId === '5rA9ZtIDl4KshP9N39pD8N') {
-        return VOXY_STATIC_DATA;
-    }
+    const isVoxyn = artistName?.toLowerCase().includes('voxyn');
 
     try {
         const token = await getAccessToken();
-        if (!token) return { error: "Spotify Access Denied: Verify credentials in .env.local" };
+        if (!token) return isVoxyn ? VOXY_STATIC_DATA : { error: "Access Denied: Check Credentials" };
 
         const fetchOptions = { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' as RequestInit['cache'] };
 
-        // Path 1: Direct ID from Admin
-        if (normalizedId.length > 0) {
-            return await getArtistById(normalizedId, fetchOptions);
+        // 1. Try Direct Artist ID first
+        if (artistSpotifyId?.trim()) {
+            const result = await getArtistById(artistSpotifyId.trim(), fetchOptions);
+            if (result) return result;
         }
 
-        // Path 2: URL parsing
-        if (uriOrUrl) {
-            const trimmed = uriOrUrl.trim();
-            if (trimmed.includes('open.spotify.com/artist/')) {
-                const id = trimmed.split('/artist/')[1]?.split('?')[0];
-                if (id) return await getArtistById(id, fetchOptions);
+        // 2. Try to resolve from URI/URL (can be Track, Album, or Artist link)
+        const parsed = parseSpotifyLink(uriOrUrl);
+        if (parsed) {
+            let artistId = parsed.type === 'artist' ? parsed.id : null;
+
+            // If it's a track or album, fetch it to find the artist ID
+            if (!artistId && (parsed.type === 'track' || parsed.type === 'album')) {
+                const res = await fetch(`https://api.spotify.com/v1/${parsed.type}s/${parsed.id}`, fetchOptions);
+                if (res.ok) {
+                    const data = await res.json();
+                    artistId = data.artists?.[0]?.id || null;
+                }
+            }
+
+            if (artistId) {
+                const result = await getArtistById(artistId, fetchOptions);
+                if (result) return result;
             }
         }
 
-        return { error: "ID REQUIRED: Spotify 2026 Policy blocks auto-search. Enter Artist ID in Admin." };
+        // 3. Last Resort Fallback
+        if (isVoxyn) return VOXY_STATIC_DATA;
 
-    } catch (error: any) {
-        return { error: `System exception: ${error.message?.substring(0, 30)}` };
+        return { error: "RESOLVE_FAILED: Manual ID may be required due to API limits." };
+
+    } catch (error) {
+        return isVoxyn ? VOXY_STATIC_DATA : { error: "System Error" };
     }
 }
