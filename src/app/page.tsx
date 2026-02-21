@@ -1,6 +1,8 @@
 
 
 import React from 'react';
+export const dynamic = "force-dynamic";
+
 import Navbar from "@/components/layout/Navbar";
 import Hero from "@/components/home/Hero";
 import Marquee from "@/components/home/Marquee";
