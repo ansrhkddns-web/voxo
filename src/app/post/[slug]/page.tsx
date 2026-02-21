@@ -22,12 +22,25 @@ export default async function PostDetail({ params }: { params: any }) {
 
     const decodedSlug = decodeURIComponent(slug);
 
-    // Try multiple matching strategies for maximum robustness
+    // 1. Primary lookup using decoded slug
     let post = await getPostBySlug(decodedSlug);
 
-    // Fallback: Try the raw slug if decoded didn't work
+    // 2. Fallback: Lookup using raw slug (Next.js sometimes handles encoding differently)
     if (!post && slug !== decodedSlug) {
         post = await getPostBySlug(slug);
+    }
+
+    // 3. Last stand: Direct Supabase match bypass (to catch any ilike normalization issues)
+    if (!post) {
+        const { createClient } = await import('@/lib/supabase/server');
+        const supabase = await createClient();
+        const { data } = await supabase
+            .from('posts')
+            .select('*, categories(name)')
+            .eq('slug', decodedSlug)
+            .eq('is_published', true)
+            .maybeSingle();
+        post = data;
     }
 
     if (!post) {

@@ -91,13 +91,15 @@ function EditorContent() {
                 const sanitized = text
                     .toLowerCase()
                     .trim()
-                    .replace(/[^a-z0-9\s-]/g, '') // Remove all non-English/Numbers
-                    .replace(/\s+/g, '-') // Replace spaces with hyphens
-                    .replace(/-+/g, '-'); // Replace multiple hyphens with single one
+                    .replace(/[^a-z0-9]/g, '-') // Replace EVERYTHING except a-z and 0-9 with hyphens
+                    .replace(/-+/g, '-') // Collapse multiple hyphens
+                    .replace(/^-+|-+$/g, ''); // Trim leading/trailing hyphens
 
                 // Always append an 8-digit random suffix for unique indexing
                 const randomIndex = Math.floor(10000000 + Math.random() * 90000000);
-                return sanitized ? `${sanitized}-${randomIndex}` : `${randomIndex}`;
+                const finalSlug = sanitized ? `${sanitized}-${randomIndex}` : `${randomIndex}`;
+                console.log("VOXO_SYSTEM: Generating refined slug ->", finalSlug);
+                return finalSlug;
             };
 
             const slug = generateSlug(title);
