@@ -17,8 +17,9 @@ import { getCategories } from '@/app/actions/categoryActions';
 import { createPost, getPostById, updatePost } from '@/app/actions/postActions';
 import { uploadImage } from '@/app/actions/uploadActions';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 
-export default function EditorPage() {
+function EditorContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const postId = searchParams.get('id');
@@ -284,5 +285,17 @@ export default function EditorPage() {
             {/* Grainy Noise Overlay */}
             <div className="fixed inset-0 pointer-events-none opacity-[0.02] z-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
         </div>
+    );
+}
+
+export default function EditorPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex min-h-screen bg-black items-center justify-center">
+                <Loader2 className="animate-spin text-accent-green" size={32} strokeWidth={1} />
+            </div>
+        }>
+            <EditorContent />
+        </Suspense>
     );
 }

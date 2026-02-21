@@ -21,7 +21,14 @@ export default async function PostDetail({ params }: { params: any }) {
     }
 
     const decodedSlug = decodeURIComponent(slug);
-    const post = await getPostBySlug(decodedSlug);
+
+    // Try multiple matching strategies for maximum robustness
+    let post = await getPostBySlug(decodedSlug);
+
+    // Fallback: Try the raw slug if decoded didn't work
+    if (!post && slug !== decodedSlug) {
+        post = await getPostBySlug(slug);
+    }
 
     if (!post) {
         notFound();
