@@ -8,6 +8,7 @@ import SpotifyEmbed from "@/components/post/SpotifyEmbed";
 import RatingMeter from "@/components/post/RatingMeter";
 import { Clock } from 'lucide-react';
 import { getPostBySlug } from '@/app/actions/postActions';
+import { getArtistStats } from '@/app/actions/spotifyActions';
 import { notFound } from 'next/navigation';
 
 export default async function PostDetail({ params }: { params: any }) {
@@ -46,6 +47,9 @@ export default async function PostDetail({ params }: { params: any }) {
     if (!post) {
         notFound();
     }
+
+    // Fetch Spotify Artist Stats if URI exists
+    const artistStats = post.spotify_uri ? await getArtistStats(post.spotify_uri) : null;
 
     const formattedDate = new Date(post.created_at).toLocaleDateString('en-US', {
         month: 'short',
@@ -127,7 +131,7 @@ export default async function PostDetail({ params }: { params: any }) {
                         </div>
                     )}
 
-                    <ArtistStats />
+                    {artistStats && <ArtistStats data={artistStats} />}
 
                     <div className="space-y-8">
                         <div className="flex items-center gap-2">
