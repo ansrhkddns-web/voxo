@@ -87,12 +87,16 @@ export default function EditorPage() {
         setIsPublishing(true);
         try {
             const generateSlug = (text: string) => {
-                return text
+                const sanitized = text
                     .toLowerCase()
                     .trim()
-                    .replace(/[^\w\sㄱ-ㅎㅏ-ㅣ가-힣-]/g, '') // Allow English, numbers, Korean, spaces, hyphens
+                    .replace(/[^a-z0-9\s-]/g, '') // Remove all non-English/Numbers
                     .replace(/\s+/g, '-') // Replace spaces with hyphens
                     .replace(/-+/g, '-'); // Replace multiple hyphens with single one
+
+                // Always append an 8-digit random suffix for unique indexing
+                const randomIndex = Math.floor(10000000 + Math.random() * 90000000);
+                return sanitized ? `${sanitized}-${randomIndex}` : `${randomIndex}`;
             };
 
             const slug = generateSlug(title);
