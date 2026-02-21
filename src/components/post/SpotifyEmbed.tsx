@@ -8,12 +8,28 @@ interface SpotifyEmbedProps {
 }
 
 export default function SpotifyEmbed({ uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvEnl' }: SpotifyEmbedProps) {
-    // Convert URI to embed URL (track, album, artist, playlist supported)
-    // Example: spotify:track:xxx -> https://open.spotify.com/embed/track/xxx
-    const parts = uri.split(':');
-    const type = parts[1];
-    const id = parts[2];
-    const embedUrl = `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`;
+    let type = '';
+    let id = '';
+
+    if (uri.startsWith('spotify:')) {
+        const parts = uri.split(':');
+        type = parts[1];
+        id = parts[2];
+    } else if (uri.includes('open.spotify.com')) {
+        try {
+            // Handle URL format: https://open.spotify.com/album/1B3nwCcj7eyO0RKI6lJ9ys?si=...
+            const url = new URL(uri);
+            const pathParts = url.pathname.split('/').filter(Boolean);
+            type = pathParts[0];
+            id = pathParts[1];
+        } catch (e) {
+            console.error("Invalid Spotify URL:", uri);
+        }
+    }
+
+    const embedUrl = type && id
+        ? `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`
+        : '';
 
     return (
         <div className="my-12 p-6 bg-surface-dark border border-white/10 rounded-xl relative overflow-hidden group">
@@ -36,17 +52,23 @@ export default function SpotifyEmbed({ uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvE
             </div>
 
             {/* Real Spotify Embed */}
-            <iframe
-                style={{ borderRadius: '12px' }}
-                src={embedUrl}
-                width="100%"
-                height="152"
-                frameBorder="0"
-                allowFullScreen={true}
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                loading="lazy"
-                className="relative z-10"
-            />
+            {embedUrl ? (
+                <iframe
+                    style={{ borderRadius: '12px' }}
+                    src={embedUrl}
+                    width="100%"
+                    height="152"
+                    frameBorder="0"
+                    allowFullScreen={true}
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    loading="lazy"
+                    className="relative z-10"
+                />
+            ) : (
+                <div className="relative z-10 py-8 text-center border border-dashed border-white/10 rounded-xl">
+                    <p className="text-[10px] uppercase tracking-widest text-gray-600">Audio sequence pending / Invalid link</p>
+                </div>
+            )}
         </div>
     );
 }
