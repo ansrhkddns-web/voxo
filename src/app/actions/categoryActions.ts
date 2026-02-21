@@ -37,3 +37,17 @@ export async function deleteCategory(id: string) {
     if (error) throw error;
     revalidatePath('/admin/categories');
 }
+
+export async function updateCategory(id: string, name: string, slug: string) {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('categories')
+        .update({ name, slug })
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) throw error;
+    revalidatePath('/admin/categories');
+    return data;
+}

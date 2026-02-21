@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { CirclePlus, Edit2, Trash2, Loader2, Database } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getCategories, createCategory, deleteCategory } from '@/app/actions/categoryActions';
+import { getCategories, createCategory, deleteCategory, updateCategory } from '@/app/actions/categoryActions';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function CategoriesPage() {
@@ -12,6 +12,8 @@ export default function CategoriesPage() {
     const [loading, setLoading] = useState(true);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isAdding, setIsAdding] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editingName, setEditingName] = useState('');
 
     useEffect(() => {
         fetchCategories();
@@ -43,6 +45,19 @@ export default function CategoriesPage() {
             toast.error('Deployment failed');
         } finally {
             setIsAdding(false);
+        }
+    };
+
+    const handleUpdate = async (id: string) => {
+        if (!editingName) return;
+        try {
+            const slug = editingName.toLowerCase().replace(/ /g, '-');
+            await updateCategory(id, editingName, slug);
+            setEditingId(null);
+            fetchCategories();
+            toast.success('Unit recalibrated');
+        } catch (error) {
+            toast.error('Recalibration failed');
         }
     };
 
@@ -107,7 +122,13 @@ export default function CategoriesPage() {
                                             {cat.name.substring(0, 2).toUpperCase()}
                                         </div>
                                         <div className="flex items-center gap-1">
-                                            <button className="p-2 text-gray-700 hover:text-white transition-colors">
+                                            <button
+                                                onClick={() => {
+                                                    setEditingId(cat.id);
+                                                    setEditingName(cat.name);
+                                                }}
+                                                className="p-2 text-gray-700 hover:text-white transition-colors"
+                                            >
                                                 <Edit2 size={14} strokeWidth={1} />
                                             </button>
                                             <button
@@ -120,11 +141,30 @@ export default function CategoriesPage() {
                                     </div>
 
                                     <div className="relative z-10">
-                                        <h3 className="text-2xl font-display font-light uppercase tracking-tighter text-white mb-2">{cat.name}</h3>
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-px w-6 bg-accent-green/30"></div>
-                                            <p className="text-gray-600 text-[8px] font-mono tracking-widest uppercase truncate max-w-[120px]">REF_ID: {cat.id.substring(0, 12)}</p>
-                                        </div>
+                                        {editingId === cat.id ? (
+                                            <div className="space-y-4">
+                                                <input
+                                                    autoFocus
+                                                    className="w-full bg-black border-b border-accent-green py-2 text-xl font-display font-light uppercase tracking-tighter text-white focus:outline-none"
+                                                    value={editingName}
+                                                    onChange={(e) => setEditingName(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') handleUpdate(cat.id);
+                                                        if (e.key === 'Escape') setEditingId(null);
+                                                    }}
+                                                    onBlur={() => handleUpdate(cat.id)}
+                                                />
+                                                <p className="text-[8px] text-accent-green uppercase tracking-widest">Applying Changes...</p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <h3 className="text-2xl font-display font-light uppercase tracking-tighter text-white mb-2">{cat.name}</h3>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-px w-6 bg-accent-green/30"></div>
+                                                    <p className="text-gray-600 text-[8px] font-mono tracking-widest uppercase truncate max-w-[120px]">REF_ID: {cat.id.substring(0, 12)}</p>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             ))}
