@@ -131,7 +131,9 @@ export default async function PostDetail({ params }: { params: any }) {
                         </div>
                     )}
 
-                    {artistStats && <ArtistStats data={artistStats} />}
+                    {post.spotify_uri && (
+                        <ArtistStats data={artistStats} />
+                    )}
 
                     <div className="space-y-8">
                         <div className="flex items-center gap-2">

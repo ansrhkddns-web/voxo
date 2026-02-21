@@ -19,7 +19,15 @@ interface ArtistStatsProps {
 }
 
 export default function ArtistStats({ data }: ArtistStatsProps) {
-    if (!data) return null;
+    if (!data) return (
+        <div className="bg-gray-950/20 border border-white/5 p-6 opacity-30 group">
+            <h3 className="text-white text-[10px] uppercase tracking-[0.4em] font-display mb-4 flex items-center gap-3">
+                <span className="w-4 h-px bg-red-500/50" />
+                Signal Lost
+            </h3>
+            <p className="text-[9px] uppercase tracking-[0.2em] text-gray-600 font-display">Artist data stream could not be synchronized. Check SPOTIFY credentials in environment settings.</p>
+        </div>
+    );
 
     const formatFollowers = (num: number) => {
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
