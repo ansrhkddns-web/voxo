@@ -34,14 +34,10 @@ async function getAccessToken() {
     }
 }
 
-/**
- * Robust helper to extract Spotify Type and ID from diverse URL/URI formats
- */
 function parseSpotifyId(input: string) {
     if (!input) return null;
     const trimmed = input.trim().replace(/\/$/, '');
 
-    // URI: spotify:track:xxx
     if (trimmed.startsWith('spotify:')) {
         const parts = trimmed.split(':');
         if (parts.length >= 3) {
@@ -49,7 +45,6 @@ function parseSpotifyId(input: string) {
         }
     }
 
-    // URL: https://open.spotify.com/...
     if (trimmed.includes('open.spotify.com')) {
         try {
             const url = new URL(trimmed);
@@ -71,26 +66,6 @@ function parseSpotifyId(input: string) {
     return null;
 }
 
-export async function getSpotifyData(uriOrUrl: string) {
-    const parsed = parseSpotifyId(uriOrUrl);
-    if (!parsed) return null;
-
-    try {
-        const token = await getAccessToken();
-        if (!token) return null;
-
-        const response = await fetch(`https://api.spotify.com/v1/${parsed.type}s/${parsed.id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-            cache: 'no-store'
-        });
-
-        if (!response.ok) return null;
-        return response.json();
-    } catch (error) {
-        return null;
-    }
-}
-
 export async function getArtistStats(uriOrUrl: string, artistName?: string) {
     if (!uriOrUrl && !artistName) return { error: "No signal provided" };
 
@@ -103,7 +78,7 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string) {
         let artistId = (parsed?.type === 'artist') ? parsed.id : null;
         let diagnosticMsg = "";
 
-        // Stage 1: Link Resolution
+        // Stage 1: Link Resolution with Deep Logging
         if (!artistId && parsed) {
             const { type, id } = parsed;
             const res = await fetch(`https://api.spotify.com/v1/${type}s/${id}`, fetchOptions);
@@ -113,7 +88,6 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string) {
                 if (type === 'track' || type === 'album') {
                     artistId = data.artists?.[0]?.id || null;
                 } else if (type === 'playlist') {
-                    // Try to get artist of the first track
                     const tracksRes = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks?limit=1`, fetchOptions);
                     if (tracksRes.ok) {
                         const tracksData = await tracksRes.json();
@@ -121,22 +95,23 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string) {
                     }
                 }
             } else {
+                const errBody = await res.text();
+                // CRITICAL LOG: Why is it 403?
+                console.error(`VOXO_DEBUG: Link sync failed (${res.status}) for ${type}/${id}. Body: ${errBody}`);
                 diagnosticMsg = `Link sync failed (${res.status}). `;
             }
         }
 
-        // Stage 2: Identity Search (fallback)
-        if (!artistId && artistName && artistName.length > 0) {
-            // Ignore very short or numeric-only names for searching unless necessary
-            const cleanName = artistName.trim();
-            if (cleanName.length >= 1) {
-                const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(cleanName)}&type=artist&limit=1`, fetchOptions);
-                if (searchRes.ok) {
-                    const searchData = await searchRes.json();
-                    artistId = searchData.artists?.items?.[0]?.id || null;
-                } else {
-                    diagnosticMsg += `Identity search failed (${searchRes.status})`;
-                }
+        // Stage 2: Identity Search with Deep Logging
+        if (!artistId && artistName && artistName.trim().length > 0 && artistName !== '1') {
+            const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(artistName)}&type=artist&limit=1`, fetchOptions);
+            if (searchRes.ok) {
+                const searchData = await searchRes.json();
+                artistId = searchData.artists?.items?.[0]?.id || null;
+            } else {
+                const errBody = await searchRes.text();
+                console.error(`VOXO_DEBUG: Identity search failed (${searchRes.status}) for [${artistName}]. Body: ${errBody}`);
+                diagnosticMsg += `Identity search failed (${searchRes.status}). `;
             }
         }
 
@@ -144,7 +119,7 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string) {
             return { error: `${diagnosticMsg || 'Resolution failure'}: [${artistName || uriOrUrl || 'Unknown Target'}]` };
         }
 
-        // Stage 3: Global Data Retrieval
+        // Stage 3: Data Fetching with error capture
         const [artistRes, topTracksRes, albumsRes] = await Promise.all([
             fetch(`https://api.spotify.com/v1/artists/${artistId}`, fetchOptions),
             fetch(`https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=US`, fetchOptions),
@@ -152,6 +127,8 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string) {
         ]);
 
         if (!artistRes.ok) {
+            const errBody = await artistRes.text();
+            console.error(`VOXO_DEBUG: Artist fetch failed (${artistRes.status}). Body: ${errBody}`);
             return { error: `Target profile lock failure (${artistRes.status})` };
         }
 
