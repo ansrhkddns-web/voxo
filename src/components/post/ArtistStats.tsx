@@ -21,15 +21,15 @@ interface ArtistStatsProps {
 
 export default function ArtistStats({ data }: ArtistStatsProps) {
     if (!data || data.error) return (
-        <div className="bg-gray-950/20 border border-white/5 p-6 opacity-30 group">
-            <h3 className="text-white text-[10px] uppercase tracking-[0.4em] font-display mb-4 flex items-center gap-3">
-                <span className="w-4 h-px bg-red-500/50" />
+        <div className="bg-red-950/20 border border-red-500/20 p-6 group">
+            <h3 className="text-red-400 text-[10px] uppercase tracking-[0.4em] font-display mb-4 flex items-center gap-3">
+                <span className="w-4 h-px bg-red-500" />
                 Signal Error
             </h3>
-            <p className="text-[9px] uppercase tracking-[0.2em] text-gray-600 font-display">
+            <p className="text-[9px] uppercase tracking-[0.2em] text-red-500/70 font-display">
                 {data?.error || "Artist data stream could not be synchronized."}
                 <br /><br />
-                TIP: Ensure correct Artist Name or Spotify Link.
+                TIP: Try hard-refresh (Ctrl+Shift+R) and check server terminal.
             </p>
         </div>
     );
