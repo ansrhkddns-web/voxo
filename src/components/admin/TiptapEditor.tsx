@@ -1,23 +1,75 @@
 'use client';
 
+import React from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import Link from '@tiptap/extension-link';
-import Image from '@tiptap/extension-image';
-import Placeholder from '@tiptap/extension-placeholder';
+import { BubbleMenu, FloatingMenu } from '@tiptap/react/menus';
+import { StarterKit } from '@tiptap/starter-kit';
+import { Link } from '@tiptap/extension-link';
+import { Image } from '@tiptap/extension-image';
+import { Placeholder } from '@tiptap/extension-placeholder';
+import { Underline } from '@tiptap/extension-underline';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableHeader } from '@tiptap/extension-table-header';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TaskList } from '@tiptap/extension-task-list';
+import { TaskItem } from '@tiptap/extension-task-item';
+import { Typography } from '@tiptap/extension-typography';
+import { Extension, textblockTypeInputRule, markInputRule } from '@tiptap/core';
+
 import {
     Bold,
     Italic,
+    Underline as UnderlineIcon,
     Heading1,
     Heading2,
+    Heading3,
     Quote,
     List,
+    ListOrdered,
+    CheckSquare,
+    Table as TableIcon,
     Link as LinkIcon,
     Image as ImageIcon,
     Undo,
-    Redo
+    Redo,
+    Code
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+/**
+ * JiraWiki Extension
+ * Implements JIRA-style shortcuts: h1., h2., +underline+, {{monospace}}, etc.
+ */
+const JiraWiki = Extension.create({
+    name: 'jiraWiki',
+
+    addInputRules() {
+        return [
+            // Headings: h1. Title
+            ...[1, 2, 3, 4, 5, 6].map(level => textblockTypeInputRule({
+                find: new RegExp(`^h${level}\\.\\s$`),
+                type: this.editor.schema.nodes.heading,
+                getAttributes: { level },
+            })),
+            // Bold: *text* (In JIRA * is bold, in Markdown it's italic)
+            markInputRule({
+                find: /\*([^*]+)\*$/,
+                type: this.editor.schema.marks.bold,
+            }),
+            // Underline: +text+
+            markInputRule({
+                find: /\+([^+]+)\+$/,
+                type: this.editor.schema.marks.underline,
+            }),
+            // Monospace: {{text}}
+            markInputRule({
+                find: /\{\{([^}]+)\}\} $/,
+                type: this.editor.schema.marks.code,
+            }),
+        ];
+    },
+});
 
 interface TiptapEditorProps {
     content: string;
@@ -46,26 +98,32 @@ const MenuBar = ({ editor }: { editor: any }) => {
     };
 
     const buttons = [
-        { icon: Bold, action: () => editor.chain().focus().toggleBold().run(), active: 'bold' },
-        { icon: Italic, action: () => editor.chain().focus().toggleItalic().run(), active: 'italic' },
+        { icon: Bold, action: () => editor.chain().focus().toggleBold().run(), active: 'bold', tooltip: 'Bold (Ctrl+B / *text*)' },
+        { icon: Italic, action: () => editor.chain().focus().toggleItalic().run(), active: 'italic', tooltip: 'Italic (Ctrl+I / _text_)' },
+        { icon: UnderlineIcon, action: () => editor.chain().focus().toggleUnderline().run(), active: 'underline', tooltip: 'Underline (Ctrl+U / +text+)' },
+        { icon: Code, action: () => editor.chain().focus().toggleCode().run(), active: 'code', tooltip: 'Monospaced ({{text}})' },
         { type: 'divider' },
-        { icon: Heading1, action: () => editor.chain().focus().toggleHeading({ level: 1 }).run(), active: 'heading', activeOptions: { level: 1 } },
-        { icon: Heading2, action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: 'heading', activeOptions: { level: 2 } },
+        { icon: Heading1, action: () => editor.chain().focus().toggleHeading({ level: 1 }).run(), active: 'heading', activeOptions: { level: 1 }, tooltip: 'Heading 1 (h1.)' },
+        { icon: Heading2, action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: 'heading', activeOptions: { level: 2 }, tooltip: 'Heading 2 (h2.)' },
+        { icon: Heading3, action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), active: 'heading', activeOptions: { level: 3 }, tooltip: 'Heading 3 (h3.)' },
         { type: 'divider' },
-        { icon: List, action: () => editor.chain().focus().toggleBulletList().run(), active: 'bulletList' },
-        { icon: Quote, action: () => editor.chain().focus().toggleBlockquote().run(), active: 'blockquote' },
+        { icon: List, action: () => editor.chain().focus().toggleBulletList().run(), active: 'bulletList', tooltip: 'Bullet List (* )' },
+        { icon: ListOrdered, action: () => editor.chain().focus().toggleOrderedList().run(), active: 'orderedList', tooltip: 'Numbered List (# )' },
+        { icon: CheckSquare, action: () => editor.chain().focus().toggleTaskList().run(), active: 'taskList', tooltip: 'Task List ([] )' },
+        { icon: Quote, action: () => editor.chain().focus().toggleBlockquote().run(), active: 'blockquote', tooltip: 'Blockquote (> )' },
         { type: 'divider' },
-        { icon: LinkIcon, action: setLink, active: 'link' },
-        { icon: ImageIcon, action: addImage },
+        { icon: TableIcon, action: () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), active: 'table', tooltip: 'Insert Table' },
+        { icon: LinkIcon, action: setLink, active: 'link', tooltip: 'Link (Ctrl+K)' },
+        { icon: ImageIcon, action: addImage, tooltip: 'Image' },
         { type: 'spacer' },
         { icon: Undo, action: () => editor.chain().focus().undo().run() },
         { icon: Redo, action: () => editor.chain().focus().redo().run() },
     ];
 
     return (
-        <div className="sticky top-[80px] z-40 bg-black border border-white/5 p-1 flex items-center gap-0.5 mb-10 overflow-x-auto no-scrollbar">
+        <div className="sticky top-0 z-40 bg-black/95 backdrop-blur-md border-b border-white/10 p-2 flex items-center gap-1 mb-8 overflow-x-auto no-scrollbar shadow-2xl">
             {buttons.map((btn, i) => {
-                if (btn.type === 'divider') return <div key={i} className="h-4 w-px bg-white/5 mx-2" />;
+                if (btn.type === 'divider') return <div key={i} className="h-4 w-px bg-white/10 mx-2" />;
                 if (btn.type === 'spacer') return <div key={i} className="flex-1" />;
 
                 const Icon = btn.icon!;
@@ -74,11 +132,13 @@ const MenuBar = ({ editor }: { editor: any }) => {
                 return (
                     <button
                         key={i}
+                        type="button"
                         onClick={btn.action}
+                        title={btn.tooltip}
                         className={cn(
-                            "size-10 flex items-center justify-center transition-all duration-300",
+                            "size-9 flex items-center justify-center transition-all duration-300 rounded-sm hover:scale-105",
                             isActive
-                                ? "bg-white text-black"
+                                ? "bg-accent-green text-black"
                                 : "text-gray-500 hover:text-white hover:bg-white/5"
                         )}
                     >
@@ -93,28 +153,168 @@ const MenuBar = ({ editor }: { editor: any }) => {
 export default function TiptapEditor({ content, onChange }: TiptapEditorProps) {
     const editor = useEditor({
         extensions: [
-            StarterKit,
-            Link.configure({ openOnClick: false }),
-            Image,
+            StarterKit.configure({
+                heading: {
+                    levels: [1, 2, 3, 4],
+                },
+                bold: false, // We'll handle bold via JiraWiki to override markdown * behavior
+            }),
+            JiraWiki,
+            Underline,
+            Typography,
+            Table.configure({ resizable: true }),
+            TableRow,
+            TableHeader,
+            TableCell,
+            TaskList,
+            TaskItem.configure({ nested: true }),
+            Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-accent-green underline cursor-pointer' } }),
+            Image.configure({ HTMLAttributes: { class: 'rounded-sm border border-white/10 my-8 w-full' } }),
             Placeholder.configure({
-                placeholder: 'START WRITING THE NEXT LEGACY...',
+                placeholder: 'START TYPING... USE Wiki SYNTAX (h1. , *bold*, > quote) OR / FOR COMMANDS',
             }),
         ],
         content: content,
+        immediatelyRender: false,
         onUpdate: ({ editor }) => {
             onChange(editor.getHTML());
         },
         editorProps: {
             attributes: {
-                class: 'prose prose-lg prose-invert max-w-none focus:outline-none min-h-[600px] font-serif font-light leading-relaxed text-gray-400 selection:bg-accent-green/30 px-2',
+                class: 'prose prose-lg prose-invert max-w-none focus:outline-none min-h-[600px] font-serif font-light leading-relaxed text-gray-300 selection:bg-accent-green/30 px-2 py-4',
             },
         },
     });
 
     return (
-        <div className="w-full">
+        <div className="w-full relative group/editor">
             <MenuBar editor={editor} />
-            <EditorContent editor={editor} />
+
+            {editor && (
+                <>
+                    <BubbleMenu
+                        editor={editor}
+                        className="flex bg-black border border-white/10 rounded overflow-hidden shadow-2xl"
+                    >
+                        <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={cn("p-2 transition-colors", editor.isActive('bold') ? "text-accent-green" : "text-gray-400 hover:text-white")}>
+                            <Bold size={14} />
+                        </button>
+                        <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className={cn("p-2 transition-colors", editor.isActive('italic') ? "text-accent-green" : "text-gray-400 hover:text-white")}>
+                            <Italic size={14} />
+                        </button>
+                        <button type="button" onClick={() => editor.chain().focus().toggleUnderline().run()} className={cn("p-2 transition-colors", editor.isActive('underline') ? "text-accent-green" : "text-gray-400 hover:text-white")}>
+                            <UnderlineIcon size={14} />
+                        </button>
+                    </BubbleMenu>
+
+                    <FloatingMenu
+                        editor={editor}
+                        className="flex flex-col bg-black border border-white/10 rounded shadow-2xl p-2 min-w-[180px]"
+                    >
+                        <p className="text-[9px] uppercase tracking-widest text-gray-600 mb-2 px-2">Quick Actions</p>
+                        <button
+                            type="button"
+                            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                            className="flex items-center gap-3 px-2 py-1.5 text-[11px] text-gray-300 hover:bg-white/5 hover:text-white rounded transition-all"
+                        >
+                            <Heading1 size={14} /> Heading 1
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                            className="flex items-center gap-3 px-2 py-1.5 text-[11px] text-gray-300 hover:bg-white/5 hover:text-white rounded transition-all"
+                        >
+                            <Heading2 size={14} /> Heading 2
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => editor.chain().focus().toggleBulletList().run()}
+                            className="flex items-center gap-3 px-2 py-1.5 text-[11px] text-gray-300 hover:bg-white/5 hover:text-white rounded transition-all"
+                        >
+                            <List size={14} /> Bullet List
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+                            className="flex items-center gap-3 px-2 py-1.5 text-[11px] text-gray-300 hover:bg-white/5 hover:text-white rounded transition-all"
+                        >
+                            <Quote size={14} /> Blockquote
+                        </button>
+                    </FloatingMenu>
+                </>
+            )}
+
+            <div className="relative">
+                <EditorContent editor={editor} />
+            </div>
+
+            <style jsx global>{`
+                .ProseMirror p.is-editor-empty:first-child::before {
+                    content: attr(data-placeholder);
+                    float: left;
+                    color: #4b5563;
+                    pointer-events: none;
+                    height: 0;
+                    font-family: 'Outfit', sans-serif;
+                    letter-spacing: 0.1em;
+                    font-size: 11px;
+                    text-transform: uppercase;
+                }
+                .ProseMirror ul[data-type="taskList"] {
+                    list-style: none;
+                    padding: 0;
+                }
+                .ProseMirror ul[data-type="taskList"] li {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.5rem;
+                    margin-bottom: 0.5rem;
+                }
+                .ProseMirror ul[data-type="taskList"] input[type="checkbox"] {
+                    appearance: none;
+                    width: 1.2rem;
+                    height: 1.2rem;
+                    border: 1px solid rgba(255,255,255,0.1);
+                    background: rgba(255,255,255,0.05);
+                    cursor: pointer;
+                    position: relative;
+                    margin: 0;
+                }
+                .ProseMirror ul[data-type="taskList"] input[type="checkbox"]:checked {
+                    background: #10b981;
+                    border-color: #10b981;
+                }
+                .ProseMirror ul[data-type="taskList"] input[type="checkbox"]:checked::after {
+                    content: '✓';
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    color: black;
+                    font-size: 0.8rem;
+                }
+                .ProseMirror table {
+                    border-collapse: collapse;
+                    table-layout: fixed;
+                    width: 100%;
+                    margin: 0;
+                    overflow: hidden;
+                    border: 1px solid rgba(255,255,255,0.05);
+                }
+                .ProseMirror td, .ProseMirror th {
+                    min-width: 1em;
+                    border: 1px solid rgba(255,255,255,0.05);
+                    padding: 3px 5px;
+                    vertical-align: top;
+                    box-sizing: border-box;
+                    position: relative;
+                }
+                .ProseMirror th {
+                    font-weight: bold;
+                    text-align: left;
+                    background-color: rgba(255,255,255,0.02);
+                }
+            `}</style>
         </div>
     );
 }

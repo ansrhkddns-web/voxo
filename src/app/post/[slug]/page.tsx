@@ -80,7 +80,7 @@ export default async function PostDetail({ params }: { params: { slug: string } 
                     </div>
 
                     {/* Title - Large, Clean, Modern */}
-                    <h1 className="font-display font-light text-4xl md:text-6xl lg:text-8xl tracking-tight text-white leading-[1.1] max-w-6xl drop-shadow-sm">
+                    <h1 className="font-display font-light text-3xl md:text-5xl lg:text-7xl tracking-tight text-white leading-[1.1] max-w-6xl drop-shadow-sm">
                         {post.title}
                     </h1>
 
