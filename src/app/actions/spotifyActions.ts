@@ -136,8 +136,9 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
 
         // Priority 3: Fallback to Search by Name
         if (!artistId && artistName) {
-            console.log(`VOXO_DEBUG: Falling back to search for artist: ${artistName}`);
-            const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(artistName)}&type=artist&limit=1`, fetchOptions);
+            const cleanName = artistName.replace(/[!@#$%^&*()]/g, ' ').trim();
+            console.log(`VOXO_DEBUG: Falling back to search for artist: ${cleanName}`);
+            const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(cleanName)}&type=artist&limit=1`, fetchOptions);
             if (searchRes.ok) {
                 const searchData = await searchRes.json();
                 artistId = searchData.artists?.items?.[0]?.id || null;

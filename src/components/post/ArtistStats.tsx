@@ -20,11 +20,12 @@ interface ArtistStatsProps {
 }
 
 export default function ArtistStats({ data }: ArtistStatsProps) {
+    // FORCE UPDATE MARKER: v2.1 (DIAGNOSTIC ACTIVE)
     if (!data || data.error) return (
         <div className="bg-red-600 border-2 border-white p-6 z-50 relative">
             <h3 className="text-white text-[12px] font-bold uppercase tracking-[0.4em] mb-4 flex items-center gap-3">
                 <span className="w-4 h-1 bg-white" />
-                CRITICAL SIGNAL ERROR
+                CRITICAL SIGNAL ERROR (v2.1)
             </h3>
             <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-white">
                 ERROR: {data?.error || "DATA IS NULL/UNDEFINED"}
