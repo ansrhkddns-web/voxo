@@ -4,7 +4,7 @@ const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// VOXYN STATIC FALLBACK (THE "ALWAYS WORKS" DATA)
+// PRE-DEFINED PREMIUM DATA: VOXYN
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const VOXY_STATIC_DATA = {
     name: "Voxyn",
@@ -38,15 +38,10 @@ const VOXY_STATIC_DATA = {
 };
 
 async function getAccessToken() {
-    if (!CLIENT_ID || !CLIENT_SECRET) {
-        console.error("VOXO_SYSTEM: Spotify Credentials Missing");
-        return null;
-    }
-
+    if (!CLIENT_ID || !CLIENT_SECRET) return null;
     try {
         const id = CLIENT_ID.trim();
         const secret = CLIENT_SECRET.trim();
-
         const response = await fetch('https://accounts.spotify.com/api/token', {
             method: 'POST',
             headers: {
@@ -56,41 +51,39 @@ async function getAccessToken() {
             body: 'grant_type=client_credentials',
             cache: 'no-store',
         });
-
-        if (!response.ok) {
-            const errBody = await response.text();
-            console.error(`VOXO_SYSTEM: Token Request Failed (${response.status}): ${errBody}`);
-            return null;
-        }
-
+        if (!response.ok) return null;
         const data = await response.json();
         return data.access_token;
-    } catch (error) {
-        console.error("VOXO_SYSTEM: Token Fetch Exception ->", error);
-        return null;
-    }
+    } catch (e) { return null; }
 }
 
 /**
- * Enhanced Artist Fetch with Diagnostic Info
+ * Resilient Artist Fetch: Fails gracefully on sub-requests (like albums)
  */
 async function getArtistById(artistId: string, fetchOptions: RequestInit) {
-    console.log(`VOXO_DEBUG: Fetching Artist ID: ${artistId}`);
-
     try {
+        // Step 1: Crucial Artist Info
         const artistRes = await fetch(`https://api.spotify.com/v1/artists/${artistId}`, fetchOptions);
 
         if (!artistRes.ok) {
-            const errBody = await artistRes.text();
-            console.error(`VOXO_DEBUG: Artist Search Failed (${artistRes.status}): ${errBody}`);
-            return {
-                error: `Spotify API Error (${artistRes.status}): ${artistRes.status === 403 ? "Access Restricted. Check Sidebar Guide." : errBody.substring(0, 50)}`
-            };
+            console.error(`VOXO_DEBUG: Artist info fetch failed (${artistRes.status})`);
+            return null;
         }
 
         const artistData = await artistRes.json();
-        const albumsRes = await fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?limit=5&include_groups=album,single&market=US`, fetchOptions);
-        const albumsData = albumsRes.ok ? await albumsRes.json() : { items: [] };
+
+        // Step 2: Optional Sub-info (Albums) - Don't fail the whole thing if this hits 403
+        let albumsData = { items: [] };
+        try {
+            const albumsRes = await fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?limit=5&include_groups=album,single&market=US`, fetchOptions);
+            if (albumsRes.ok) {
+                albumsData = await albumsRes.json();
+            } else {
+                console.warn(`VOXO_DEBUG: Albums fetch failed (${albumsRes.status}) - Proceeding with artist info only`);
+            }
+        } catch (subErr) {
+            console.warn("VOXO_DEBUG: Optional album fetch exception", subErr);
+        }
 
         return {
             name: artistData.name,
@@ -109,9 +102,9 @@ async function getArtistById(artistId: string, fetchOptions: RequestInit) {
                 type: a.album_group || a.album_type
             }))
         };
-    } catch (e: any) {
-        console.error("VOXO_SYSTEM: Internal fetch exception ->", e);
-        return { error: `Internal Fetch Error: ${e.message}` };
+    } catch (e) {
+        console.error("VOXO_SYSTEM: Artist fetch exception", e);
+        return null;
     }
 }
 
@@ -134,24 +127,34 @@ export async function getArtistStats(
     artistName?: string,
     artistSpotifyId?: string
 ) {
-    const isVoxyn = artistName?.toLowerCase().includes('voxyn');
+    const isVoxyn = artistName?.toLowerCase().includes('voxyn') ||
+        artistSpotifyId === '5rA9ZtIDl4KshP9N39pD8N';
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // RULE 1: VOXYN ALWAYS LOOKS PREMIUM
+    // If the API fails or if it's explicitly her, return static first
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
     try {
         const token = await getAccessToken();
+
+        // If token fails, only Voxyn survives via static data
         if (!token) {
-            return isVoxyn ? VOXY_STATIC_DATA : { error: "Security Token Acquisition Failed. Check Env Vars." };
+            return isVoxyn ? VOXY_STATIC_DATA : { error: "Sync failed: API Authentication error." };
         }
 
-        const fetchOptions = { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' as RequestInit['cache'] };
+        const fetchOptions = {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store' as RequestInit['cache']
+        };
 
-        // 1. Priority: Manual Artist ID
+        // 1. Path: Direct Artist ID (Priority)
         if (artistSpotifyId?.trim()) {
             const result = await getArtistById(artistSpotifyId.trim(), fetchOptions);
-            // If it returns result with error or data, we stop here (unless it's just a soft fail)
             if (result) return result;
         }
 
-        // 2. Secondary: Auto-resolve from Audio Link
+        // 2. Path: Link Resolution (Auto-parsing)
         const parsed = parseSpotifyLink(uriOrUrl);
         if (parsed) {
             let targetId = parsed.type === 'artist' ? parsed.id : null;
@@ -161,9 +164,6 @@ export async function getArtistStats(
                 if (res.ok) {
                     const data = await res.json();
                     targetId = data.artists?.[0]?.id || null;
-                } else {
-                    const errText = await res.text();
-                    console.error(`VOXO_DEBUG: Link Resolution Failed (${res.status}): ${errText}`);
                 }
             }
 
@@ -173,13 +173,14 @@ export async function getArtistStats(
             }
         }
 
-        // 3. Fallback: If nothing worked but it's Voxyn, show the static data
+        // 3. Last Resort Fallback (Important for Voxyn if API call above fails)
         if (isVoxyn) return VOXY_STATIC_DATA;
 
-        return { error: "ID_REQUIRED: Manual ID entry needed. Check sidebar help." };
+        // Generic error if everything failed for other artists
+        return { error: "SIGNAL_LOST: Verification failed. Enter manual ID in Admin." };
 
     } catch (error: any) {
-        console.error("VOXO_SYSTEM: getArtistStats Critical Crash ->", error);
-        return isVoxyn ? VOXY_STATIC_DATA : { error: `System Exception: ${error.message}` };
+        console.error("VOXO_SYSTEM: getArtistStats Critical Crash", error);
+        return isVoxyn ? VOXY_STATIC_DATA : { error: "System synchronization failure." };
     }
 }
