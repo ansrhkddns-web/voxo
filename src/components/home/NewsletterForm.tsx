@@ -41,8 +41,8 @@ export default function NewsletterForm() {
     return (
         <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 max-w-md mx-auto relative">
             <input
-                className="flex-1 bg-transparent border border-white/10 text-white placeholder-gray-800 text-sm tracking-widest px-6 py-4 focus:outline-none focus:border-accent-green/50 transition-all rounded-none font-mono"
-                placeholder="input_email_id@voxo.com"
+                className="flex-1 bg-transparent border border-white/10 text-white placeholder-gray-600 text-sm tracking-widest px-6 py-4 focus:outline-none focus:border-accent-green/50 transition-all rounded-none font-body"
+                placeholder="youremail@mail.com"
                 type="email"
                 required
                 value={email}
