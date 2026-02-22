@@ -80,7 +80,7 @@ export default function SubscribersPage() {
                                                 <td className="px-8 py-6">
                                                     <div className="flex items-center gap-4">
                                                         <Mail size={14} className="text-gray-700 group-hover:text-accent-green transition-colors" />
-                                                        <span className="text-[11px] tracking-widest uppercase font-light">{sub.email}</span>
+                                                        <span className="text-[11px] tracking-widest font-light">{sub.email}</span>
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6">
