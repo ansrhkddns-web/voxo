@@ -1,12 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from "next/link";
 import { Search, User, Menu } from 'lucide-react';
 import SearchOverlay from './SearchOverlay';
 
 export default function Navbar() {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                setIsSearchOpen(true);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     return (
         <nav className="fixed top-0 w-full z-50 bg-black/50 backdrop-blur-md border-b border-white/5">
@@ -62,9 +73,11 @@ export default function Navbar() {
                 <div className="flex items-center gap-8">
                     <button
                         onClick={() => setIsSearchOpen(true)}
-                        className="text-white hover:text-accent-green transition-colors"
+                        className="text-white hover:text-accent-green transition-colors flex items-center gap-2"
+                        title="Search (Cmd+K)"
                     >
                         <Search size={18} strokeWidth={1} />
+                        <span className="hidden md:inline-block text-[8px] bg-white/10 px-1.5 py-0.5 rounded text-gray-400 font-mono tracking-tighter">⌘K</span>
                     </button>
                     <Link href="/login" className="text-white hover:text-accent-green transition-colors flex items-center gap-2">
                         <User size={18} strokeWidth={1} />

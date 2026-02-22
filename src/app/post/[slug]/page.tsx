@@ -6,6 +6,7 @@ import Footer from "@/components/layout/Footer";
 import ArtistStats from "@/components/post/ArtistStats";
 import SpotifyEmbed from "@/components/post/SpotifyEmbed";
 import RatingMeter from "@/components/post/RatingMeter";
+import ViewCounter from "@/components/post/ViewCounter";
 import { Clock } from 'lucide-react';
 import { getPostBySlug } from '@/app/actions/postActions';
 import { getArtistStats } from '@/app/actions/spotifyActions';
@@ -83,6 +84,7 @@ export default async function PostDetail({ params }: { params: { slug: string } 
     return (
         <main className="flex min-h-screen flex-col bg-background-dark select-none">
             <Navbar />
+            <ViewCounter postId={post.id} />
 
             {/* Article Hero - Redesigned for Split Layout */}
             <header className="relative w-full bg-background-dark pt-32 pb-16 px-6 md:px-12 max-w-7xl mx-auto">

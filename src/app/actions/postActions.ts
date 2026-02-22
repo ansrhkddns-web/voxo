@@ -100,3 +100,16 @@ export async function searchPosts(query: string) {
     if (error) throw error;
     return data;
 }
+
+export async function incrementViewCount(id: string) {
+    const supabase = await createClient();
+    const { error } = await supabase.rpc('increment_view_count', { post_id: id });
+
+    // Fallback if RPC is not created yet
+    if (error) {
+        const { data } = await supabase.from('posts').select('view_count').eq('id', id).maybeSingle();
+        if (data) {
+            await supabase.from('posts').update({ view_count: (data.view_count || 0) + 1 }).eq('id', id);
+        }
+    }
+}

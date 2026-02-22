@@ -11,7 +11,7 @@ import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
 
 export default function AdminDashboard() {
     const { t } = useAdminLanguage();
-    const [posts, setPosts] = useState<Array<{ id: string; title: string; slug: string; is_published: boolean; categories: { name: string } | null }>>([]);
+    const [posts, setPosts] = useState<Array<{ id: string; title: string; slug: string; is_published: boolean; categories: { name: string } | null; view_count?: number }>>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -70,7 +70,7 @@ export default function AdminDashboard() {
                         { label: t('statArchives', 'dashboard'), value: posts.length.toString().padStart(2, '0') },
                         { label: t('statPublished', 'dashboard'), value: posts.filter(p => p.is_published).length.toString().padStart(2, '0') },
                         { label: t('statCategories', 'dashboard'), value: Array.from(new Set(posts.map(p => p.categories?.name))).filter(Boolean).length.toString().padStart(2, '0') },
-                        { label: t('statReadTime', 'dashboard'), value: '12M' },
+                        { label: 'Total Views', value: posts.reduce((sum, p) => sum + (p.view_count || 0), 0).toLocaleString() },
                     ].map((stat, i) => (
                         <div key={i} className="group border-l border-white/5 pl-6 py-2 hover:border-accent-green transition-colors duration-500">
                             <p className="text-gray-500 text-[9px] font-display uppercase tracking-[0.3em] mb-2">{stat.label}</p>
@@ -95,6 +95,7 @@ export default function AdminDashboard() {
                                     <tr className="border-b border-white/5 text-[9px] uppercase tracking-[0.2em] font-display text-gray-600">
                                         <th className="px-8 py-6 font-medium">{t('colTitle', 'dashboard')}</th>
                                         <th className="px-8 py-6 font-medium">{t('colClass', 'dashboard')}</th>
+                                        <th className="px-8 py-6 font-medium">Views</th>
                                         <th className="px-8 py-6 font-medium">{t('colStatus', 'dashboard')}</th>
                                         <th className="px-8 py-6 font-medium text-right">{t('colOps', 'dashboard')}</th>
                                     </tr>
@@ -120,6 +121,9 @@ export default function AdminDashboard() {
                                                 </td>
                                                 <td className="px-8 py-8 font-display">
                                                     <span className="text-gray-400 text-[10px] uppercase tracking-widest">{post.categories?.name || t('generic', 'dashboard')}</span>
+                                                </td>
+                                                <td className="px-8 py-8 font-display">
+                                                    <span className="text-gray-300 text-[10px] tracking-widest font-mono">{post.view_count?.toLocaleString() || '0'}</span>
                                                 </td>
                                                 <td className="px-8 py-8 font-display">
                                                     <span className={cn(
