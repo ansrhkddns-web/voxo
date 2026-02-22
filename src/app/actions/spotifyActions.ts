@@ -68,77 +68,70 @@ function parseSpotifyId(input: string) {
 }
 
 export async function getArtistStats(uriOrUrl: string, artistName?: string, manualArtistId?: string) {
-    console.log(`VOXO_DIAGNOSTIC v2.7: Name=[${artistName}] URI=[${uriOrUrl}]`);
+    console.log(`VOXO_DIAGNOSTIC v2.9: Deep Resolving for [${artistName}] | ManualID: [${manualArtistId}]`);
 
     try {
         const token = await getAccessToken();
-        if (!token) return { error: "AUTH_FAILED: Token acquisition failed (Check ID/Secret in .env.local)" };
+        if (!token) return { error: "AUTH_FAILED: Check .env.local keys" };
 
         const fetchOptions = { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' as RequestCache };
         let artistId = manualArtistId?.trim() || null;
+        let diagnosticError = "";
 
-        // Step 1: Resolve ID
-        if (!artistId && uriOrUrl) {
+        // Step 1: Priority Manual ID (Bypass everything)
+        if (artistId) {
+            console.log(`VOXO_DIAGNOSTIC: Using Manual ID -> ${artistId}`);
+        } else if (uriOrUrl) {
+            // Step 2: Link
             const parsed = parseSpotifyId(uriOrUrl);
             if (parsed) {
                 const { type, id } = parsed;
-                if (type === 'artist') {
-                    artistId = id;
+                const path = type === 'artist' ? `artists/${id}` : `${type}s/${id}`;
+                const res = await fetch(`https://api.spotify.com/v1/${path}`, fetchOptions);
+                if (res.ok) {
+                    const data = await res.json();
+                    artistId = type === 'artist' ? id : (data.artists?.[0]?.id || null);
                 } else {
-                    const res = await fetch(`https://api.spotify.com/v1/${type}s/${id}`, fetchOptions);
-                    if (res.ok) {
-                        const data = await res.json();
-                        artistId = type === 'playlist'
-                            ? (data.items?.[0]?.track?.artists?.[0]?.id || null)
-                            : (data.artists?.[0]?.id || null);
-                    }
+                    const body = await res.text();
+                    console.error(`VOXO_FATAL: Link Fetch [${res.status}]: ${body}`);
+                    diagnosticError = `Link Error ${res.status}: ${body.substring(0, 30)}`;
                 }
             }
         }
 
-        // Step 2: Search Fallback
+        // Step 3: Search (If ID still null)
         if (!artistId && artistName) {
             const baseName = artistName.split(/[/|]/)[0].trim();
-            const searchCandidates = Array.from(new Set([artistName.trim(), baseName])).filter(t => t.length >= 2);
+            const targets = Array.from(new Set([artistName.trim(), baseName])).filter(t => t.length >= 2);
 
-            for (const target of searchCandidates) {
-                const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(target)}&type=artist&limit=1`, fetchOptions);
-                if (searchRes.ok) {
-                    const searchData = await searchRes.json();
-                    const foundId = searchData.artists?.items?.[0]?.id;
-                    if (foundId) {
-                        artistId = foundId;
-                        break;
-                    }
+            for (const target of targets) {
+                const sRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(target)}&type=artist&limit=1`, fetchOptions);
+                if (sRes.ok) {
+                    const sData = await sRes.json();
+                    artistId = sData.artists?.items?.[0]?.id || null;
+                    if (artistId) break;
+                } else {
+                    const sBody = await sRes.text();
+                    console.error(`VOXO_FATAL: Search [${sRes.status}] for [${target}]: ${sBody}`);
+                    diagnosticError = `Search ${sRes.status}: ${sBody.substring(0, 40)}`;
                 }
             }
         }
 
-        if (!artistId) return { error: `MISSING_ID: Could not find artist ID for ${artistName || 'this post'}` };
+        if (!artistId) return { error: `MISSING_ID: ${diagnosticError || 'Artist not found'}` };
 
-        // Step 3: Fetch Artist Data (with 403 Capture)
+        // Step 4: Final Fetch
         const artistRes = await fetch(`https://api.spotify.com/v1/artists/${artistId}`, fetchOptions);
-
         if (!artistRes.ok) {
-            const errorBody = await artistRes.text();
-            console.error(`VOXO_FATAL_API: [${artistRes.status}] Body: ${errorBody}`);
-            return { error: `SPOTIFY_API_${artistRes.status}: ${errorBody.substring(0, 50)}...` };
+            const errBody = await artistRes.text();
+            return { error: `FETCH_403: Artist restricted. Reason: ${errBody.substring(0, 50)}` };
         }
 
         const artistData = await artistRes.json();
 
-        // Step 4: Top Tracks (Market Robustness)
         let topTracksData = { tracks: [] };
-        const markets = ['US', 'KR', ''];
-
-        for (const m of markets) {
-            const url = `https://api.spotify.com/v1/artists/${artistId}/top-tracks${m ? `?market=${m}` : ''}`;
-            const tRes = await fetch(url, fetchOptions);
-            if (tRes.ok) {
-                topTracksData = await tRes.json();
-                break;
-            }
-        }
+        const tRes = await fetch(`https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=KR`, fetchOptions);
+        if (tRes.ok) topTracksData = await tRes.json();
 
         return {
             name: artistData.name,
@@ -153,8 +146,8 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
             }))
         };
     } catch (error: any) {
-        console.error("VOXO_SYSTEM_EXCEPTION:", error);
-        return { error: `SYSTEM_EXCEPTION: ${error.message?.substring(0, 30)}` };
+        console.error("VOXO_SYSTEM_FATAL:", error);
+        return { error: `EXCEPTION: ${error.message?.substring(0, 20)}` };
     }
 }
 

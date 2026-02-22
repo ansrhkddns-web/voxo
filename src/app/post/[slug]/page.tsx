@@ -137,8 +137,8 @@ export default async function PostDetail({ params }: { params: any }) {
                         </div>
                     )}
 
-                    {/* VERIFICATION MARKER: If you see this text, you are on v2.7 */}
-                    <div className="text-[8px] text-gray-800 font-mono mb-2">VOXO_VERIFICATION_TAG_v2.7</div>
+                    {/* VERIFICATION MARKER: If you see this text, you are on v2.9 */}
+                    <div className="text-[8px] text-gray-800 font-mono mb-2">VOXO_VERIFICATION_TAG_v2.9</div>
 
                     {/* FORCED DIAGNOSTIC: Render even if metadata is missing to see the Error Box */}
                     <ArtistStats data={artistStats || { error: "No metadata (URI/Name/ID) found in database for this post." }} />
