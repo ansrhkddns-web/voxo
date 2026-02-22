@@ -86,9 +86,9 @@ export default async function PostDetail({ params }: { params: { slug: string } 
             <Navbar />
             <ViewCounter postId={post.id} />
 
-            {/* Article Hero - Redesigned for Split Layout */}
-            <header className="relative w-full bg-background-dark pt-32 pb-16 px-6 md:px-12 max-w-7xl mx-auto">
-                <div className="flex flex-col items-start gap-8 animate-fade-in-up">
+            {/* Article Hero - Redesigned for Editorial Print */}
+            <header className="relative w-full bg-background-dark pt-40 pb-24 px-6 md:px-12 max-w-7xl mx-auto">
+                <div className="flex flex-col items-start gap-10 animate-fade-in-up">
                     {/* Category & Badge */}
                     <div className="flex items-center gap-4">
                         <span className="inline-flex items-center px-3 py-1 rounded-full border border-accent-green/30 bg-accent-green/5 text-[9px] uppercase tracking-widest text-accent-green font-display">
@@ -97,14 +97,14 @@ export default async function PostDetail({ params }: { params: { slug: string } 
                         <div className="h-px w-12 bg-white/10"></div>
                     </div>
 
-                    {/* Title - Large, Clean, Modern */}
-                    <h1 className="font-display font-light text-3xl md:text-5xl lg:text-7xl tracking-tight text-white leading-[1.1] max-w-6xl drop-shadow-sm">
+                    {/* Title - Large, Clean, Editorial */}
+                    <h1 className="font-display font-light text-4xl md:text-6xl lg:text-7xl tracking-[0.02em] text-[#F5F5F7] leading-[1.1] max-w-6xl drop-shadow-sm">
                         {post.title}
                     </h1>
 
-                    {/* Subtitle / Excerpt (Optional, using part of content if possible or generic) */}
+                    {/* Subtitle / Excerpt */}
                     {customExcerpt && (
-                        <p className="text-gray-400 font-serif italic text-lg md:text-xl max-w-3xl leading-relaxed whitespace-pre-wrap">
+                        <p className="text-gray-400 font-serif italic text-xl md:text-2xl max-w-4xl leading-loose tracking-wide whitespace-pre-wrap">
                             {customExcerpt}
                         </p>
                     )}
@@ -137,11 +137,11 @@ export default async function PostDetail({ params }: { params: { slug: string } 
             </header>
 
             {/* Separated Cover Image Section */}
-            <section className="w-full px-6 md:px-12 max-w-7xl mx-auto mb-20 animate-fade-in">
-                <div className="relative aspect-[16/9] md:aspect-[21/9] w-full overflow-hidden rounded-sm group">
+            <section className="w-full px-6 md:px-12 max-w-7xl mx-auto mb-32 animate-fade-in">
+                <div className="relative aspect-[16/9] md:aspect-[21/9] w-full overflow-hidden rounded-none group bg-[#050505]">
                     <img
                         alt={post.title}
-                        className="w-full h-full object-cover grayscale opacity-80 group-hover:opacity-100 group-hover:scale-[1.02] transition-all duration-1000 ease-out"
+                        className="w-full h-full object-cover grayscale opacity-80 group-hover:opacity-100 group-hover:scale-[1.03] transition-all duration-[2000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                         src={post.cover_image || "https://images.unsplash.com/photo-1514525253361-bee8718a300a?q=80&w=1974&auto=format&fit=crop"}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-background-dark/40 to-transparent pointer-events-none"></div>
@@ -155,11 +155,11 @@ export default async function PostDetail({ params }: { params: { slug: string } 
             </section>
 
             {/* Article Content */}
-            <section className="max-w-7xl mx-auto px-4 md:px-12 py-16 grid grid-cols-1 lg:grid-cols-12 gap-20">
+            <section className="max-w-7xl mx-auto px-4 md:px-12 py-20 grid grid-cols-1 lg:grid-cols-12 gap-x-24 gap-y-20">
                 <div className="lg:col-span-8">
-                    <article className="font-serif text-gray-400 text-lg md:text-xl leading-relaxed space-y-12">
+                    <article className="font-serif text-[#e5e5e5] text-lg md:text-[21px] leading-[2.2] space-y-16 tracking-[0.02em]">
                         {customIntro && (
-                            <p className="text-white text-2xl md:text-4xl font-light italic leading-snug font-serif tracking-tight border-l-2 border-accent-green/30 pl-8 my-16 whitespace-pre-wrap">
+                            <p className="text-[#F5F5F7] text-2xl md:text-4xl font-light italic leading-[1.6] font-serif tracking-[0.02em] border-l-2 border-accent-green/30 pl-8 my-20 whitespace-pre-wrap">
                                 {customIntro}
                             </p>
                         )}

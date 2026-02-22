@@ -23,9 +23,9 @@ export default function LatestStories({ posts, tags }: LatestStoriesProps) {
         : posts.filter(post => post.tags && post.tags.includes(activeTag));
 
     return (
-        <section className="w-full py-20 px-4 md:px-12">
-            <div className="flex flex-col md:flex-row justify-between items-end mb-16 border-b border-white/5 pb-4">
-                <h2 className="font-display text-3xl font-light tracking-[0.2em] text-white uppercase">Latest Stories</h2>
+        <section className="w-full py-40 px-4 md:px-12 max-w-[1800px] mx-auto">
+            <div className="flex flex-col md:flex-row justify-between items-end mb-24 border-b border-white/5 pb-6">
+                <h2 className="font-display text-2xl md:text-3xl font-light tracking-[0.4em] text-white uppercase">Latest Stories</h2>
                 <div className="flex flex-wrap gap-6 mt-4 md:mt-0 font-display">
                     <button
                         onClick={() => setActiveTag('all')}

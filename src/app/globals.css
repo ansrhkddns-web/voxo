@@ -13,6 +13,11 @@
   --font-serif: var(--font-playfair), serif;
   --letter-spacing-super-wide: 0.5em;
   --letter-spacing-widest: 0.25em;
+
+  /* Cinematic / Anti-Gravity Additions */
+  --ease-anti-gravity: cubic-bezier(0.22, 1, 0.36, 1);
+  --color-off-white: #F5F5F7;
+  --color-deep-charcoal: #050505;
 }
 
 :root {
@@ -26,6 +31,9 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 .fade-in-up {
@@ -58,8 +66,8 @@ body {
 
 /* Custom Selection */
 ::selection {
-  background-color: var(--primary);
-  color: #000000;
+  background-color: var(--subtle-gray);
+  color: var(--primary);
 }
 
 /* Scrollbar */
@@ -82,11 +90,15 @@ body {
 
 /* Markdown Prose Base Styling Fallback */
 .prose h1 {
-  @apply text-4xl md:text-5xl font-display font-light uppercase mb-6 mt-10 text-white leading-tight;
+  @apply text-4xl md:text-5xl font-display font-light uppercase mb-8 mt-16 text-[#F5F5F7] leading-snug tracking-[0.05em];
 }
 
 .prose h2 {
-  @apply text-3xl md:text-4xl font-display font-light uppercase mb-4 mt-8 text-gray-200;
+  @apply text-3xl md:text-4xl font-display font-light uppercase mb-6 mt-12 text-[#e5e5e5] tracking-[0.05em];
+}
+
+.prose p {
+  @apply leading-[2.2] tracking-[0.02em] mb-10 text-[#e5e5e5] text-lg md:text-[21px] font-serif;
 }
 
 .prose h3 {
