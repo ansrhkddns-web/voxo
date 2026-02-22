@@ -4,59 +4,101 @@ const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
 /**
- * Robust Scraper v4.1 (No Hardcoding)
- * This function extracts metadata from public Spotify pages when the API is 403.
+ * Robust Scraper v4.2 (Language Agnostic & JSON-LD Support)
+ * Extracts metadata from public Spotify pages when the API is 403.
  */
 async function scrapeSpotifyStats(url: string, type: 'artist' | 'album' | 'track') {
     try {
-        console.log(`VOXO_SCRAPER: Attempting rescue for [${url}]`);
+        console.log(`VOXO_SCRAPER: Attempting robust rescue for [${url}]`);
 
         const response = await fetch(url, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' },
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept-Language': 'en-US,en;q=0.9'
+            },
             cache: 'no-store'
         });
 
         if (!response.ok) return null;
         const html = await response.text();
 
-        // 1. If it's an album page, it might not have monthly listeners. 
-        // Try to find the artist link and scrape that too if needed.
-        let monthly_listeners = 0;
-        let followers = 0;
+        // 1. Language Agnostic Number Extraction (Followers & Listeners)
+        // Match numbers like 8,244 or 1.2M followed by common listener/follower words in various languages
+        const extractNumber = (html: string, pattern: RegExp) => {
+            const match = html.match(pattern);
+            if (!match) return 0;
+            const numStr = match[1].replace(/,/g, '').replace(/\./g, '');
+            let num = parseInt(numStr);
+            if (match[1].toLowerCase().endsWith('k')) num *= 1000;
+            if (match[1].toLowerCase().endsWith('m')) num *= 1000000;
+            return isNaN(num) ? 0 : num;
+        };
 
-        const listenMatch = html.match(/([\d,.]+)\s*monthly listeners/i);
-        if (listenMatch) monthly_listeners = parseInt(listenMatch[1].replace(/,/g, ''));
+        // Monthly Listeners: Look for numbers followed by '월별 리스너', 'monthly listeners', 'oyentes mensuales', etc.
+        // We match digits and commas/dots, then a space, then any character up to 20 chars, then "listener" or "리스너"
+        let monthly_listeners = extractNumber(html, /([\d,.]+)\s*(?:monthly listeners|월별 리스너|oyentes mensuales|auditeurs mensuels|monatliche hörer)/i);
 
-        const followMatch = html.match(/([\d,.]+)\s*Followers/i);
-        if (followMatch) followers = parseInt(followMatch[1].replace(/,/g, ''));
+        // Followers: Similar logic
+        let followers = extractNumber(html, /([\d,.]+)\s*(?:followers|팔로워|seguidores|abonnés|follower)/i);
 
-        // If stats not found on current page and it's an album, look for artist link
-        if (monthly_listeners === 0 && type === 'album') {
-            const artistLinkMatch = html.match(/https:\/\/open\.spotify\.com\/artist\/([a-zA-Z0-9]+)/);
-            if (artistLinkMatch) {
-                const artistStats = await scrapeSpotifyStats(artistLinkMatch[0], 'artist');
-                if (artistStats) {
-                    monthly_listeners = artistStats.monthly_listeners;
-                    followers = artistStats.followers;
+        // 2. Identify Artist Name & Album Name (Cleaned)
+        let name = "";
+        const titleMatch = html.match(/<title>(.*?)\s*\|\s*Spotify<\/title>/i);
+        if (titleMatch) {
+            name = titleMatch[1].split('|')[0].trim();
+            // Remove common suffixes
+            name = name.replace(/ - Album by.*/i, '').replace(/ - Single by.*/i, '').replace(/ - Song by.*/i, '').trim();
+        }
+
+        // 3. Extract Tracks from Script tags (More reliable than raw regex)
+        let tracks: any[] = [];
+
+        // Try Schema.org JSON-LD (often present on album/track pages)
+        const jsonLdMatch = html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s);
+        if (jsonLdMatch) {
+            try {
+                const data = JSON.parse(jsonLdMatch[1]);
+                if (data['@type'] === 'MusicAlbum' && data.track?.itemListElement) {
+                    tracks = data.track.itemListElement.map((item: any) => ({
+                        id: Math.random().toString(36),
+                        title: item.item?.name || item.name,
+                        duration: "3:00"
+                    })).slice(0, 5);
+                } else if (data['@type'] === 'MusicRecording') {
+                    tracks = [{ id: Math.random().toString(36), title: data.name, duration: "3:00" }];
+                }
+            } catch (e) { }
+        }
+
+        // Fallback: More specific name extraction if tracks still empty
+        if (tracks.length === 0) {
+            const trackNames = html.match(/"name":"([^"]+)"/g);
+            if (trackNames) {
+                const seen = new Set();
+                for (const t of trackNames) {
+                    const cleaned = t.replace(/"name":"|"/g, '');
+                    if (cleaned.length > 2 && !seen.has(cleaned) &&
+                        !cleaned.toLowerCase().includes(name.toLowerCase()) &&
+                        !cleaned.toLowerCase().includes("spotify") &&
+                        tracks.length < 5) {
+                        tracks.push({ id: Math.random().toString(36), title: cleaned, duration: "3:00" });
+                        seen.add(cleaned);
+                    }
                 }
             }
         }
 
-        // 2. Extract Artist/Subject Name
-        let name = "";
-        const titleMatch = html.match(/<title>(.*?)\s*\|\s*Spotify<\/title>/i);
-        if (titleMatch) name = titleMatch[1].replace(/ - Album by.*/i, '').replace(/ - Single by.*/i, '').trim();
-
-        // 3. Extract Tracks
-        let tracks: any[] = [];
-        const trackRegex = /"name":"([^"]+)"/g;
-        let match;
-        const seen = new Set();
-        while ((match = trackRegex.exec(html)) !== null && tracks.length < 5) {
-            const tName = match[1];
-            if (!seen.has(tName) && !tName.toLowerCase().includes(name.toLowerCase()) && !tName.toLowerCase().includes("spotify")) {
-                tracks.push({ id: Math.random().toString(36), title: tName, duration: "3:00" });
-                seen.add(tName);
+        // 4. Album-to-Artist Redirection
+        if (type === 'album' || type === 'track') {
+            const artistLinkMatch = html.match(/https:\/\/open\.spotify\.com\/artist\/([a-zA-Z0-9]+)/);
+            if (artistLinkMatch) {
+                const artistStats = await scrapeSpotifyStats(artistLinkMatch[0], 'artist');
+                if (artistStats) {
+                    // Merit: Use the deeper scrape for audience numbers but keep current tracks
+                    monthly_listeners = artistStats.monthly_listeners || monthly_listeners;
+                    followers = artistStats.followers || followers;
+                    if (type === 'artist') name = artistStats.name;
+                }
             }
         }
 

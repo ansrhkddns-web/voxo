@@ -11,7 +11,7 @@ interface ArtistStatsProps {
         genres?: string[];
         image?: string;
         external_url?: string;
-        artist_id?: string; // Added for Follow button
+        artist_id?: string;
         topTracks?: {
             id: string;
             title: string;
@@ -22,14 +22,11 @@ interface ArtistStatsProps {
 }
 
 export default function ArtistStats({ data }: ArtistStatsProps) {
-    // Graceful check for v3.2 Rescue Mode
+    // Graceful check: If no data or error without name, hide component
     if (!data || (data.error && !data.name)) {
         console.log("VOXO_SPOTIFY: Signal Lost ->", data?.error);
         return null;
     }
-
-    const isMock = (data as any).isMock || (data as any).is_mock;
-    const rescueActive = data.error?.includes("RESCUE");
 
     const formatNumber = (num: number) => {
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
@@ -41,26 +38,10 @@ export default function ArtistStats({ data }: ArtistStatsProps) {
         <div className="bg-gray-950/20 border border-white/5 overflow-hidden font-display relative group">
             <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-accent-green/30 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-1000" />
             <div className="p-6">
-                <div className="flex items-center justify-between mb-8">
-                    <h3 className="text-white text-[10px] uppercase tracking-[0.4em] font-display flex items-center gap-3">
-                        <span className="w-4 h-px bg-accent-green" />
-                        Artist Intelligence
-                    </h3>
-
-                    {data.artist_id && (
-                        <div className="scale-[0.85] origin-right opacity-80 hover:opacity-100 transition-opacity">
-                            <iframe
-                                src={`https://open.spotify.com/follow/1/?uri=spotify:artist:${data.artist_id}&size=basic&theme=dark&show-count=0`}
-                                width="140"
-                                height="25"
-                                scrolling="no"
-                                frameBorder="0"
-                                style={{ border: 'none', overflow: 'hidden' }}
-                                allowTransparency={true}
-                            ></iframe>
-                        </div>
-                    )}
-                </div>
+                <h3 className="text-white text-[10px] uppercase tracking-[0.4em] font-display mb-8 flex items-center gap-3">
+                    <span className="w-4 h-px bg-accent-green" />
+                    Artist Intelligence
+                </h3>
 
                 <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
