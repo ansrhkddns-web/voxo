@@ -58,6 +58,22 @@ export default async function PostDetail({ params }: { params: { slug: string } 
     const artistStatsData = artistStats as any;
     console.log(`VOXO_POST_DEBUG: Fetch Result ->`, artistStatsData ? (artistStatsData.error ? `ERROR: ${artistStatsData.error}` : `SUCCESS: ${artistStatsData.name}`) : 'NULL (Skipped)');
 
+    // Extract custom excerpts and intros from our injected metadata div
+    let customExcerpt = '';
+    let customIntro = '';
+    let cleanContent = post.content || '';
+
+    const metaMatch = cleanContent.match(/<div id="voxo-metadata" data-excerpt="(.*?)" data-intro="(.*?)"><\/div>/);
+    if (metaMatch) {
+        customExcerpt = metaMatch[1].replace(/&quot;/g, '"');
+        customIntro = metaMatch[2].replace(/&quot;/g, '"');
+        cleanContent = cleanContent.replace(/<div id="voxo-metadata".*?<\/div>/, '');
+    } else {
+        // Fallback for older posts that don't have the metadata div
+        customExcerpt = `Exploratory resonance and architectural analysis of ${post.artist_name || 'the collective'}'s latest sonic transmission. Deep diving into the textures and emotional gradients.`;
+        customIntro = post.artist_name ? `Examining the resonance within ${post.artist_name}'s latest transmission...` : '';
+    }
+
     const formattedDate = new Date(post.created_at).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
@@ -85,9 +101,11 @@ export default async function PostDetail({ params }: { params: { slug: string } 
                     </h1>
 
                     {/* Subtitle / Excerpt (Optional, using part of content if possible or generic) */}
-                    <p className="text-gray-400 font-serif italic text-lg md:text-xl max-w-3xl leading-relaxed">
-                        Exploratory resonance and architectural analysis of {post.artist_name || 'the collective'}&apos;s latest sonic transmission. Deep diving into the textures and emotional gradients.
-                    </p>
+                    {customExcerpt && (
+                        <p className="text-gray-400 font-serif italic text-lg md:text-xl max-w-3xl leading-relaxed whitespace-pre-wrap">
+                            {customExcerpt}
+                        </p>
+                    )}
 
                     {/* Metadata Row */}
                     <div className="flex flex-wrap items-center gap-y-4 gap-x-8 pt-8 border-t border-white/5 w-full text-gray-400 text-[10px] tracking-[0.2em] font-display uppercase">
@@ -138,15 +156,15 @@ export default async function PostDetail({ params }: { params: { slug: string } 
             <section className="max-w-7xl mx-auto px-4 md:px-12 py-16 grid grid-cols-1 lg:grid-cols-12 gap-20">
                 <div className="lg:col-span-8">
                     <article className="font-serif text-gray-400 text-lg md:text-xl leading-relaxed space-y-12">
-                        {post.artist_name && (
-                            <p className="text-white text-2xl md:text-4xl font-light italic leading-snug font-serif tracking-tight border-l-2 border-accent-green/30 pl-8 my-16">
-                                Examining the resonance within {post.artist_name}&apos;s latest transmission...
+                        {customIntro && (
+                            <p className="text-white text-2xl md:text-4xl font-light italic leading-snug font-serif tracking-tight border-l-2 border-accent-green/30 pl-8 my-16 whitespace-pre-wrap">
+                                {customIntro}
                             </p>
                         )}
 
                         <div
                             className="prose prose-invert prose-lg max-w-none"
-                            dangerouslySetInnerHTML={{ __html: post.content }}
+                            dangerouslySetInnerHTML={{ __html: cleanContent }}
                         />
 
                         {post.spotify_uri && <SpotifyEmbed uri={post.spotify_uri} />}

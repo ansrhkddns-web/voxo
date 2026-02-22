@@ -37,6 +37,8 @@ function EditorContent() {
     const [isPublishing, setIsPublishing] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [loading, setLoading] = useState(!!postId);
+    const [excerpt, setExcerpt] = useState('');
+    const [intro, setIntro] = useState('');
 
     const { t } = useAdminLanguage();
 
@@ -49,7 +51,16 @@ function EditorContent() {
                 try {
                     const post = await getPostById(postId);
                     setTitle(post.title);
-                    setContent(post.content);
+
+                    const metaMatch = post.content.match(/<div id="voxo-metadata" data-excerpt="(.*?)" data-intro="(.*?)"><\/div>/);
+                    if (metaMatch) {
+                        setExcerpt(metaMatch[1].replace(/&quot;/g, '"'));
+                        setIntro(metaMatch[2].replace(/&quot;/g, '"'));
+                        setContent(post.content.replace(/<div id="voxo-metadata".*?<\/div>/, ''));
+                    } else {
+                        setContent(post.content);
+                    }
+
                     setCategory(post.category_id);
                     setSpotifyUri(post.spotify_uri || '');
                     setRating(post.rating?.toString() || '8.0');
@@ -106,9 +117,16 @@ function EditorContent() {
             };
 
             const slug = generateSlug(title);
+            let finalContent = content;
+            if (excerpt || intro) {
+                const safeExcerpt = excerpt.replace(/"/g, '&quot;');
+                const safeIntro = intro.replace(/"/g, '&quot;');
+                finalContent = `<div id="voxo-metadata" data-excerpt="${safeExcerpt}" data-intro="${safeIntro}"></div>` + content;
+            }
+
             const postData = {
                 title,
-                content,
+                content: finalContent,
                 category_id: category,
                 spotify_uri: spotifyUri,
                 cover_image: coverUrl,
@@ -245,6 +263,26 @@ function EditorContent() {
                                         className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-white text-[10px] uppercase tracking-widest focus:outline-none focus:border-accent-green transition-all"
                                         value={artistName}
                                         onChange={(e) => setArtistName(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="pt-8 border-t border-white/5">
+                                    <label className="text-[9px] uppercase tracking-[0.3em] text-accent-green block mb-6 font-display">Hero Excerpt</label>
+                                    <textarea
+                                        placeholder="Exploratory resonance and architectural analysis..."
+                                        className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-gray-300 text-[11px] h-20 resize-none font-serif italic focus:outline-none focus:border-accent-green transition-all"
+                                        value={excerpt}
+                                        onChange={(e) => setExcerpt(e.target.value)}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="text-[9px] uppercase tracking-[0.3em] text-accent-green block mb-6 font-display">Content Intro Hook</label>
+                                    <textarea
+                                        placeholder="Examining the resonance within..."
+                                        className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-gray-300 text-[11px] h-16 resize-none font-serif italic focus:outline-none focus:border-accent-green transition-all"
+                                        value={intro}
+                                        onChange={(e) => setIntro(e.target.value)}
                                     />
                                 </div>
 
