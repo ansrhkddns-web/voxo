@@ -8,6 +8,7 @@ export async function getTags() {
     const { data, error } = await supabase
         .from('tags')
         .select('*')
+        .order('menu_order', { ascending: true })
         .order('name');
 
     if (error) throw error;
@@ -20,17 +21,18 @@ export async function getMenuTags() {
         .from('tags')
         .select('*')
         .eq('show_in_menu', true)
+        .order('menu_order', { ascending: true })
         .order('name');
 
     if (error) throw error;
     return data;
 }
 
-export async function createTag(name: string, slug: string, showInMenu: boolean = false) {
+export async function createTag(name: string, slug: string, showInMenu: boolean = false, menuOrder: number = 0) {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from('tags')
-        .insert([{ name, slug, show_in_menu: showInMenu }])
+        .insert([{ name, slug, show_in_menu: showInMenu, menu_order: menuOrder }])
         .select()
         .single();
 
@@ -40,11 +42,11 @@ export async function createTag(name: string, slug: string, showInMenu: boolean 
     return data;
 }
 
-export async function updateTag(id: string, name: string, slug: string, showInMenu: boolean) {
+export async function updateTag(id: string, name: string, slug: string, showInMenu: boolean, menuOrder: number) {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from('tags')
-        .update({ name, slug, show_in_menu: showInMenu })
+        .update({ name, slug, show_in_menu: showInMenu, menu_order: menuOrder })
         .eq('id', id)
         .select()
         .single();

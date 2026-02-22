@@ -7,14 +7,16 @@ import { getTags, createTag, deleteTag, updateTag } from '@/app/actions/tagActio
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function TagsPage() {
-    const [tags, setTags] = useState<Array<{ id: string; name: string; slug: string; show_in_menu: boolean }>>([]);
+    const [tags, setTags] = useState<Array<{ id: string; name: string; slug: string; show_in_menu: boolean; menu_order: number }>>([]);
     const [loading, setLoading] = useState(true);
     const [newTagName, setNewTagName] = useState('');
     const [newTagShowInMenu, setNewTagShowInMenu] = useState(false);
+    const [newTagMenuOrder, setNewTagMenuOrder] = useState(0);
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingName, setEditingName] = useState('');
     const [editingShowInMenu, setEditingShowInMenu] = useState(false);
+    const [editingMenuOrder, setEditingMenuOrder] = useState(0);
 
     useEffect(() => {
         fetchTags();
@@ -38,9 +40,10 @@ export default function TagsPage() {
         setIsAdding(true);
         try {
             const slug = newTagName.toLowerCase().replace(/ /g, '-');
-            await createTag(newTagName, slug, newTagShowInMenu);
+            await createTag(newTagName, slug, newTagShowInMenu, newTagMenuOrder);
             setNewTagName('');
             setNewTagShowInMenu(false);
+            setNewTagMenuOrder(0);
             fetchTags();
             toast.success('Tag deployed');
         } catch {
@@ -54,7 +57,7 @@ export default function TagsPage() {
         if (!editingName) return;
         try {
             const slug = editingName.toLowerCase().replace(/ /g, '-');
-            await updateTag(id, editingName, slug, editingShowInMenu);
+            await updateTag(id, editingName, slug, editingShowInMenu, editingMenuOrder);
             setEditingId(null);
             fetchTags();
             toast.success('Tag recalibrated');
@@ -103,6 +106,13 @@ export default function TagsPage() {
                             value={newTagName}
                             onChange={(e) => setNewTagName(e.target.value)}
                         />
+                        <input
+                            type="number"
+                            placeholder="ORDER"
+                            className="bg-gray-950 border border-white/5 rounded-none py-2.5 px-4 text-[10px] tracking-widest text-white focus:outline-none focus:border-accent-green/50 w-24 transition-all placeholder:text-gray-800"
+                            value={newTagMenuOrder}
+                            onChange={(e) => setNewTagMenuOrder(parseInt(e.target.value) || 0)}
+                        />
                         <button
                             type="submit"
                             disabled={isAdding}
@@ -129,6 +139,7 @@ export default function TagsPage() {
                                             <th className="px-8 py-6 text-[9px] uppercase tracking-[0.3em] text-gray-500 font-display font-bold">Tag Identity</th>
                                             <th className="px-8 py-6 text-[9px] uppercase tracking-[0.3em] text-gray-500 font-display font-bold">Slug Vector</th>
                                             <th className="px-8 py-6 text-[9px] uppercase tracking-[0.3em] text-gray-500 font-display font-bold">Menu Display</th>
+                                            <th className="px-8 py-6 text-[9px] uppercase tracking-[0.3em] text-gray-500 font-display font-bold">Priority</th>
                                             <th className="px-8 py-6 text-[9px] uppercase tracking-[0.3em] text-gray-500 font-display font-bold text-right">Actions</th>
                                         </tr>
                                     </thead>
@@ -174,6 +185,19 @@ export default function TagsPage() {
                                                     )}
                                                 </td>
                                                 <td className="px-8 py-6">
+                                                    {editingId === tag.id ? (
+                                                        <input
+                                                            type="number"
+                                                            className="bg-black border border-accent-green/50 py-1.5 px-3 text-[11px] font-mono text-white focus:outline-none w-16"
+                                                            value={editingMenuOrder}
+                                                            onChange={(e) => setEditingMenuOrder(parseInt(e.target.value) || 0)}
+                                                            onKeyDown={(e) => e.key === 'Enter' && handleUpdate(tag.id)}
+                                                        />
+                                                    ) : (
+                                                        <span className="text-[10px] tracking-widest text-gray-400 font-mono">{tag.menu_order || 0}</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-8 py-6">
                                                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         {editingId === tag.id ? (
                                                             <div className="flex gap-2">
@@ -197,6 +221,7 @@ export default function TagsPage() {
                                                                         setEditingId(tag.id);
                                                                         setEditingName(tag.name);
                                                                         setEditingShowInMenu(tag.show_in_menu);
+                                                                        setEditingMenuOrder(tag.menu_order || 0);
                                                                     }}
                                                                     className="text-gray-500 hover:text-white transition-colors p-2"
                                                                 >
