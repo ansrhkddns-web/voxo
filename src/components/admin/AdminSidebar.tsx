@@ -14,18 +14,21 @@ import {
     Mail
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
 
-const NAV_ITEMS = [
-    { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-    { name: 'Categories', href: '/admin/categories', icon: Layers },
-    { name: 'All Posts', href: '/admin/posts', icon: FileText },
-    { name: 'Subscribers', href: '/admin/subscribers', icon: Users },
-    { name: 'Newsletter', href: '/admin/newsletter', icon: Mail },
-    { name: 'Settings', href: '/admin/settings', icon: Settings },
+// We dynamically compute names in the render loop now instead of a static array for name, but keep href/icon here
+const NAV_ITEMS_DATA = [
+    { id: 'dashboard', href: '/admin', icon: LayoutDashboard },
+    { id: 'categories', href: '/admin/categories', icon: Layers },
+    { id: 'allPosts', href: '/admin/posts', icon: FileText },
+    { id: 'subscribers', href: '/admin/subscribers', icon: Users },
+    { id: 'newsletter', href: '/admin/newsletter', icon: Mail },
+    { id: 'settings', href: '/admin/settings', icon: Settings },
 ];
 
 export default function AdminSidebar() {
     const pathname = usePathname();
+    const { t } = useAdminLanguage();
 
     return (
         <aside className="w-64 border-r border-white/5 bg-black flex flex-col h-screen sticky top-0 font-display">
@@ -43,12 +46,12 @@ export default function AdminSidebar() {
                     className="flex items-center justify-center gap-2 w-full border border-white/10 hover:border-white/30 bg-transparent text-white text-[10px] uppercase tracking-[0.2em] py-3 rounded-none transition-all duration-300"
                 >
                     <PlusSquare size={14} className="text-accent-green" />
-                    <span>New Post</span>
+                    <span>{t('newPost', 'sidebar')}</span>
                 </Link>
 
                 <nav className="flex flex-col gap-2">
-                    <p className="text-[9px] uppercase tracking-[0.3em] text-gray-700 mb-2 ml-2">Navigation</p>
-                    {NAV_ITEMS.map((item) => {
+                    <p className="text-[9px] uppercase tracking-[0.3em] text-gray-700 mb-2 ml-2">{t('navigation', 'sidebar')}</p>
+                    {NAV_ITEMS_DATA.map((item) => {
                         const Icon = item.icon;
                         const isActive = pathname === item.href;
 
@@ -64,7 +67,7 @@ export default function AdminSidebar() {
                                 )}
                             >
                                 <Icon size={14} className={cn(isActive ? "text-accent-green" : "group-hover:text-accent-green")} />
-                                {item.name}
+                                {t(item.id, 'sidebar')}
                             </Link>
                         )
                     })}
@@ -74,7 +77,7 @@ export default function AdminSidebar() {
             <div className="p-6 border-t border-white/5">
                 <button className="flex items-center gap-3 px-4 py-2 w-full text-[10px] uppercase tracking-[0.2em] text-gray-600 hover:text-red-500 transition-all duration-300">
                     <LogOut size={14} />
-                    Logout
+                    {t('logout', 'sidebar')}
                 </button>
             </div>
         </aside>

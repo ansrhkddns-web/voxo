@@ -11,7 +11,7 @@ import { getPostBySlug } from '@/app/actions/postActions';
 import { getArtistStats } from '@/app/actions/spotifyActions';
 import { notFound } from 'next/navigation';
 
-export default async function PostDetail({ params }: { params: any }) {
+export default async function PostDetail({ params }: { params: { slug: string } | Promise<{ slug: string }> }) {
     // Robust params handling for various Next.js 15/16 environments
     const resolvedParams = params instanceof Promise ? await params : params;
     const slug = resolvedParams?.slug;
@@ -69,37 +69,56 @@ export default async function PostDetail({ params }: { params: any }) {
             <Navbar />
 
             {/* Article Hero */}
-            <header className="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden">
+            <header className="relative w-full h-[85vh] md:h-screen flex flex-col justify-end overflow-hidden">
+                {/* Background Image & Overlay */}
                 <div className="absolute inset-0 w-full h-full z-0">
                     <img
                         alt={post.title}
-                        className="w-full h-full object-cover object-top opacity-70 grayscale scale-105"
+                        className="w-full h-full object-cover object-top opacity-60 grayscale scale-105"
                         src={post.cover_image || "https://images.unsplash.com/photo-1514525253361-bee8718a300a?q=80&w=1974&auto=format&fit=crop"}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/80 to-black"></div>
+                    {/* Dark gradient focused on the bottom for readability */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-background-dark via-background-dark/80 to-transparent"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-background-dark/80 via-transparent to-transparent"></div>
                 </div>
 
-                <div className="relative z-10 text-center flex flex-col items-center max-w-5xl px-4 mt-20">
-                    <div className="mb-4">
-                        <span className="inline-block h-px w-8 bg-accent-green mb-1"></span>
-                        <p className="text-[10px] tracking-[0.3em] uppercase text-gray-400 font-display">{post.categories?.name || 'Review'}</p>
-                    </div>
+                {/* Hero Content (Bottom-Left Aligned) */}
+                <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pb-16 md:pb-24">
+                    <div className="flex flex-col items-start gap-4 max-w-4xl animate-fade-in-up">
+                        {/* Category */}
+                        <div className="flex items-center gap-3">
+                            <span className="inline-block h-px w-8 bg-accent-green"></span>
+                            <p className="text-[10px] md:text-[11px] tracking-[0.4em] uppercase text-accent-green/80 font-display font-medium">
+                                {post.categories?.name || 'Review'}
+                            </p>
+                        </div>
 
-                    <h1 className="font-display font-light text-5xl md:text-7xl lg:text-9xl tracking-super-wide uppercase text-white mb-8">
-                        {post.title}
-                    </h1>
+                        {/* Title */}
+                        <h1 className="font-display font-light text-5xl md:text-7xl lg:text-8xl xl:text-9xl tracking-[0.02em] md:tracking-normal uppercase text-white leading-[0.9] mt-2 mb-6 drop-shadow-2xl">
+                            {post.title}
+                        </h1>
 
-                    <div className="flex items-center gap-6 text-gray-500 text-[10px] tracking-[0.2em] font-display uppercase">
-                        <span className="flex items-center gap-2 underline underline-offset-4 decoration-accent-green/50">By VOXO Editorial</span>
-                        <span>•</span>
-                        <span className="flex items-center gap-2"><Clock size={12} className="text-accent-green" /> 10 Min Read</span>
-                        <span>•</span>
-                        <span>{formattedDate}</span>
+                        {/* Metadata Row */}
+                        <div className="flex flex-wrap items-center gap-y-3 gap-x-6 text-gray-400 text-[9px] md:text-[10px] tracking-[0.2em] md:tracking-[0.3em] font-display uppercase">
+                            <span className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer border-b border-accent-green/30 pb-1">
+                                By VOXO Editorial
+                            </span>
+                            <span className="hidden md:inline text-white/20">•</span>
+                            <span className="flex items-center gap-2">
+                                <Clock size={12} className="text-accent-green/50" />
+                                10 Min Read
+                            </span>
+                            <span className="hidden md:inline text-white/20">•</span>
+                            <span className="text-gray-500">
+                                {formattedDate}
+                            </span>
+                        </div>
                     </div>
                 </div>
 
-                <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce">
-                    <div className="w-2 h-2 border-r border-b border-white rotate-45"></div>
+                {/* Scroll Indicator */}
+                <div className="absolute bottom-8 right-8 md:bottom-12 md:right-12 animate-bounce opacity-50 z-10 hidden md:block">
+                    <div className="w-2 h-2 border-r border-b border-accent-green rotate-45"></div>
                 </div>
             </header>
 
@@ -109,7 +128,7 @@ export default async function PostDetail({ params }: { params: any }) {
                     <article className="font-serif text-gray-400 text-lg md:text-xl leading-relaxed space-y-12">
                         {post.artist_name && (
                             <p className="text-white text-2xl md:text-3xl font-light italic leading-snug font-serif">
-                                Examining the resonance within {post.artist_name}'s latest transmission...
+                                Examining the resonance within {post.artist_name}&apos;s latest transmission...
                             </p>
                         )}
 

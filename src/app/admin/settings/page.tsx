@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { Save, Loader2, Globe, Lock, Bell, Database, Type } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
 
 const TRANSLATIONS = {
     en: {
@@ -86,20 +87,21 @@ export default function AdminSettings() {
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState('general');
 
+    const { language, setLanguage } = useAdminLanguage();
+
     const [settings, setSettings] = useState({
         siteName: 'VOXO Cinematic Magazine',
         siteDescription: 'Premium Curated Music Experience',
         contactEmail: 'hello@voxo.edit',
         spotifyClientId: '••••••••••••••••••••••••',
         maintenanceMode: false,
-        language: 'ko' as Language,
     });
 
-    // Load from local storage on mount
     useEffect(() => {
         const savedSettings = localStorage.getItem('voxoAdminSettings');
         if (savedSettings) {
             try {
+                // eslint-disable-next-line
                 setSettings(JSON.parse(savedSettings));
             } catch (e) {
                 console.error("Failed to parse settings", e);
@@ -107,13 +109,16 @@ export default function AdminSettings() {
         }
     }, []);
 
-    const t = TRANSLATIONS[settings.language] || TRANSLATIONS.en;
+    const t = TRANSLATIONS[language as keyof typeof TRANSLATIONS] || TRANSLATIONS.en;
 
     const handleSave = async () => {
         setIsSaving(true);
         // Simulate network delay
         await new Promise(resolve => setTimeout(resolve, 1500));
-        localStorage.setItem('voxoAdminSettings', JSON.stringify(settings));
+
+        const settingsToSave = { ...settings, language };
+        localStorage.setItem('voxoAdminSettings', JSON.stringify(settingsToSave));
+
         setIsSaving(false);
         toast.success(t.saveSuccess);
     };
@@ -178,14 +183,14 @@ export default function AdminSettings() {
                                             </div>
                                             <div className="flex gap-2 bg-gray-900 border border-white/10 p-1">
                                                 <button
-                                                    onClick={() => setSettings({ ...settings, language: 'en' })}
-                                                    className={`px-4 py-2 text-[10px] uppercase tracking-widest font-display transition-colors ${settings.language === 'en' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}
+                                                    onClick={() => setLanguage('en')}
+                                                    className={`px-4 py-2 text-[10px] uppercase tracking-widest font-display transition-colors ${language === 'en' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}
                                                 >
                                                     English
                                                 </button>
                                                 <button
-                                                    onClick={() => setSettings({ ...settings, language: 'ko' })}
-                                                    className={`px-4 py-2 text-[10px] uppercase tracking-widest font-display transition-colors ${settings.language === 'ko' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}
+                                                    onClick={() => setLanguage('ko')}
+                                                    className={`px-4 py-2 text-[10px] uppercase tracking-widest font-display transition-colors ${language === 'ko' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}
                                                 >
                                                     한국어
                                                 </button>

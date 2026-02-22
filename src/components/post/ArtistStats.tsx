@@ -24,11 +24,35 @@ export default function ArtistStats({ data }: ArtistStatsProps) {
     if (!data || (data.error && !data.name)) {
         console.log("VOXO_SPOTIFY: Signal Lost ->", data?.error);
         return (
-            <div className="bg-gray-950/20 border border-white/5 overflow-hidden font-display relative group p-10 flex flex-col items-center justify-center min-h-[360px] text-center">
+            <div className="bg-gray-950/20 border border-white/5 overflow-hidden font-display relative group">
                 <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-red-500/30 to-transparent" />
-                <span className="w-12 h-px bg-red-500/30 mb-8" />
-                <p className="text-[10px] uppercase tracking-[0.4em] text-red-500/50 font-display mb-4">Signal Lost</p>
-                <p className="text-[9px] uppercase tracking-widest text-gray-600 leading-relaxed max-w-[200px]">The neural link to the artist archive could not be established. Please try recalibrating later.</p>
+                <div className="p-8 flex flex-col justify-center min-h-[300px] relative">
+                    {/* Faint Grid Background */}
+                    <div className="absolute inset-0 pointer-events-none opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at center, white 1px, transparent 1px)', backgroundSize: '12px 12px' }} />
+
+                    <h3 className="text-white text-[10px] uppercase tracking-[0.4em] font-display mb-8 flex items-center gap-3 relative z-10">
+                        <span className="w-4 h-px bg-red-500/50" />
+                        Neural Link Restricted
+                    </h3>
+
+                    <div className="space-y-6 relative z-10 flex-grow flex flex-col justify-center">
+                        <div className="border border-red-500/10 bg-red-500/5 p-6 animate-pulse">
+                            <p className="text-red-400/80 text-[10px] font-display uppercase tracking-[0.3em] font-medium mb-2">Error 403: Origin Blocked</p>
+                            <p className="text-gray-500 text-[10px] tracking-widest leading-relaxed font-light">
+                                Spotify Developer App requires manual verification. The Host AI cannot breach closed quotas automatically.
+                            </p>
+                        </div>
+
+                        <div className="h-px w-full bg-white/5" />
+
+                        <div>
+                            <p className="text-gray-600 text-[9px] font-display uppercase tracking-[0.2em] mb-2 font-mono">Suggested Action</p>
+                            <p className="text-gray-400 text-[10px] uppercase tracking-widest leading-relaxed">
+                                Please navigate to your <span className="text-white border-b border-white/20 pb-0.5">Spotify Developer Dashboard</span> and ensure your application is out of strictly limited Development Mode.
+                            </p>
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     }

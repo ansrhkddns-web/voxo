@@ -37,16 +37,19 @@ export default function PostCard({ title, category, image, readTime, excerpt, sl
                         )}
                     </div>
                 </div>
-                <div className="flex flex-col gap-2">
-                    <span className="text-[9px] tracking-[0.2em] text-gray-500 uppercase font-display">{readTime}</span>
-                    <h3 className="font-display text-xl font-light tracking-wide text-white group-hover:text-gray-300 transition-colors uppercase line-clamp-2">
+                <div className="flex flex-col gap-3 mt-4">
+                    <div className="flex items-center gap-3">
+                        <span className="w-4 h-px bg-accent-green/50 group-hover:bg-accent-green transition-colors" />
+                        <span className="text-[9px] tracking-[0.3em] text-gray-500 uppercase font-display group-hover:text-gray-400 transition-colors">{readTime}</span>
+                    </div>
+                    <h3 className="font-display text-2xl font-light tracking-[0.02em] text-white group-hover:text-accent-green transition-colors duration-500 uppercase line-clamp-2 leading-tight">
                         {title}
                     </h3>
-                    <p className="text-xs font-light text-gray-500 leading-relaxed tracking-wide line-clamp-2 font-body italic">
+                    <p className="text-xs font-light text-gray-400 leading-relaxed tracking-wide line-clamp-2 font-serif italic opacity-80 group-hover:opacity-100 transition-opacity">
                         {excerpt}
                     </p>
                 </div>
             </article>
-        </Link>
+        </Link >
     );
 }

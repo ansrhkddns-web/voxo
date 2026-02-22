@@ -1,0 +1,149 @@
+
+> voxo-project@0.1.0 lint
+> eslint
+
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\actions\newsletterActions.ts
+  42:60  warning  'content' is defined but never used            @typescript-eslint/no-unused-vars
+  43:11  warning  'supabase' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\actions\postActions.ts
+  29:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  48:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\actions\spotifyActions.ts
+   87:21  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   95:68  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  103:22  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  158:14  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  180:18  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  195:87  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  227:87  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  249:47  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  253:73  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  259:14  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\actions\uploadActions.ts
+  13:13  warning  'data' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\admin\categories\page.tsx
+   6:10  warning  'cn' is defined but never used            @typescript-eslint/no-unused-vars
+  13:50  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  28:18  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  46:18  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  61:18  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  72:18  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\admin\editor\page.tsx
+   36:50  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   59:26  warning  'error' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   78:18  warning  'error' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  130:18  warning  'error' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  189:41  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\admin\newsletter\page.tsx
+  28:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\admin\page.tsx
+  14:11  warning  'router' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  16:40  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  27:18  warning  'error' is defined but never used            @typescript-eslint/no-unused-vars
+  40:18  warning  'error' is defined but never used            @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\admin\posts\page.tsx
+   5:56  warning  'Filter' is defined but never used           @typescript-eslint/no-unused-vars
+  14:11  warning  'router' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  16:40  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  29:18  warning  'error' is defined but never used            @typescript-eslint/no-unused-vars
+  42:18  warning  'error' is defined but never used            @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\admin\settings\page.tsx
+   84:6   warning  'Language' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   @typescript-eslint/no-unused-vars
+  105:17  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\admin\settings\page.tsx:105:17
+  103 |         if (savedSettings) {
+  104 |             try {
+> 105 |                 setSettings(JSON.parse(savedSettings));
+      |                 ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  106 |             } catch (e) {
+  107 |                 console.error("Failed to parse settings", e);
+  108 |             }  react-hooks/set-state-in-effect
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\admin\subscribers\page.tsx
+  12:52  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  23:18  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  36:18  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\page.tsx
+  12:10  warning  'cn' is defined but never used                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+  14:8   warning  'Link' is defined but never used                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+  18:44  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  40:39  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  61:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\post\[slug]\page.tsx
+   14:64  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   58:44  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   74:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  112:82  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+
+G:\AntigravityProject\Voxo\voxo-project\src\components\admin\TiptapEditor.tsx
+  27:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+G:\AntigravityProject\Voxo\voxo-project\src\components\home\Hero.tsx
+  10:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+G:\AntigravityProject\Voxo\voxo-project\src\components\home\Marquee.tsx
+  30:111  error  Comments inside children section of tag should be placed inside braces  react/jsx-no-comment-textnodes
+
+G:\AntigravityProject\Voxo\voxo-project\src\components\home\NewsletterForm.tsx
+  26:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\components\home\PostCard.tsx
+  22:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+G:\AntigravityProject\Voxo\voxo-project\src\components\layout\SearchOverlay.tsx
+  14:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+G:\AntigravityProject\Voxo\voxo-project\src\components\post\SpotifyEmbed.tsx
+   4:10  warning  'Play' is defined but never used  @typescript-eslint/no-unused-vars
+  25:18  warning  'e' is defined but never used     @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\lib\supabase\server.ts
+  18:30  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  24:30  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\providers\AdminLanguageProvider.tsx
+  263:21  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+G:\AntigravityProject\Voxo\voxo-project\src\providers\AdminLanguageProvider.tsx:263:21
+  261 |                 const savedSettings = JSON.parse(savedSettingsStr);
+  262 |                 if (savedSettings.language === 'en' || savedSettings.language === 'ko') {
+> 263 |                     setLanguageState(savedSettings.language);
+      |                     ^^^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  264 |                 }
+  265 |             } catch (e) {
+  266 |                 console.error("Failed to parse language settings", e);  react-hooks/set-state-in-effect
+  276:17  error    'settings' is never reassigned. Use 'const' instead                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       prefer-const
+  279:18  warning  'e' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\test-spotify.js
+   1:15  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  19:16  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+✖ 65 problems (26 errors, 39 warnings)
+  1 error and 0 warnings potentially fixable with the `--fix` option.
+

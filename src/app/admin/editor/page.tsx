@@ -18,6 +18,7 @@ import { createPost, getPostById, updatePost } from '@/app/actions/postActions';
 import { uploadImage } from '@/app/actions/uploadActions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
 
 function EditorContent() {
     const router = useRouter();
@@ -36,6 +37,8 @@ function EditorContent() {
     const [isPublishing, setIsPublishing] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [loading, setLoading] = useState(!!postId);
+
+    const { t } = useAdminLanguage();
 
     useEffect(() => {
         const fetch = async () => {
@@ -136,7 +139,7 @@ function EditorContent() {
             <div className="flex min-h-screen bg-black items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="animate-spin text-accent-green" size={32} strokeWidth={1} />
-                    <p className="text-[10px] uppercase tracking-[0.4em] text-gray-500 font-display">Decryption in progress...</p>
+                    <p className="text-[10px] uppercase tracking-[0.4em] text-gray-500 font-display">{t('decrypting', 'editor')}</p>
                 </div>
             </div>
         );
@@ -154,7 +157,7 @@ function EditorContent() {
                             <ArrowLeft size={18} strokeWidth={1} />
                         </Link>
                         <div className="h-4 w-[1px] bg-white/10" />
-                        <span className="text-[10px] uppercase tracking-[0.4em] text-gray-400 font-display">Article Deployment</span>
+                        <span className="text-[10px] uppercase tracking-[0.4em] text-gray-400 font-display">{t('title', 'editor')}</span>
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -163,7 +166,7 @@ function EditorContent() {
                             className="text-[10px] uppercase tracking-[0.2em] font-display text-gray-500 hover:text-white px-6 py-2 border border-white/5 hover:border-white/20 transition-all flex items-center gap-2"
                         >
                             <Save size={14} />
-                            Save Draft
+                            {t('saveDraft', 'editor')}
                         </button>
                         <button
                             onClick={() => handlePublish(false)}
@@ -171,7 +174,7 @@ function EditorContent() {
                             className="text-[10px] uppercase tracking-[0.2em] font-display bg-white text-black px-8 py-2.5 hover:bg-accent-green transition-all flex items-center gap-2 font-bold"
                         >
                             {isPublishing ? <Loader2 className="animate-spin" size={14} /> : <Send size={14} />}
-                            {isPublishing ? 'Transmitting...' : 'Execute Publish'}
+                            {isPublishing ? t('transmit', 'editor') : t('publish', 'editor')}
                         </button>
                     </div>
                 </header>
@@ -185,7 +188,7 @@ function EditorContent() {
                                     <div className="relative w-full h-full">
                                         <img src={coverUrl} alt="Cover" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <span className="text-[10px] uppercase tracking-widest bg-black/80 px-4 py-2 border border-white/10">Replace Image</span>
+                                            <span className="text-[10px] uppercase tracking-widest bg-black/80 px-4 py-2 border border-white/10">{t('replaceImage', 'editor')}</span>
                                         </div>
                                     </div>
                                 ) : (
@@ -193,14 +196,14 @@ function EditorContent() {
                                         <div className="relative inline-block">
                                             {isUploading ? <Loader2 className="animate-spin text-accent-green" size={24} /> : <CirclePlus size={24} className="text-gray-700 group-hover:text-accent-green transition-colors" strokeWidth={1} />}
                                         </div>
-                                        <p className="text-[10px] uppercase tracking-[0.3em] text-gray-600 font-display">Inject Visual Component</p>
+                                        <p className="text-[10px] uppercase tracking-[0.3em] text-gray-600 font-display">{t('injectVisual', 'editor')}</p>
                                     </div>
                                 )}
                                 <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
                             </label>
 
                             <textarea
-                                placeholder="THE HEADLINE OF TOMORROW..."
+                                placeholder={t('headlinePlaceholder', 'editor')}
                                 className="w-full bg-transparent text-4xl md:text-6xl font-display font-light uppercase tracking-tighter text-white placeholder:text-gray-900 focus:outline-none resize-none overflow-hidden h-auto py-2 leading-[0.9] border-none focus:ring-0"
                                 rows={2}
                                 value={title}
@@ -218,7 +221,7 @@ function EditorContent() {
                         <aside className="space-y-12">
                             <div className="space-y-10 border-l border-white/5 pl-10">
                                 <div>
-                                    <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">Review Rating (0.0 - 10.0)</label>
+                                    <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">{t('reviewRating', 'editor')}</label>
                                     <input
                                         type="number"
                                         step="0.1"
@@ -232,9 +235,9 @@ function EditorContent() {
                                 </div>
 
                                 <div>
-                                    <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">Artist / Track Name</label>
+                                    <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">{t('artistName', 'editor')}</label>
                                     <input
-                                        placeholder="IDENTITY_STRING"
+                                        placeholder={t('artistPlaceholder', 'editor')}
                                         className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-white text-[10px] uppercase tracking-widest focus:outline-none focus:border-accent-green transition-all"
                                         value={artistName}
                                         onChange={(e) => setArtistName(e.target.value)}
@@ -242,13 +245,13 @@ function EditorContent() {
                                 </div>
 
                                 <div>
-                                    <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">Meta Classification</label>
+                                    <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">{t('metaClass', 'editor')}</label>
                                     <select
                                         className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-white text-[10px] uppercase tracking-widest focus:outline-none focus:border-accent-green transition-all appearance-none cursor-pointer"
                                         value={category}
                                         onChange={(e) => setCategory(e.target.value)}
                                     >
-                                        <option value="" className="bg-black">SELECT ARCHIVE</option>
+                                        <option value="" className="bg-black">{t('selectArchive', 'editor')}</option>
                                         {categories.map(cat => (
                                             <option key={cat.id} value={cat.id} className="bg-black">{cat.name.toUpperCase()}</option>
                                         ))}
@@ -256,9 +259,9 @@ function EditorContent() {
                                 </div>
 
                                 <div>
-                                    <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">Tags (Comma Separated)</label>
+                                    <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">{t('tags', 'editor')}</label>
                                     <input
-                                        placeholder="TAG_SEQUENCE_1, TAG_SEQUENCE_2"
+                                        placeholder={t('tagsPlaceholder', 'editor')}
                                         className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-white text-[10px] uppercase tracking-widest focus:outline-none focus:border-accent-green transition-all"
                                         value={tags}
                                         onChange={(e) => setTags(e.target.value)}
@@ -266,17 +269,17 @@ function EditorContent() {
                                 </div>
 
                                 <div>
-                                    <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">Audio Integration (Spotify)</label>
+                                    <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">{t('audioInt', 'editor')}</label>
                                     <div className="relative">
                                         <Music className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-700" size={14} strokeWidth={1} />
                                         <input
-                                            placeholder="URI_SEQUENCE"
+                                            placeholder={t('audioPlaceholder', 'editor')}
                                             className="w-full bg-transparent border-b border-white/10 rounded-none py-3 pl-8 pr-0 text-white text-[10px] tracking-widest focus:outline-none focus:border-accent-green transition-all font-mono uppercase"
                                             value={spotifyUri}
                                             onChange={(e) => setSpotifyUri(e.target.value)}
                                         />
                                     </div>
-                                    <p className="text-[8px] text-gray-700 mt-4 uppercase tracking-widest leading-relaxed">System supports Track / Album / Artist schemas.</p>
+                                    <p className="text-[8px] text-gray-700 mt-4 uppercase tracking-widest leading-relaxed">{t('audioSupport', 'editor')}</p>
                                 </div>
                             </div>
                         </aside>

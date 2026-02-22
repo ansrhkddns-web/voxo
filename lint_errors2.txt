@@ -1,0 +1,86 @@
+
+> voxo-project@0.1.0 lint
+> eslint
+
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\actions\newsletterActions.ts
+  42:60  warning  'content' is defined but never used            @typescript-eslint/no-unused-vars
+  43:11  warning  'supabase' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\actions\postActions.ts
+  29:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  48:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\actions\spotifyActions.ts
+   87:21  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   95:68  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  103:22  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  158:14  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  180:18  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  195:87  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  227:87  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  249:47  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  253:73  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  259:14  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\actions\uploadActions.ts
+  13:13  warning  'data' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\admin\editor\page.tsx
+   36:50  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   59:26  warning  'error' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+   78:18  warning  'error' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  130:18  warning  'error' is defined but never used                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  189:41  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\admin\newsletter\page.tsx
+  28:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\admin\settings\page.tsx
+  84:6  warning  'Language' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\page.tsx
+  12:10  warning  'cn' is defined but never used                                                                                                                                                                                                                                                           @typescript-eslint/no-unused-vars
+  14:8   warning  'Link' is defined but never used                                                                                                                                                                                                                                                         @typescript-eslint/no-unused-vars
+  18:44  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  40:39  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  61:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+G:\AntigravityProject\Voxo\voxo-project\src\app\post\[slug]\page.tsx
+   14:64  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   58:44  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   74:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+  112:82  error    `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`                                                                                                                                                                                                                          react/no-unescaped-entities
+
+G:\AntigravityProject\Voxo\voxo-project\src\components\admin\TiptapEditor.tsx
+  27:40  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+G:\AntigravityProject\Voxo\voxo-project\src\components\home\Hero.tsx
+  10:17  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+G:\AntigravityProject\Voxo\voxo-project\src\components\home\Marquee.tsx
+  30:111  error  Comments inside children section of tag should be placed inside braces  react/jsx-no-comment-textnodes
+
+G:\AntigravityProject\Voxo\voxo-project\src\components\home\NewsletterForm.tsx
+  26:18  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\components\home\PostCard.tsx
+  22:21  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+G:\AntigravityProject\Voxo\voxo-project\src\components\layout\SearchOverlay.tsx
+  14:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+G:\AntigravityProject\Voxo\voxo-project\src\components\post\SpotifyEmbed.tsx
+   4:10  warning  'Play' is defined but never used  @typescript-eslint/no-unused-vars
+  25:18  warning  'e' is defined but never used     @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\src\lib\supabase\server.ts
+  18:30  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  24:30  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+G:\AntigravityProject\Voxo\voxo-project\test-spotify.js
+   1:15  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+  19:16  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+
+✖ 43 problems (19 errors, 24 warnings)
+

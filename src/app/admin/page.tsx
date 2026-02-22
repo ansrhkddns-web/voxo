@@ -7,11 +7,11 @@ import { getPosts, deletePost } from '@/app/actions/postActions';
 import { cn } from "@/lib/utils";
 import toast, { Toaster } from 'react-hot-toast';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
 
 export default function AdminDashboard() {
-    const router = useRouter();
-    const [posts, setPosts] = useState<any[]>([]);
+    const { t } = useAdminLanguage();
+    const [posts, setPosts] = useState<Array<{ id: string; title: string; slug: string; is_published: boolean; categories: { name: string } | null }>>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -22,7 +22,7 @@ export default function AdminDashboard() {
         try {
             const data = await getPosts();
             setPosts(data);
-        } catch (error) {
+        } catch {
             toast.error('Failed to load posts');
         } finally {
             setLoading(false);
@@ -35,7 +35,7 @@ export default function AdminDashboard() {
             await deletePost(id);
             fetchPosts();
             toast.success('Post deleted');
-        } catch (error) {
+        } catch {
             toast.error('Delete failed');
         }
     };
@@ -50,15 +50,15 @@ export default function AdminDashboard() {
                     <div>
                         <div className="flex items-center gap-2 mb-2">
                             <span className="w-4 h-px bg-accent-green"></span>
-                            <span className="text-[10px] uppercase tracking-[0.3em] text-gray-400 font-display">System Status: Online</span>
+                            <span className="text-[10px] uppercase tracking-[0.3em] text-gray-400 font-display">{t('status', 'dashboard')}</span>
                         </div>
-                        <h1 className="text-4xl font-display font-light tracking-widest uppercase">Content Control</h1>
+                        <h1 className="text-4xl font-display font-light tracking-widest uppercase">{t('title', 'dashboard')}</h1>
                     </div>
 
                     <div className="relative w-full md:w-80">
                         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600" size={16} />
                         <input
-                            placeholder="SEARCH ARTICLES..."
+                            placeholder={t('search', 'dashboard')}
                             className="w-full bg-transparent border-b border-white/10 py-3 pl-0 pr-10 text-[10px] tracking-widest text-white placeholder:text-gray-700 focus:outline-none focus:border-accent-green transition-colors uppercase font-display"
                         />
                     </div>
@@ -67,10 +67,10 @@ export default function AdminDashboard() {
                 {/* Performance Analytics Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-20">
                     {[
-                        { label: 'Total Archives', value: posts.length.toString().padStart(2, '0') },
-                        { label: 'Published Units', value: posts.filter(p => p.is_published).length.toString().padStart(2, '0') },
-                        { label: 'Category Layers', value: Array.from(new Set(posts.map(p => p.categories?.name))).filter(Boolean).length.toString().padStart(2, '0') },
-                        { label: 'Avg Read Time', value: '12M' },
+                        { label: t('statArchives', 'dashboard'), value: posts.length.toString().padStart(2, '0') },
+                        { label: t('statPublished', 'dashboard'), value: posts.filter(p => p.is_published).length.toString().padStart(2, '0') },
+                        { label: t('statCategories', 'dashboard'), value: Array.from(new Set(posts.map(p => p.categories?.name))).filter(Boolean).length.toString().padStart(2, '0') },
+                        { label: t('statReadTime', 'dashboard'), value: '12M' },
                     ].map((stat, i) => (
                         <div key={i} className="group border-l border-white/5 pl-6 py-2 hover:border-accent-green transition-colors duration-500">
                             <p className="text-gray-500 text-[9px] font-display uppercase tracking-[0.3em] mb-2">{stat.label}</p>
@@ -81,29 +81,29 @@ export default function AdminDashboard() {
 
                 {/* Directory Table */}
                 <div className="relative">
-                    <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500 mb-8 font-display">Article Directory</p>
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500 mb-8 font-display">{t('dirTitle', 'dashboard')}</p>
 
                     {loading ? (
                         <div className="flex flex-col items-center justify-center h-96 gap-4 border border-white/5 bg-gray-950/20">
                             <Loader2 className="animate-spin text-accent-green" size={24} strokeWidth={1} />
-                            <span className="text-[10px] uppercase tracking-[0.3em] text-gray-600 font-display animate-pulse">Syncing Database...</span>
+                            <span className="text-[10px] uppercase tracking-[0.3em] text-gray-600 font-display animate-pulse">{t('syncing', 'dashboard')}</span>
                         </div>
                     ) : (
                         <div className="border border-white/5 bg-gray-950/20 overflow-hidden">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="border-b border-white/5 text-[9px] uppercase tracking-[0.2em] font-display text-gray-600">
-                                        <th className="px-8 py-6 font-medium">Archived Title</th>
-                                        <th className="px-8 py-6 font-medium">Classification</th>
-                                        <th className="px-8 py-6 font-medium">Integrity Status</th>
-                                        <th className="px-8 py-6 font-medium text-right">Operations</th>
+                                        <th className="px-8 py-6 font-medium">{t('colTitle', 'dashboard')}</th>
+                                        <th className="px-8 py-6 font-medium">{t('colClass', 'dashboard')}</th>
+                                        <th className="px-8 py-6 font-medium">{t('colStatus', 'dashboard')}</th>
+                                        <th className="px-8 py-6 font-medium text-right">{t('colOps', 'dashboard')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5 font-display">
                                     {posts.length === 0 ? (
                                         <tr>
                                             <td colSpan={4} className="px-8 py-20 text-center">
-                                                <p className="text-[10px] uppercase tracking-[0.3em] text-gray-700 italic">No Data Sequences Found</p>
+                                                <p className="text-[10px] uppercase tracking-[0.3em] text-gray-700 italic">{t('emptyState', 'dashboard')}</p>
                                             </td>
                                         </tr>
                                     ) : (
@@ -119,14 +119,14 @@ export default function AdminDashboard() {
                                                     </Link>
                                                 </td>
                                                 <td className="px-8 py-8 font-display">
-                                                    <span className="text-gray-400 text-[10px] uppercase tracking-widest">{post.categories?.name || 'GENERIC'}</span>
+                                                    <span className="text-gray-400 text-[10px] uppercase tracking-widest">{post.categories?.name || t('generic', 'dashboard')}</span>
                                                 </td>
                                                 <td className="px-8 py-8 font-display">
                                                     <span className={cn(
                                                         "text-[9px] uppercase tracking-widest",
                                                         post.is_published ? "text-accent-green" : "text-gray-600"
                                                     )}>
-                                                        {post.is_published ? 'Verified / Published' : 'Pending / Draft'}
+                                                        {post.is_published ? t('statusVerified', 'dashboard') : t('statusPending', 'dashboard')}
                                                     </span>
                                                 </td>
                                                 <td className="px-8 py-8 text-right">

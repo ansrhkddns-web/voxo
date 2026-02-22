@@ -2,16 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import AdminSidebar from "@/components/admin/AdminSidebar";
-import { Search, Edit2, Trash2, Loader2, ExternalLink, Filter } from 'lucide-react';
+import { Search, Edit2, Trash2, Loader2, ExternalLink } from 'lucide-react';
 import { getPosts, deletePost } from '@/app/actions/postActions';
 import { cn } from "@/lib/utils";
 import toast, { Toaster } from 'react-hot-toast';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
 
 export default function AdminPosts() {
-    const router = useRouter();
-    const [posts, setPosts] = useState<any[]>([]);
+    const { t } = useAdminLanguage();
+    const [posts, setPosts] = useState<Array<{ id: string; title: string; slug: string; is_published: boolean; categories: { name: string } | null; created_at: string }>>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all');
@@ -24,7 +24,7 @@ export default function AdminPosts() {
         try {
             const data = await getPosts();
             setPosts(data);
-        } catch (error) {
+        } catch {
             toast.error('Failed to load posts');
         } finally {
             setLoading(false);
@@ -37,7 +37,7 @@ export default function AdminPosts() {
             await deletePost(id);
             fetchPosts();
             toast.success('Sequence deleted');
-        } catch (error) {
+        } catch {
             toast.error('Delete failed');
         }
     };
@@ -63,9 +63,9 @@ export default function AdminPosts() {
                     <div>
                         <div className="flex items-center gap-2 mb-2">
                             <span className="w-4 h-px bg-accent-green"></span>
-                            <span className="text-[10px] uppercase tracking-[0.3em] text-gray-400 font-display">Database Repository</span>
+                            <span className="text-[10px] uppercase tracking-[0.3em] text-gray-400 font-display">{t('repo', 'posts')}</span>
                         </div>
-                        <h1 className="text-4xl font-display font-light tracking-widest uppercase">All Archives</h1>
+                        <h1 className="text-4xl font-display font-light tracking-widest uppercase">{t('title', 'posts')}</h1>
                     </div>
 
                     <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
@@ -74,25 +74,25 @@ export default function AdminPosts() {
                                 onClick={() => setFilter('all')}
                                 className={cn("px-6 py-2 text-[9px] uppercase tracking-widest font-display transition-colors", filter === 'all' ? "bg-white text-black" : "text-gray-500 hover:text-white")}
                             >
-                                All
+                                {t('all', 'posts')}
                             </button>
                             <button
                                 onClick={() => setFilter('published')}
                                 className={cn("px-6 py-2 text-[9px] uppercase tracking-widest font-display transition-colors", filter === 'published' ? "bg-white text-black" : "text-gray-500 hover:text-white")}
                             >
-                                Published
+                                {t('published', 'posts')}
                             </button>
                             <button
                                 onClick={() => setFilter('draft')}
                                 className={cn("px-6 py-2 text-[9px] uppercase tracking-widest font-display transition-colors", filter === 'draft' ? "bg-white text-black" : "text-gray-500 hover:text-white")}
                             >
-                                Drafts
+                                {t('drafts', 'posts')}
                             </button>
                         </div>
                         <div className="relative w-full md:w-80">
                             <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600" size={16} />
                             <input
-                                placeholder="SEARCH REPOSITORY..."
+                                placeholder={t('search', 'posts')}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full bg-transparent border-b border-white/10 py-3 pl-0 pr-10 text-[10px] tracking-widest text-white placeholder:text-gray-700 focus:outline-none focus:border-accent-green transition-colors uppercase font-display"
@@ -106,25 +106,25 @@ export default function AdminPosts() {
                     {loading ? (
                         <div className="flex flex-col items-center justify-center h-96 gap-4 border border-white/5 bg-gray-950/20">
                             <Loader2 className="animate-spin text-accent-green" size={24} strokeWidth={1} />
-                            <span className="text-[10px] uppercase tracking-[0.3em] text-gray-600 font-display animate-pulse">Querying Database...</span>
+                            <span className="text-[10px] uppercase tracking-[0.3em] text-gray-600 font-display animate-pulse">{t('querying', 'posts')}</span>
                         </div>
                     ) : (
                         <div className="border border-white/5 bg-gray-950/20 overflow-hidden">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="border-b border-white/5 text-[9px] uppercase tracking-[0.2em] font-display text-gray-600">
-                                        <th className="px-8 py-6 font-medium">Archive Identify</th>
-                                        <th className="px-8 py-6 font-medium">Category</th>
-                                        <th className="px-8 py-6 font-medium">Created At</th>
-                                        <th className="px-8 py-6 font-medium">Status Flag</th>
-                                        <th className="px-8 py-6 font-medium text-right">Operations</th>
+                                        <th className="px-8 py-6 font-medium">{t('colIdentify', 'posts')}</th>
+                                        <th className="px-8 py-6 font-medium">{t('colCat', 'posts')}</th>
+                                        <th className="px-8 py-6 font-medium">{t('colCreated', 'posts')}</th>
+                                        <th className="px-8 py-6 font-medium">{t('colStatus', 'posts')}</th>
+                                        <th className="px-8 py-6 font-medium text-right">{t('colOps', 'posts')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-white/5 font-display">
                                     {filteredPosts.length === 0 ? (
                                         <tr>
                                             <td colSpan={5} className="px-8 py-20 text-center">
-                                                <p className="text-[10px] uppercase tracking-[0.3em] text-gray-700 italic">No Matching Sequences</p>
+                                                <p className="text-[10px] uppercase tracking-[0.3em] text-gray-700 italic">{t('emptyState', 'posts')}</p>
                                             </td>
                                         </tr>
                                     ) : (
@@ -140,7 +140,7 @@ export default function AdminPosts() {
                                                     </Link>
                                                 </td>
                                                 <td className="px-8 py-6 font-display">
-                                                    <span className="text-gray-400 text-[9px] uppercase tracking-widest border border-white/5 px-3 py-1 bg-white/[0.02]">{post.categories?.name || 'GENERIC'}</span>
+                                                    <span className="text-gray-400 text-[9px] uppercase tracking-widest border border-white/5 px-3 py-1 bg-white/[0.02]">{post.categories?.name || t('generic', 'posts')}</span>
                                                 </td>
                                                 <td className="px-8 py-6 font-display">
                                                     <span className="text-gray-500 text-[10px] uppercase tracking-widest">
@@ -154,7 +154,7 @@ export default function AdminPosts() {
                                                             "text-[9px] uppercase tracking-widest",
                                                             post.is_published ? "text-accent-green" : "text-gray-600"
                                                         )}>
-                                                            {post.is_published ? 'Published' : 'Draft'}
+                                                            {post.is_published ? t('published', 'posts') : t('drafts', 'posts')}
                                                         </span>
                                                     </div>
                                                 </td>

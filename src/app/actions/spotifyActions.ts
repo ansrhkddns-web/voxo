@@ -50,6 +50,10 @@ async function scrapeSpotifyStats(url: string, type: 'artist' | 'album' | 'track
         if (!response.ok) return null;
         const html = await response.text();
 
+        console.log("VOXO_SCRAPER HTML LENGTH:", html.length);
+        const fs = require('fs');
+        fs.writeFileSync('scraper_dump.html', html);
+
         // 1. Language Agnostic & Meta Tag Number Extraction (Followers & Listeners)
         const extractNumber = (text: string, pattern: RegExp) => {
             const match = text.match(pattern);
@@ -140,6 +144,7 @@ async function scrapeSpotifyStats(url: string, type: 'artist' | 'album' | 'track
 }
 
 async function getAccessToken() {
+    console.log("getAccessToken CALLED", { id: !!CLIENT_ID, sec: !!CLIENT_SECRET });
     if (!CLIENT_ID || !CLIENT_SECRET) return null;
     try {
         const authString = Buffer.from(`${CLIENT_ID.trim()}:${CLIENT_SECRET.trim()}`).toString('base64');
@@ -152,7 +157,10 @@ async function getAccessToken() {
             body: 'grant_type=client_credentials',
             cache: 'no-store',
         });
-        if (!response.ok) return null;
+        if (!response.ok) {
+            console.error("TOKEN FETCH FAILED:", await response.text());
+            return null;
+        }
         const data = await response.json();
         return data.access_token;
     } catch (error) {
@@ -231,6 +239,7 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
         // 3. Final Fetch with Scraper Fallback for 403s
         const artistRes = await fetch(`https://api.spotify.com/v1/artists/${artistId}`, fetchOptions);
         if (!artistRes.ok) {
+            console.error(`ARTIST API FAILED [${artistRes.status}]:`, await artistRes.text());
             if (publicUrl) return await scrapeSpotifyStats(publicUrl, 'artist');
             if (artistId) return await scrapeSpotifyStats(`https://open.spotify.com/artist/${artistId}`, 'artist');
             return { error: `API_ERROR_${artistRes.status}` };

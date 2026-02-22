@@ -3,12 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { CirclePlus, Edit2, Trash2, Loader2, Database } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { getCategories, createCategory, deleteCategory, updateCategory } from '@/app/actions/categoryActions';
 import toast, { Toaster } from 'react-hot-toast';
+import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
 
 export default function CategoriesPage() {
-    const [categories, setCategories] = useState<any[]>([]);
+    const { t } = useAdminLanguage();
+    const [categories, setCategories] = useState<Array<{ id: string; name: string; slug: string }>>([]);
     const [loading, setLoading] = useState(true);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isAdding, setIsAdding] = useState(false);
@@ -23,7 +24,7 @@ export default function CategoriesPage() {
         try {
             const data = await getCategories();
             setCategories(data);
-        } catch (error) {
+        } catch {
             toast.error('Failed to sync archive');
         } finally {
             setLoading(false);
@@ -41,7 +42,7 @@ export default function CategoriesPage() {
             setNewCategoryName('');
             fetchCategories();
             toast.success('Classification deployed');
-        } catch (error) {
+        } catch {
             toast.error('Deployment failed');
         } finally {
             setIsAdding(false);
@@ -56,7 +57,7 @@ export default function CategoriesPage() {
             setEditingId(null);
             fetchCategories();
             toast.success('Unit recalibrated');
-        } catch (error) {
+        } catch {
             toast.error('Recalibration failed');
         }
     };
@@ -67,7 +68,7 @@ export default function CategoriesPage() {
             await deleteCategory(id);
             fetchCategories();
             toast.success('Unit deconstructed');
-        } catch (error) {
+        } catch {
             toast.error('Deconstruction failed');
         }
     };
@@ -80,13 +81,13 @@ export default function CategoriesPage() {
             <main className="flex-1 flex flex-col h-screen overflow-hidden">
                 <header className="h-24 border-b border-white/5 bg-black/80 backdrop-blur-xl flex items-center justify-between px-10 sticky top-0 z-50">
                     <div className="space-y-1">
-                        <h1 className="text-[10px] uppercase tracking-[0.4em] text-gray-500 font-display">Meta Infrastructure</h1>
-                        <p className="text-xl font-display font-light uppercase tracking-tighter">Category Archives</p>
+                        <h1 className="text-[10px] uppercase tracking-[0.4em] text-gray-500 font-display">{t('infra', 'categories')}</h1>
+                        <p className="text-xl font-display font-light uppercase tracking-tighter">{t('title', 'categories')}</p>
                     </div>
 
                     <form onSubmit={handleAdd} className="flex gap-4">
                         <input
-                            placeholder="UNIT LABEL"
+                            placeholder={t('unitLabel', 'categories')}
                             className="bg-gray-950 border border-white/5 rounded-none py-2.5 px-6 text-[10px] uppercase tracking-widest text-white focus:outline-none focus:border-accent-green/50 w-full md:w-72 transition-all placeholder:text-gray-800"
                             value={newCategoryName}
                             onChange={(e) => setNewCategoryName(e.target.value)}
@@ -97,7 +98,7 @@ export default function CategoriesPage() {
                             className="h-10 px-8 bg-white text-black text-[10px] uppercase tracking-[0.2em] font-display font-bold hover:bg-accent-green transition-all flex items-center gap-2 whitespace-nowrap"
                         >
                             {isAdding ? <Loader2 className="animate-spin" size={14} /> : <CirclePlus size={14} />}
-                            <span>{isAdding ? 'EXECUTING...' : 'INITIALIZE'}</span>
+                            <span>{isAdding ? t('executing', 'categories') : t('init', 'categories')}</span>
                         </button>
                     </form>
                 </header>
@@ -106,7 +107,7 @@ export default function CategoriesPage() {
                     {loading ? (
                         <div className="flex flex-col items-center justify-center h-64 space-y-4">
                             <Loader2 className="animate-spin text-accent-green" size={32} strokeWidth={1} />
-                            <p className="text-[9px] uppercase tracking-[0.3em] text-gray-600 animate-pulse">Syncing Database...</p>
+                            <p className="text-[9px] uppercase tracking-[0.3em] text-gray-600 animate-pulse">{t('syncing', 'categories')}</p>
                         </div>
                     ) : (
                         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -154,14 +155,14 @@ export default function CategoriesPage() {
                                                     }}
                                                     onBlur={() => handleUpdate(cat.id)}
                                                 />
-                                                <p className="text-[8px] text-accent-green uppercase tracking-widest">Applying Changes...</p>
+                                                <p className="text-[8px] text-accent-green uppercase tracking-widest">{t('applying', 'categories')}</p>
                                             </div>
                                         ) : (
                                             <>
                                                 <h3 className="text-2xl font-display font-light uppercase tracking-tighter text-white mb-2">{cat.name}</h3>
                                                 <div className="flex items-center gap-3">
                                                     <div className="h-px w-6 bg-accent-green/30"></div>
-                                                    <p className="text-gray-600 text-[8px] font-mono tracking-widest uppercase truncate max-w-[120px]">REF_ID: {cat.id.substring(0, 12)}</p>
+                                                    <p className="text-gray-600 text-[8px] font-mono tracking-widest uppercase truncate max-w-[120px]">{t('refid', 'categories')} {cat.id.substring(0, 12)}</p>
                                                 </div>
                                             </>
                                         )}
