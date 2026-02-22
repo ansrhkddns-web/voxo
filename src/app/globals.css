@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @theme {
   --color-primary: #FFFFFF;
@@ -77,4 +78,45 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--accent-green);
+}
+
+/* Markdown Prose Base Styling Fallback */
+.prose h1 {
+  @apply text-4xl md:text-5xl font-display font-light uppercase mb-6 mt-10 text-white leading-tight;
+}
+
+.prose h2 {
+  @apply text-3xl md:text-4xl font-display font-light uppercase mb-4 mt-8 text-gray-200;
+}
+
+.prose h3 {
+  @apply text-2xl font-serif italic mb-4 mt-6 text-accent-green;
+}
+
+.prose ul {
+  @apply list-disc list-outside pl-6 space-y-2 my-6 text-gray-300;
+}
+
+.prose ol {
+  @apply list-decimal list-inside pl-4 space-y-2 my-6 text-gray-300;
+}
+
+.prose blockquote {
+  @apply border-l-2 border-accent-green/50 pl-6 italic text-gray-400 my-8 py-2;
+}
+
+.prose hr {
+  @apply border-white/10 my-10;
+}
+
+.prose a {
+  @apply text-accent-green hover:underline;
+}
+
+.prose code {
+  @apply bg-white/5 px-1.5 py-0.5 rounded text-[0.9em] text-accent-green font-mono;
+}
+
+.prose img {
+  @apply rounded-sm w-full my-8 object-cover opacity-90 hover:opacity-100 transition-opacity;
 }

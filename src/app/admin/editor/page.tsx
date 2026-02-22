@@ -232,6 +232,26 @@ function EditorContent() {
                                 }}
                             />
 
+                            <div className="pt-2">
+                                <label className="text-[10px] uppercase tracking-[0.3em] text-accent-green block mb-4 font-display">Hero Excerpt</label>
+                                <textarea
+                                    placeholder="Exploratory resonance and architectural analysis..."
+                                    className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-gray-300 text-sm h-24 resize-none font-serif italic focus:outline-none focus:border-accent-green transition-all"
+                                    value={excerpt}
+                                    onChange={(e) => setExcerpt(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="pt-2">
+                                <label className="text-[10px] uppercase tracking-[0.3em] text-accent-green block mb-4 font-display">Content Intro Hook</label>
+                                <textarea
+                                    placeholder="Examining the resonance within..."
+                                    className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-gray-300 text-sm h-16 resize-none font-serif italic focus:outline-none focus:border-accent-green transition-all"
+                                    value={intro}
+                                    onChange={(e) => setIntro(e.target.value)}
+                                />
+                            </div>
+
                             <div className="border-t border-white/5 pt-12">
                                 <MarkdownEditor
                                     content={content}
@@ -263,26 +283,6 @@ function EditorContent() {
                                         className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-white text-[10px] uppercase tracking-widest focus:outline-none focus:border-accent-green transition-all"
                                         value={artistName}
                                         onChange={(e) => setArtistName(e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="pt-8 border-t border-white/5">
-                                    <label className="text-[9px] uppercase tracking-[0.3em] text-accent-green block mb-6 font-display">Hero Excerpt</label>
-                                    <textarea
-                                        placeholder="Exploratory resonance and architectural analysis..."
-                                        className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-gray-300 text-[11px] h-20 resize-none font-serif italic focus:outline-none focus:border-accent-green transition-all"
-                                        value={excerpt}
-                                        onChange={(e) => setExcerpt(e.target.value)}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="text-[9px] uppercase tracking-[0.3em] text-accent-green block mb-6 font-display">Content Intro Hook</label>
-                                    <textarea
-                                        placeholder="Examining the resonance within..."
-                                        className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-gray-300 text-[11px] h-16 resize-none font-serif italic focus:outline-none focus:border-accent-green transition-all"
-                                        value={intro}
-                                        onChange={(e) => setIntro(e.target.value)}
                                     />
                                 </div>
 
