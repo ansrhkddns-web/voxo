@@ -200,26 +200,6 @@ function EditorContent() {
                 <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
                     <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-20">
                         <div className="space-y-12">
-                            {/* Cover Image Upload Area */}
-                            <label className="relative aspect-[21/9] w-full bg-gray-950 border border-white/5 flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-accent-green/30 transition-all overflow-hidden group">
-                                {coverUrl ? (
-                                    <div className="relative w-full h-full">
-                                        <img src={coverUrl} alt="Cover" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <span className="text-[10px] uppercase tracking-widest bg-black/80 px-4 py-2 border border-white/10">{t('replaceImage', 'editor')}</span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="text-center space-y-4">
-                                        <div className="relative inline-block">
-                                            {isUploading ? <Loader2 className="animate-spin text-accent-green" size={24} /> : <CirclePlus size={24} className="text-gray-700 group-hover:text-accent-green transition-colors" strokeWidth={1} />}
-                                        </div>
-                                        <p className="text-[10px] uppercase tracking-[0.3em] text-gray-600 font-display">{t('injectVisual', 'editor')}</p>
-                                    </div>
-                                )}
-                                <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
-                            </label>
-
                             <textarea
                                 placeholder={t('headlinePlaceholder', 'editor')}
                                 className="w-full bg-transparent text-4xl md:text-6xl font-display font-light uppercase tracking-tighter text-white placeholder:text-gray-900 focus:outline-none resize-none overflow-hidden py-2 leading-[0.9] border-none focus:ring-0"
@@ -241,6 +221,26 @@ function EditorContent() {
                                     onChange={(e) => setExcerpt(e.target.value)}
                                 />
                             </div>
+
+                            {/* Cover Image Upload Area */}
+                            <label className="relative aspect-[21/9] w-full bg-gray-950 border border-white/5 flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-accent-green/30 transition-all overflow-hidden group">
+                                {coverUrl ? (
+                                    <div className="relative w-full h-full">
+                                        <img src={coverUrl} alt="Cover" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <span className="text-[10px] uppercase tracking-widest bg-black/80 px-4 py-2 border border-white/10">{t('replaceImage', 'editor')}</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center space-y-4">
+                                        <div className="relative inline-block">
+                                            {isUploading ? <Loader2 className="animate-spin text-accent-green" size={24} /> : <CirclePlus size={24} className="text-gray-700 group-hover:text-accent-green transition-colors" strokeWidth={1} />}
+                                        </div>
+                                        <p className="text-[10px] uppercase tracking-[0.3em] text-gray-600 font-display">{t('injectVisual', 'editor')}</p>
+                                    </div>
+                                )}
+                                <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                            </label>
 
                             <div className="pt-2">
                                 <label className="text-[10px] uppercase tracking-[0.3em] text-accent-green block mb-4 font-display">Content Intro Hook</label>
