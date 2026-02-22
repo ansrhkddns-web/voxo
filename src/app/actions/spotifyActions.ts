@@ -39,9 +39,8 @@ async function getAccessToken() {
  */
 function parseSpotifyId(input: string) {
     if (!input) return null;
-    const trimmed = input.trim().replace(/\/$/, ''); // Remove trailing slashes and spaces
+    const trimmed = input.trim().replace(/\/$/, '');
 
-    // Handle URI format: spotify:track:xxx
     if (trimmed.startsWith('spotify:')) {
         const parts = trimmed.split(':');
         if (parts.length >= 3) {
@@ -49,13 +48,10 @@ function parseSpotifyId(input: string) {
         }
     }
 
-    // Handle URL format: https://open.spotify.com/intl-ko/track/xxx?si=...
     if (trimmed.includes('open.spotify.com')) {
         try {
             const url = new URL(trimmed);
             const pathParts = url.pathname.split('/').filter(Boolean);
-
-            // Search for type keyword
             const supportedTypes = ['track', 'album', 'artist', 'playlist'];
             const typeIndex = pathParts.findIndex(p => supportedTypes.includes(p));
 
@@ -73,27 +69,9 @@ function parseSpotifyId(input: string) {
     return null;
 }
 
-export async function getSpotifyData(uriOrUrl: string) {
-    const parsed = parseSpotifyId(uriOrUrl);
-    if (!parsed) return null;
-
-    try {
-        const token = await getAccessToken();
-        if (!token) return null;
-
-        const response = await fetch(`https://api.spotify.com/v1/${parsed.type}s/${parsed.id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-            cache: 'no-store'
-        });
-
-        if (!response.ok) return null;
-        return response.json();
-    } catch (error) {
-        return null;
-    }
-}
-
 export async function getArtistStats(uriOrUrl: string, artistName?: string, manualArtistId?: string) {
+    console.log(`VOXO_DIAGNOSTIC v2.2: Starting match for Name=[${artistName}] URI=[${uriOrUrl}] ManualID=[${manualArtistId}]`);
+
     if (!uriOrUrl && !artistName && !manualArtistId) return { error: "No connectivity parameters provided" };
 
     try {
@@ -101,15 +79,14 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
         if (!token) return { error: "Authentication failed (Check keys)" };
 
         const fetchOptions = { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' as RequestCache };
-
-        // Priority 1: Direct Manual ID
         let artistId = manualArtistId?.trim() || null;
 
-        // Priority 2: Resolution via Link
+        // Priority 1: Resolution via Link
         if (!artistId && uriOrUrl) {
             const parsed = parseSpotifyId(uriOrUrl);
             if (parsed) {
                 const { type, id } = parsed;
+                console.log(`VOXO_DIAGNOSTIC: Attempting link resolution (${type}: ${id})`);
                 if (type === 'artist') {
                     artistId = id;
                 } else if (type === 'track') {
@@ -131,25 +108,40 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
                         artistId = data.items?.[0]?.track?.artists?.[0]?.id || null;
                     }
                 }
+                if (artistId) console.log(`VOXO_DIAGNOSTIC: Resolved via link -> ${artistId}`);
             }
         }
 
-        // Priority 3: Fallback to Search by Name
+        // Priority 2: Fallback to Search by Name (Multi-stage)
         if (!artistId && artistName) {
-            const cleanName = artistName.replace(/[!@#$%^&*()]/g, ' ').trim();
-            console.log(`VOXO_DEBUG: Falling back to search for artist: ${cleanName}`);
-            const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(cleanName)}&type=artist&limit=1`, fetchOptions);
-            if (searchRes.ok) {
-                const searchData = await searchRes.json();
-                artistId = searchData.artists?.items?.[0]?.id || null;
+            const searchTargets = [
+                artistName.trim(), // 1. Literal name
+                artistName.replace(/[!@#$%^&*()]/g, ' ').trim(), // 2. Cleaned name
+                artistName.split(/[ /]/)[0] // 3. First word/segment
+            ];
+
+            for (const target of searchTargets) {
+                if (!target || target.length < 2) continue;
+                console.log(`VOXO_DIAGNOSTIC: Searching for artist: ${target}`);
+                const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(target)}&type=artist&limit=1`, fetchOptions);
+                if (searchRes.ok) {
+                    const searchData = await searchRes.json();
+                    const foundId = searchData.artists?.items?.[0]?.id;
+                    if (foundId) {
+                        artistId = foundId;
+                        console.log(`VOXO_DIAGNOSTIC: Resolved via search [${target}] -> ${artistId}`);
+                        break;
+                    }
+                }
             }
         }
 
         if (!artistId) {
-            return { error: `Could not reach artist signal for ${artistName || 'unknown source'}` };
+            console.error(`VOXO_DIAGNOSTIC: Final failure for ${artistName || 'unknown'}`);
+            return { error: `Could not reach artist signal for ${artistName || 'unknown'}` };
         }
 
-        // Fetch Phase: Details + Top Tracks
+        // Fetch Phase
         const [artistRes, topTracksRes] = await Promise.all([
             fetch(`https://api.spotify.com/v1/artists/${artistId}`, fetchOptions),
             fetch(`https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=US`, fetchOptions)
@@ -175,7 +167,7 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
             }))
         };
     } catch (error: any) {
-        console.error("VOXO_SYSTEM: getArtistStats Critical Error ->", error);
+        console.error("VOXO_DIAGNOSTIC: Critical Exception ->", error);
         return { error: `System Exception: ${error.message?.substring(0, 30)}` };
     }
 }
