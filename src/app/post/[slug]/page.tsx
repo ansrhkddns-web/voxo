@@ -48,11 +48,10 @@ export default async function PostDetail({ params }: { params: any }) {
         notFound();
     }
 
-    // Fetch Spotify Artist Stats — Priority: direct ID > link resolution > name search
-    const artistStats = (post.spotify_uri || post.artist_name || post.artist_spotify_id)
-        ? await getArtistStats(post.spotify_uri || '', post.artist_name || '', post.artist_spotify_id || '')
+    // Fetch Spotify Artist Stats (Direct ID > Link > Name Fallback)
+    const artistStats = (post.spotify_uri || post.artist_name || post.spotify_artist_id)
+        ? await getArtistStats(post.spotify_uri || '', post.artist_name || '', post.spotify_artist_id || '')
         : null;
-
 
     const formattedDate = new Date(post.created_at).toLocaleDateString('en-US', {
         month: 'short',
@@ -134,7 +133,7 @@ export default async function PostDetail({ params }: { params: any }) {
                         </div>
                     )}
 
-                    {post.spotify_uri && (
+                    {(post.spotify_uri || post.artist_name || post.spotify_artist_id) && (
                         <ArtistStats data={artistStats} />
                     )}
 

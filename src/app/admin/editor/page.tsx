@@ -30,7 +30,6 @@ function EditorContent() {
     const [spotifyUri, setSpotifyUri] = useState('');
     const [rating, setRating] = useState('8.0');
     const [artistName, setArtistName] = useState('');
-    const [artistSpotifyId, setArtistSpotifyId] = useState('');
     const [tags, setTags] = useState('');
     const [coverUrl, setCoverUrl] = useState('');
     const [categories, setCategories] = useState<any[]>([]);
@@ -52,7 +51,6 @@ function EditorContent() {
                     setSpotifyUri(post.spotify_uri || '');
                     setRating(post.rating?.toString() || '8.0');
                     setArtistName(post.artist_name || '');
-                    setArtistSpotifyId(post.artist_spotify_id || '');
                     setTags(post.tags?.join(', ') || '');
                     setCoverUrl(post.cover_image || '');
                 } catch (error) {
@@ -113,7 +111,6 @@ function EditorContent() {
                 cover_image: coverUrl,
                 rating: parseFloat(rating),
                 artist_name: artistName,
-                artist_spotify_id: artistSpotifyId.trim(),
                 tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
                 is_published: !isDraft,
                 slug
@@ -241,17 +238,6 @@ function EditorContent() {
                                         className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-white text-[10px] uppercase tracking-widest focus:outline-none focus:border-accent-green transition-all"
                                         value={artistName}
                                         onChange={(e) => setArtistName(e.target.value)}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="text-[9px] uppercase tracking-[0.3em] text-accent-green block mb-2 font-display">Spotify Artist ID ✦</label>
-                                    <p className="text-[8px] text-gray-700 uppercase tracking-widest mb-4 leading-relaxed">Bypasses API restrictions. Find on open.spotify.com/artist/[ID]</p>
-                                    <input
-                                        placeholder="0TnOYISbd1XYRBk9myaseg"
-                                        className="w-full bg-transparent border-b border-accent-green/30 rounded-none py-3 px-0 text-accent-green text-[10px] tracking-widest focus:outline-none focus:border-accent-green transition-all font-mono"
-                                        value={artistSpotifyId}
-                                        onChange={(e) => setArtistSpotifyId(e.target.value)}
                                     />
                                 </div>
 
