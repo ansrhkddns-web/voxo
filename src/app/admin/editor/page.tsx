@@ -204,10 +204,14 @@ function EditorContent() {
 
                             <textarea
                                 placeholder={t('headlinePlaceholder', 'editor')}
-                                className="w-full bg-transparent text-4xl md:text-6xl font-display font-light uppercase tracking-tighter text-white placeholder:text-gray-900 focus:outline-none resize-none overflow-hidden h-auto py-2 leading-[0.9] border-none focus:ring-0"
-                                rows={2}
+                                className="w-full bg-transparent text-4xl md:text-6xl font-display font-light uppercase tracking-tighter text-white placeholder:text-gray-900 focus:outline-none resize-none overflow-hidden py-2 leading-[0.9] border-none focus:ring-0"
+                                rows={1}
                                 value={title}
-                                onChange={(e) => setTitle(e.target.value)}
+                                onChange={(e) => {
+                                    setTitle(e.target.value);
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = e.target.scrollHeight + 'px';
+                                }}
                             />
 
                             <div className="border-t border-white/5 pt-12">

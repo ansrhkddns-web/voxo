@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
-import { BubbleMenu, FloatingMenu } from '@tiptap/react/menus';
+import { BubbleMenu } from '@tiptap/react/menus';
 import { StarterKit } from '@tiptap/starter-kit';
 import { Link } from '@tiptap/extension-link';
 import { Image } from '@tiptap/extension-image';
@@ -294,7 +294,6 @@ export default function TiptapEditor({ content, onChange }: TiptapEditorProps) {
                 heading: {
                     levels: [1, 2, 3, 4],
                 },
-                bold: false, // Handled via VoxoBBCode
             }),
             VoxoBBCode,
             Spoiler,
@@ -350,41 +349,6 @@ export default function TiptapEditor({ content, onChange }: TiptapEditorProps) {
                             <UnderlineIcon size={14} />
                         </button>
                     </BubbleMenu>
-
-                    <FloatingMenu
-                        editor={editor}
-                        className="flex flex-col bg-black border border-white/10 rounded shadow-2xl p-2 min-w-[180px]"
-                    >
-                        <p className="text-[9px] uppercase tracking-widest text-gray-600 mb-2 px-2">Quick Actions</p>
-                        <button
-                            type="button"
-                            onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                            className="flex items-center gap-3 px-2 py-1.5 text-[11px] text-gray-300 hover:bg-white/5 hover:text-white rounded transition-all"
-                        >
-                            <Heading1 size={14} /> Heading 1
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                            className="flex items-center gap-3 px-2 py-1.5 text-[11px] text-gray-300 hover:bg-white/5 hover:text-white rounded transition-all"
-                        >
-                            <Heading2 size={14} /> Heading 2
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => editor.chain().focus().toggleBulletList().run()}
-                            className="flex items-center gap-3 px-2 py-1.5 text-[11px] text-gray-300 hover:bg-white/5 hover:text-white rounded transition-all"
-                        >
-                            <List size={14} /> Bullet List
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => editor.chain().focus().toggleBlockquote().run()}
-                            className="flex items-center gap-3 px-2 py-1.5 text-[11px] text-gray-300 hover:bg-white/5 hover:text-white rounded transition-all"
-                        >
-                            <Quote size={14} /> Blockquote
-                        </button>
-                    </FloatingMenu>
                 </>
             )}
 
