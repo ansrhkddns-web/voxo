@@ -161,7 +161,7 @@ export default async function PostDetail({ params }: { params: { slug: string } 
                         {customIntro && (
                             <div className="relative border-l border-white/10 pl-8 my-24 py-2">
                                 <span className="absolute -left-[1px] top-0 w-[1px] h-8 bg-accent-green/50"></span>
-                                <p className="text-gray-400 text-lg md:text-xl font-light italic leading-relaxed font-serif tracking-wide whitespace-pre-wrap">
+                                <p className="text-gray-500 text-base md:text-lg font-light italic leading-relaxed font-serif tracking-wide whitespace-pre-wrap">
                                     {customIntro}
                                 </p>
                             </div>
