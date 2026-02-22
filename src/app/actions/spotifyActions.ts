@@ -6,14 +6,17 @@ const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 // VOXYN REAL RESCUE DATA: Current stats for Voxyn (extracted from profile)
 const VOXYN_RESCUE_DATA = {
     name: "Voxyn",
-    followers: 349, // Real follower count as of current check
+    followers: 349,
+    monthly_listeners: 3916, // Real monthly listeners from screenshot
     genres: ["Darkpop", "Electronic", "Cinematic"],
-    image: "https://i.scdn.co/image/ab67616d0000b273b7a66f07a7a5a8a6a6a6a6a6", // Will fallback to this if API is out
+    image: "https://i.scdn.co/image/ab67616d0000b273b7a66f07a7a5a8a6a6a6a6a6",
     external_url: "https://open.spotify.com/artist/2H6zWGBd7JUFTVLeuAkw3H",
     topTracks: [
-        { id: "02Nsp0Jy52CyTuymsp6Usa", title: "Default Behavior", duration: "3:42" },
-        { id: "5qc5R6ZFfd5lwG5C5HaGYz", title: "Residuals", duration: "4:01" },
-        { id: "4LJar05Tvh2C0IZrc27Yd2", title: "It’s Nothing", duration: "3:15" }
+        { id: "1", title: "I turn it off", duration: "3:49" },
+        { id: "2", title: "Interference", duration: "3:04" },
+        { id: "3", title: "The World We Found", duration: "3:42" },
+        { id: "4", title: "Guardian Angel", duration: "3:59" },
+        { id: "5", title: "You Did It Again", duration: "2:29" }
     ],
     is_rescue: true
 };
@@ -126,10 +129,11 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
         return {
             name: artistData.name,
             followers: artistData.followers?.total || 0,
+            monthly_listeners: (artistData as any).monthly_listeners || 0,
             genres: artistData.genres?.slice(0, 3) || [],
             image: artistData.images?.[0]?.url,
             external_url: artistData.external_urls?.spotify,
-            topTracks: (topTracksData.tracks || []).slice(0, 3).map((t: any) => ({
+            topTracks: (topTracksData.tracks || []).slice(0, 5).map((t: any) => ({
                 id: t.id,
                 title: t.name,
                 duration: formatDuration(t.duration_ms)
