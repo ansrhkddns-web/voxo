@@ -56,7 +56,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                     className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-3xl flex flex-col p-8 md:p-20"
                 >
                     <div className="flex justify-between items-center mb-20">
-                        <span className="text-[10px] uppercase tracking-[0.5em] text-accent-green font-display">Neural Search Interface</span>
+                        <span className="text-[10px] uppercase tracking-[0.5em] text-accent-green font-display">Search</span>
                         <button
                             onClick={onClose}
                             className="text-gray-500 hover:text-white transition-colors p-4"
@@ -69,7 +69,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                         <div className="relative border-b border-white/10 pb-4">
                             <input
                                 autoFocus
-                                placeholder="TYPE_SEARCH_QUERY..."
+                                placeholder="Type to search..."
                                 className="w-full bg-transparent text-4xl md:text-7xl font-display font-light uppercase tracking-tighter text-white placeholder:text-gray-900 focus:outline-none"
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
@@ -83,7 +83,7 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                             <div className="space-y-8">
-                                <h3 className="text-[10px] uppercase tracking-[0.3em] font-display text-gray-600">Sync Results</h3>
+                                <h3 className="text-[10px] uppercase tracking-[0.3em] font-display text-gray-600">Results</h3>
                                 <div className="space-y-6">
                                     {results.length > 0 ? results.map((result) => (
                                         <Link
