@@ -130,14 +130,6 @@ export default function GlobalPlayer({ playlistUrl }: { playlistUrl: string }) {
                         <div id="spotify-iframe" ref={containerRef} className="block w-full"></div>
                     </div>
 
-                    {/* Left Title Label */}
-                    <div className="absolute top-0 left-4 h-full flex items-center z-[110] pointer-events-none opacity-50 hidden md:flex">
-                        <div className="flex items-center gap-2 px-3 py-1 bg-black/40 rounded-full border border-white/5 backdrop-blur-md">
-                            <Globe2 size={10} className="text-accent-green" />
-                            <span className="text-[9px] uppercase tracking-widest text-white font-display">VOXO Official Selection</span>
-                        </div>
-                    </div>
-
                     {/* Close Button UI (Right Side) */}
                     <div className="absolute top-0 right-0 h-full w-24 bg-gradient-to-l from-[#121212] via-[#121212]/90 to-transparent z-[110] flex items-center justify-end pr-4 pointer-events-none">
                         <button
@@ -150,31 +142,38 @@ export default function GlobalPlayer({ playlistUrl }: { playlistUrl: string }) {
                     </div>
 
                     {/* Central Custom Controls Overlay */}
-                    {/* This covers the center of the player and intercepts clicks to prevent the iframe from handling them. */}
-                    <div className="absolute inset-x-0 top-0 h-full z-[120] flex items-center justify-center pointer-events-none">
+                    {/* Positioned slightly over center to prevent overlap with the thin playback bar at the bottom */}
+                    <div className="absolute inset-x-0 top-[6px] z-[120] flex justify-center pointer-events-none">
                         {/* Container that catches pointer events */}
-                        <div className="flex items-center gap-6 bg-black/40 backdrop-blur-md border border-white/10 px-6 py-2 rounded-full shadow-2xl pointer-events-auto transition-all hover:bg-black/60 hover:scale-105 duration-300">
-                            {/* Previous Track (Visual only unless premium API is used, but gives a complete look) */}
+                        <div className="relative flex items-center gap-5 bg-black/70 backdrop-blur-md border border-white/10 px-5 py-1.5 rounded-full shadow-2xl pointer-events-auto transition-all hover:bg-black/90 hover:scale-105 duration-300">
+
+                            {/* Left Title Label - Attached to the left of the control block to avoid overlapping song title */}
+                            <div className="absolute right-[calc(100%+12px)] top-1/2 -translate-y-1/2 hidden md:flex items-center gap-2 px-3 py-1 bg-black/50 rounded-full border border-white/5 backdrop-blur-md pointer-events-none whitespace-nowrap">
+                                <Globe2 size={10} className="text-accent-green" />
+                                <span className="text-[9px] uppercase tracking-widest text-white/70 font-display">VOXO Official Selection</span>
+                            </div>
+
+                            {/* Previous Track */}
                             <button className="text-gray-400 hover:text-white transition-colors p-1" title="Previous">
-                                <SkipBack size={16} fill="currentColor" />
+                                <SkipBack size={14} fill="currentColor" />
                             </button>
 
                             {/* Stop Button (Seek 0 + Pause) */}
                             <button onClick={stopPlay} className="text-gray-400 hover:text-white transition-colors p-1" title="Stop">
-                                <Square size={14} fill="currentColor" />
+                                <Square size={13} fill="currentColor" />
                             </button>
 
                             {/* Play/Pause Main Button */}
                             <button
                                 onClick={togglePlay}
-                                className="w-10 h-10 flex items-center justify-center bg-white text-black rounded-full hover:scale-105 transition-transform"
+                                className="w-8 h-8 flex items-center justify-center bg-white text-black rounded-full hover:scale-105 transition-transform"
                             >
-                                {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-1" />}
+                                {isPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" className="ml-0.5" />}
                             </button>
 
                             {/* Next Track */}
                             <button className="text-gray-400 hover:text-white transition-colors p-1" title="Next">
-                                <SkipForward size={16} fill="currentColor" />
+                                <SkipForward size={14} fill="currentColor" />
                             </button>
                         </div>
                     </div>
