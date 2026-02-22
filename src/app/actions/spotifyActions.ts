@@ -3,40 +3,6 @@
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// PRE-DEFINED PREMIUM DATA: VOXYN
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const VOXY_STATIC_DATA = {
-    name: "Voxyn",
-    followers: 128450,
-    genres: ["AI Pop", "Cyber-Vocal", "Electronic"],
-    image: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=1000&auto=format&fit=crop",
-    secondary_image: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=1000&auto=format&fit=crop",
-    popularity: 92,
-    external_url: "https://open.spotify.com/artist/5rA9ZtIDl4KshP9N39pD8N",
-    topTracks: [
-        { id: "1", name: "Until It Stops", duration: "3:17" },
-        { id: "2", name: "Sync Mode", duration: "2:45" },
-        { id: "3", name: "Default Error", duration: "4:02" }
-    ],
-    latestReleases: [
-        {
-            id: "a1",
-            name: "[Default]",
-            release_date: "2024-02-21",
-            image: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=500&auto=format&fit=crop",
-            type: "album"
-        },
-        {
-            id: "a2",
-            name: "Pulse Signal",
-            release_date: "2024-01-15",
-            image: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=500&auto=format&fit=crop",
-            type: "single"
-        }
-    ]
-};
-
 async function getAccessToken() {
     if (!CLIENT_ID || !CLIENT_SECRET) return null;
     try {
@@ -58,31 +24,36 @@ async function getAccessToken() {
 }
 
 /**
- * Resilient Artist Fetch: Fails gracefully on sub-requests (like albums)
+ * Resilient Artist Fetch: Omit sub-info if it fails, but fail entirely if main info fails.
  */
 async function getArtistById(artistId: string, fetchOptions: RequestInit) {
     try {
-        // Step 1: Crucial Artist Info
+        // Step 1: Main Artist Info (Required)
         const artistRes = await fetch(`https://api.spotify.com/v1/artists/${artistId}`, fetchOptions);
 
         if (!artistRes.ok) {
-            console.error(`VOXO_DEBUG: Artist info fetch failed (${artistRes.status})`);
-            return null;
+            const errBody = await artistRes.text();
+            return { error: `Artist fetch failed (${artistRes.status}): ${errBody.substring(0, 50)}` };
         }
 
         const artistData = await artistRes.json();
 
-        // Step 2: Optional Sub-info (Albums) - Don't fail the whole thing if this hits 403
-        let albumsData = { items: [] };
+        // Step 2: Optional Sub-info (Albums) - Omit if failed
+        let latestReleases = [];
         try {
             const albumsRes = await fetch(`https://api.spotify.com/v1/artists/${artistId}/albums?limit=5&include_groups=album,single&market=US`, fetchOptions);
             if (albumsRes.ok) {
-                albumsData = await albumsRes.json();
-            } else {
-                console.warn(`VOXO_DEBUG: Albums fetch failed (${albumsRes.status}) - Proceeding with artist info only`);
+                const albumsData = await albumsRes.json();
+                latestReleases = (albumsData.items || []).slice(0, 3).map((a: any) => ({
+                    id: a.id,
+                    name: a.name,
+                    release_date: a.release_date,
+                    image: a.images?.[0]?.url,
+                    type: a.album_group || a.album_type
+                }));
             }
         } catch (subErr) {
-            console.warn("VOXO_DEBUG: Optional album fetch exception", subErr);
+            console.warn("Sub-fetch failed, omitting latest releases.");
         }
 
         return {
@@ -94,17 +65,10 @@ async function getArtistById(artistId: string, fetchOptions: RequestInit) {
             popularity: artistData.popularity,
             external_url: artistData.external_urls?.spotify || `https://open.spotify.com/artist/${artistId}`,
             topTracks: [],
-            latestReleases: (albumsData.items || []).slice(0, 3).map((a: any) => ({
-                id: a.id,
-                name: a.name,
-                release_date: a.release_date,
-                image: a.images?.[0]?.url,
-                type: a.album_group || a.album_type
-            }))
+            latestReleases
         };
-    } catch (e) {
-        console.error("VOXO_SYSTEM: Artist fetch exception", e);
-        return null;
+    } catch (e: any) {
+        return { error: `Network exception: ${e.message}` };
     }
 }
 
@@ -127,34 +91,21 @@ export async function getArtistStats(
     artistName?: string,
     artistSpotifyId?: string
 ) {
-    const isVoxyn = artistName?.toLowerCase().includes('voxyn') ||
-        artistSpotifyId === '5rA9ZtIDl4KshP9N39pD8N';
-
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // RULE 1: VOXYN ALWAYS LOOKS PREMIUM
-    // If the API fails or if it's explicitly her, return static first
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
     try {
         const token = await getAccessToken();
-
-        // If token fails, only Voxyn survives via static data
-        if (!token) {
-            return isVoxyn ? VOXY_STATIC_DATA : { error: "Sync failed: API Authentication error." };
-        }
+        if (!token) return { error: "Authentication failed: Check Spotify credentials." };
 
         const fetchOptions = {
             headers: { Authorization: `Bearer ${token}` },
             cache: 'no-store' as RequestInit['cache']
         };
 
-        // 1. Path: Direct Artist ID (Priority)
+        // 1. Priority: Manual Artist ID
         if (artistSpotifyId?.trim()) {
-            const result = await getArtistById(artistSpotifyId.trim(), fetchOptions);
-            if (result) return result;
+            return await getArtistById(artistSpotifyId.trim(), fetchOptions);
         }
 
-        // 2. Path: Link Resolution (Auto-parsing)
+        // 2. Secondary: Auto-resolve from Audio Link
         const parsed = parseSpotifyLink(uriOrUrl);
         if (parsed) {
             let targetId = parsed.type === 'artist' ? parsed.id : null;
@@ -168,19 +119,13 @@ export async function getArtistStats(
             }
 
             if (targetId) {
-                const result = await getArtistById(targetId, fetchOptions);
-                if (result) return result;
+                return await getArtistById(targetId, fetchOptions);
             }
         }
 
-        // 3. Last Resort Fallback (Important for Voxyn if API call above fails)
-        if (isVoxyn) return VOXY_STATIC_DATA;
-
-        // Generic error if everything failed for other artists
-        return { error: "SIGNAL_LOST: Verification failed. Enter manual ID in Admin." };
+        return { error: "DATA_UNAVAILABLE: No ID or resolvable link provided." };
 
     } catch (error: any) {
-        console.error("VOXO_SYSTEM: getArtistStats Critical Crash", error);
-        return isVoxyn ? VOXY_STATIC_DATA : { error: "System synchronization failure." };
+        return { error: `Server exception: ${error.message}` };
     }
 }

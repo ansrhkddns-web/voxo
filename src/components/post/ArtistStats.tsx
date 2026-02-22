@@ -31,23 +31,10 @@ interface ArtistStatsProps {
 }
 
 export default function ArtistStats({ data }: ArtistStatsProps) {
-    if (!data || data.error) return (
-        <div className="relative overflow-hidden bg-gray-950/40 border border-white/5 backdrop-blur-sm p-8 group">
-            {/* Scanline Effect Overlay */}
-            <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
-
-            <h3 className="text-white text-[10px] uppercase tracking-[0.5em] font-display mb-6 flex items-center gap-4">
-                <span className="w-8 h-px bg-red-500/50 animate-pulse" />
-                Signal Offline
-            </h3>
-            <p className="text-[9px] leading-relaxed uppercase tracking-[0.3em] text-gray-500 font-display max-w-[200px]">
-                {data?.error || "Artist data stream could not be synchronized."}
-            </p>
-            <div className="mt-8 pt-6 border-t border-white/5">
-                <span className="text-[8px] text-gray-700 uppercase tracking-widest font-mono">Status: Awaiting Manual Input</span>
-            </div>
-        </div>
-    );
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // IF ERROR OR NO DATA, RENDER NOTHING (As requested)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if (!data || data.error) return null;
 
     const formatFollowers = (num: number) => {
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
