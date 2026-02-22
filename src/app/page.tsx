@@ -56,28 +56,6 @@ export default async function Home() {
               <p className="text-[10px] uppercase tracking-[0.4em] text-gray-700">Archives are currently empty. Awaiting signal.</p>
             </div>
           )}
-
-          {publishedPosts.length > 0 && (
-            <article className="group cursor-pointer col-span-1 md:col-span-2 lg:col-span-2">
-              <div className="relative aspect-[16/9] overflow-hidden bg-gray-900 mb-6">
-                <img
-                  alt="Wide shot of festival crowd lasers"
-                  className="w-full h-full object-cover filter grayscale brightness-75 group-hover:scale-105 transition-transform duration-700 ease-out opacity-80 group-hover:opacity-100"
-                  src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?q=80&w=2070&auto=format&fit=crop"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
-                <span className="absolute top-4 left-4 text-[9px] uppercase tracking-[0.2em] text-white bg-black/50 px-2 py-1 backdrop-blur-sm font-display">Feature</span>
-                <div className="absolute bottom-8 left-8 max-w-lg">
-                  <h3 className="font-display text-4xl font-light tracking-wide text-white mb-2 group-hover:text-gray-200 transition-colors uppercase">
-                    The Architecture of Sound
-                  </h3>
-                  <p className="text-xs font-light text-gray-300 leading-relaxed tracking-wide hidden md:block italic">
-                    Exploring the spatial dimensions of modern electronic production.
-                  </p>
-                </div>
-              </div>
-            </article>
-          )}
         </div>
 
         <div className="flex justify-center mt-24">
