@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import { Save, Loader2, Globe, Lock, Bell, Database } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
@@ -17,12 +17,25 @@ export default function AdminSettings() {
         maintenanceMode: false,
     });
 
+    // Load from local storage on mount
+    useEffect(() => {
+        const savedSettings = localStorage.getItem('voxoAdminSettings');
+        if (savedSettings) {
+            try {
+                setSettings(JSON.parse(savedSettings));
+            } catch (e) {
+                console.error("Failed to parse settings", e);
+            }
+        }
+    }, []);
+
     const handleSave = async () => {
         setIsSaving(true);
         // Simulate network delay
         await new Promise(resolve => setTimeout(resolve, 1500));
+        localStorage.setItem('voxoAdminSettings', JSON.stringify(settings));
         setIsSaving(false);
-        toast.success('Configuration metrics synchronized');
+        toast.success('설정이 성공적으로 저장되었습니다.');
     };
 
     return (
@@ -44,24 +57,24 @@ export default function AdminSettings() {
                         className="text-[10px] uppercase tracking-[0.2em] font-display bg-white text-black px-8 py-2.5 hover:bg-accent-green transition-all flex items-center gap-2 font-bold"
                     >
                         {isSaving ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
-                        {isSaving ? 'Synchronizing...' : 'Save Configuration'}
+                        {isSaving ? '저장 중...' : '설정 저장'}
                     </button>
                 </header>
 
                 <div className="p-12 max-w-5xl mx-auto mt-8">
                     <div className="mb-16">
-                        <h1 className="text-4xl font-display font-light tracking-widest uppercase mb-4 text-white">Platform Settings</h1>
-                        <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500 font-display leading-relaxed">Modify core system parameters and integrations.<br />Changes require brief recalibration of the delivery network.</p>
+                        <h1 className="text-4xl font-display font-light tracking-widest uppercase mb-4 text-white">플랫폼 설정</h1>
+                        <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500 font-display leading-relaxed">시스템의 핵심 파라미터와 연동 설정을 수정합니다.<br />변경 사항은 네트워크 상에 일시적인 재조정을 유발할 수 있습니다.</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-16">
                         {/* Settings Nav */}
                         <aside className="space-y-2">
                             {[
-                                { name: 'General', icon: Globe, active: true },
-                                { name: 'Security', icon: Lock, active: false },
-                                { name: 'Integrations', icon: Database, active: false },
-                                { name: 'Notifications', icon: Bell, active: false },
+                                { name: '일반 설정', icon: Globe, active: true },
+                                { name: '보안', icon: Lock, active: false },
+                                { name: '연동 설정', icon: Database, active: false },
+                                { name: '알림', icon: Bell, active: false },
                             ].map(item => (
                                 <button key={item.name} className={`w-full flex items-center gap-3 px-4 py-3 text-[10px] uppercase tracking-[0.2em] font-display transition-all ${item.active ? 'bg-white/5 text-accent-green border-l border-accent-green' : 'text-gray-500 hover:text-white hover:bg-white/[0.02]'}`}>
                                     <item.icon size={14} />
@@ -74,11 +87,11 @@ export default function AdminSettings() {
                         <div className="space-y-16">
                             {/* Section 1 */}
                             <section className="space-y-8">
-                                <h2 className="text-[10px] uppercase tracking-[0.4em] text-white font-display border-b border-white/10 pb-4">Global Identity</h2>
+                                <h2 className="text-[10px] uppercase tracking-[0.4em] text-white font-display border-b border-white/10 pb-4">기본 정보</h2>
 
                                 <div className="space-y-8">
                                     <div className="group">
-                                        <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">Platform Designation</label>
+                                        <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">서비스 이름</label>
                                         <input
                                             type="text"
                                             value={settings.siteName}
@@ -88,7 +101,7 @@ export default function AdminSettings() {
                                     </div>
 
                                     <div className="group">
-                                        <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">Meta Description</label>
+                                        <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">사이트 설명</label>
                                         <textarea
                                             value={settings.siteDescription}
                                             onChange={e => setSettings({ ...settings, siteDescription: e.target.value })}
@@ -98,7 +111,7 @@ export default function AdminSettings() {
                                     </div>
 
                                     <div className="group">
-                                        <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">Primary Comm Channel</label>
+                                        <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">대표 이메일</label>
                                         <input
                                             type="email"
                                             value={settings.contactEmail}
@@ -111,11 +124,11 @@ export default function AdminSettings() {
 
                             {/* Section 2 */}
                             <section className="space-y-8">
-                                <h2 className="text-[10px] uppercase tracking-[0.4em] text-gray-500 font-display border-b border-white/5 pb-4">External APIs</h2>
+                                <h2 className="text-[10px] uppercase tracking-[0.4em] text-gray-500 font-display border-b border-white/5 pb-4">외부 연동</h2>
 
                                 <div className="space-y-8">
                                     <div className="group">
-                                        <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">Spotify Client Token <span className="text-red-500/50 float-right">ENCRYPTED</span></label>
+                                        <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">스포티파이 API 토큰 <span className="text-red-500/50 float-right">암호화됨</span></label>
                                         <div className="relative">
                                             <input
                                                 type="text"
@@ -124,7 +137,7 @@ export default function AdminSettings() {
                                                 className="w-full bg-gray-950/50 border border-white/5 py-4 px-4 text-gray-500 font-mono text-sm focus:outline-none cursor-not-allowed"
                                             />
                                             <button className="absolute right-4 top-1/2 -translate-y-1/2 text-[9px] uppercase tracking-widest text-accent-green hover:text-white transition-colors font-display">
-                                                Update Key
+                                                키 교체
                                             </button>
                                         </div>
                                     </div>
@@ -133,12 +146,12 @@ export default function AdminSettings() {
 
                             {/* Section 3 */}
                             <section className="space-y-8">
-                                <h2 className="text-[10px] uppercase tracking-[0.4em] text-red-500/50 font-display border-b border-red-500/10 pb-4">Danger Zone</h2>
+                                <h2 className="text-[10px] uppercase tracking-[0.4em] text-red-500/50 font-display border-b border-red-500/10 pb-4">위험 구역</h2>
 
                                 <div className="border border-red-500/10 bg-red-500/[0.02] p-8 flex items-center justify-between">
                                     <div>
-                                        <p className="text-white text-sm font-display tracking-widest uppercase mb-2">Maintenance Override</p>
-                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">Temporarily restrict front-end access to all public nodes.</p>
+                                        <p className="text-white text-sm font-display tracking-widest uppercase mb-2">점검 모드 작동</p>
+                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">일반 방문자의 프론트엔드 퍼블릭 접근을 일시적으로 전면 차단합니다.</p>
                                     </div>
                                     <button
                                         onClick={() => setSettings({ ...settings, maintenanceMode: !settings.maintenanceMode })}
