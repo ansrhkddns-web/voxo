@@ -21,15 +21,18 @@ interface ArtistStatsProps {
 
 export default function ArtistStats({ data }: ArtistStatsProps) {
     if (!data || data.error) return (
-        <div className="bg-red-950/20 border border-red-500/20 p-6 group">
-            <h3 className="text-red-400 text-[10px] uppercase tracking-[0.4em] font-display mb-4 flex items-center gap-3">
-                <span className="w-4 h-px bg-red-500" />
-                Signal Error
+        <div className="bg-red-600 border-2 border-white p-6 z-50 relative">
+            <h3 className="text-white text-[12px] font-bold uppercase tracking-[0.4em] mb-4 flex items-center gap-3">
+                <span className="w-4 h-1 bg-white" />
+                CRITICAL SIGNAL ERROR
             </h3>
-            <p className="text-[9px] uppercase tracking-[0.2em] text-red-500/70 font-display">
-                {data?.error || "Artist data stream could not be synchronized."}
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-white">
+                ERROR: {data?.error || "DATA IS NULL/UNDEFINED"}
                 <br /><br />
-                TIP: Try hard-refresh (Ctrl+Shift+R) and check server terminal.
+                CHECK LIST:<br />
+                1. .env.local KEYS (Client ID/Secret)<br />
+                2. ARTIST NAME IN POST (Is it empty?)<br />
+                3. RESTART SERVER (npm run dev)
             </p>
         </div>
     );
