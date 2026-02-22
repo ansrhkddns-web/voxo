@@ -22,24 +22,29 @@ async function scrapeSpotifyStats(url: string, type: 'artist' | 'album' | 'track
         if (!response.ok) return null;
         const html = await response.text();
 
-        // 1. Language Agnostic Number Extraction (Followers & Listeners)
-        // Match numbers like 8,244 or 1.2M followed by common listener/follower words in various languages
-        const extractNumber = (html: string, pattern: RegExp) => {
-            const match = html.match(pattern);
+        // 1. Language Agnostic & Meta Tag Number Extraction (Followers & Listeners)
+        const extractNumber = (text: string, pattern: RegExp) => {
+            const match = text.match(pattern);
             if (!match) return 0;
-            const numStr = match[1].replace(/,/g, '').replace(/\./g, '');
-            let num = parseInt(numStr);
-            if (match[1].toLowerCase().endsWith('k')) num *= 1000;
-            if (match[1].toLowerCase().endsWith('m')) num *= 1000000;
-            return isNaN(num) ? 0 : num;
+            const numStr = match[1].replace(/,/g, '');
+            let num = parseFloat(numStr);
+            const suffix = match[2]?.toLowerCase() || '';
+            if (suffix === 'k') num *= 1000;
+            if (suffix === 'm') num *= 1000000;
+            return isNaN(num) ? 0 : Math.floor(num);
         };
 
-        // Monthly Listeners: Look for numbers followed by '월별 리스너', 'monthly listeners', 'oyentes mensuales', etc.
-        // We match digits and commas/dots, then a space, then any character up to 20 chars, then "listener" or "리스너"
-        let monthly_listeners = extractNumber(html, /([\d,.]+)\s*(?:monthly listeners|월별 리스너|oyentes mensuales|auditeurs mensuels|monatliche hörer)/i);
+        // Primary: Look for numbers with optional K, M suffixes
+        let monthly_listeners = extractNumber(html, /([\d,.]+)\s*([KkMm])?\s*(?:monthly listeners|월별 리스너|oyentes mensuales|auditeurs mensuels|monatliche hörer|リスナー|리스너)/i);
+        let followers = extractNumber(html, /([\d,.]+)\s*([KkMm])?\s*(?:followers|팔로워|seguidores|abonnés|follower|フォロワー)/i);
 
-        // Followers: Similar logic
-        let followers = extractNumber(html, /([\d,.]+)\s*(?:followers|팔로워|seguidores|abonnés|follower)/i);
+        // Fallback: Check og:description meta tag (highly reliable cross-language standard format: "Artist · 2.5M monthly listeners.")
+        const ogDescMatch = html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i);
+        if (ogDescMatch) {
+            const desc = ogDescMatch[1];
+            if (!monthly_listeners) monthly_listeners = extractNumber(desc, /([\d,.]+)\s*([KkMm])?\s*(?:monthly|월별|mensuales|mensuels|monatliche|リスナー)/i);
+            if (!followers) followers = extractNumber(desc, /([\d,.]+)\s*([KkMm])?\s*(?:followers|팔로워|seguidores|abonnés|follower|フォロワー)/i);
+        }
 
         // 2. Identify Artist Name & Album Name (Cleaned)
         let name = "";

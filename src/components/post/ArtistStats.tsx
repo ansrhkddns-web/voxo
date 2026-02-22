@@ -21,10 +21,16 @@ interface ArtistStatsProps {
 }
 
 export default function ArtistStats({ data }: ArtistStatsProps) {
-    // Graceful check: If no data or error without name, hide component
     if (!data || (data.error && !data.name)) {
         console.log("VOXO_SPOTIFY: Signal Lost ->", data?.error);
-        return null;
+        return (
+            <div className="bg-gray-950/20 border border-white/5 overflow-hidden font-display relative group p-10 flex flex-col items-center justify-center min-h-[360px] text-center">
+                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-red-500/30 to-transparent" />
+                <span className="w-12 h-px bg-red-500/30 mb-8" />
+                <p className="text-[10px] uppercase tracking-[0.4em] text-red-500/50 font-display mb-4">Signal Lost</p>
+                <p className="text-[9px] uppercase tracking-widest text-gray-600 leading-relaxed max-w-[200px]">The neural link to the artist archive could not be established. Please try recalibrating later.</p>
+            </div>
+        );
     }
 
     const formatNumber = (num: number) => {
