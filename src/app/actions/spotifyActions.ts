@@ -54,7 +54,7 @@ async function scrapeSpotifyStats(url: string, type: 'artist' | 'album' | 'track
         let tracks: any[] = [];
 
         // Try Schema.org JSON-LD (often present on album/track pages)
-        const jsonLdMatch = html.match(/<script type="application\/ld\+json">(.*?)<\/script>/s);
+        const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
         if (jsonLdMatch) {
             try {
                 const data = JSON.parse(jsonLdMatch[1]);
@@ -94,10 +94,10 @@ async function scrapeSpotifyStats(url: string, type: 'artist' | 'album' | 'track
             if (artistLinkMatch) {
                 const artistStats = await scrapeSpotifyStats(artistLinkMatch[0], 'artist');
                 if (artistStats) {
-                    // Merit: Use the deeper scrape for audience numbers but keep current tracks
                     monthly_listeners = artistStats.monthly_listeners || monthly_listeners;
                     followers = artistStats.followers || followers;
-                    if (type === 'artist') name = artistStats.name;
+                    // If we were looking for an artist name but started with an album link
+                    if (name === "" || name.includes("|")) name = artistStats.name;
                 }
             }
         }

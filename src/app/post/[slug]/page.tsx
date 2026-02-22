@@ -55,7 +55,8 @@ export default async function PostDetail({ params }: { params: any }) {
         ? await getArtistStats(post.spotify_uri || '', post.artist_name || '', post.spotify_artist_id || '')
         : null;
 
-    console.log(`VOXO_POST_DEBUG: Fetch Result ->`, artistStats ? (artistStats.error ? `ERROR: ${artistStats.error}` : `SUCCESS: ${artistStats.name}`) : 'NULL (Skipped)');
+    const artistStatsData = artistStats as any;
+    console.log(`VOXO_POST_DEBUG: Fetch Result ->`, artistStatsData ? (artistStatsData.error ? `ERROR: ${artistStatsData.error}` : `SUCCESS: ${artistStatsData.name}`) : 'NULL (Skipped)');
 
     const formattedDate = new Date(post.created_at).toLocaleDateString('en-US', {
         month: 'short',
