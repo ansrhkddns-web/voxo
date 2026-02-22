@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import AdminSidebar from "@/components/admin/AdminSidebar";
-import { Save, Loader2, Globe, Lock, Bell, Database, Type } from 'lucide-react';
+import { Save, Loader2, Globe, Lock, Bell, Database, Type, Music } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
+import { getSetting, updateSetting } from '@/app/actions/settingsActions';
 
 const TRANSLATIONS = {
     en: {
@@ -32,6 +33,8 @@ const TRANSLATIONS = {
         apisSpotify: 'Spotify Client Token',
         apisEncrypted: 'ENCRYPTED',
         apisUpdateBtn: 'Update Key',
+        apisGlobalPlaylist: 'Global Spotify Playlist URL',
+        apisGlobalPlaylistDesc: 'Enter a Spotify Track/Playlist/Album URL to stream globally on the bottom bar.',
 
         // Security Tab
         dangerZone: 'Danger Zone',
@@ -68,6 +71,8 @@ const TRANSLATIONS = {
         apisSpotify: '스포티파이 API 토큰',
         apisEncrypted: '암호화됨',
         apisUpdateBtn: '키 교체',
+        apisGlobalPlaylist: '글로벌 라디오 플레이리스트 URL',
+        apisGlobalPlaylistDesc: '홈페이지 하단 바 전역에서 재생할 스포티파이 트랙/플레이리스트/앨범 URL을 입력하세요.',
 
         // Security Tab
         dangerZone: '위험 구역',
@@ -94,33 +99,51 @@ export default function AdminSettings() {
         siteDescription: 'Premium Curated Music Experience',
         contactEmail: 'hello@voxo.edit',
         spotifyClientId: '••••••••••••••••••••••••',
+        globalPlaylist: '',
         maintenanceMode: false,
     });
 
     useEffect(() => {
+        // Load localStorage
         const savedSettings = localStorage.getItem('voxoAdminSettings');
         if (savedSettings) {
             try {
                 // eslint-disable-next-line
-                setSettings(JSON.parse(savedSettings));
+                setSettings(prev => ({ ...prev, ...JSON.parse(savedSettings) }));
             } catch (e) {
                 console.error("Failed to parse settings", e);
             }
         }
+
+        // Load DB settings
+        const loadDbSettings = async () => {
+            const playlistUrl = await getSetting('global_spotify_playlist');
+            if (playlistUrl) {
+                setSettings(prev => ({ ...prev, globalPlaylist: playlistUrl }));
+            }
+        };
+        loadDbSettings();
     }, []);
 
     const t = TRANSLATIONS[language as keyof typeof TRANSLATIONS] || TRANSLATIONS.en;
 
     const handleSave = async () => {
         setIsSaving(true);
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Simulate network delay for local storage properties
+        await new Promise(resolve => setTimeout(resolve, 800));
 
         const settingsToSave = { ...settings, language };
         localStorage.setItem('voxoAdminSettings', JSON.stringify(settingsToSave));
 
+        // Save DB properties
+        const res = await updateSetting('global_spotify_playlist', settings.globalPlaylist);
+
         setIsSaving(false);
-        toast.success(t.saveSuccess);
+        if (res.success) {
+            toast.success(t.saveSuccess);
+        } else {
+            toast.error('Local settings saved, but failed to update Global Playlist in DB.');
+        }
     };
 
     const tabs = [
@@ -277,6 +300,21 @@ export default function AdminSettings() {
                                                     {t.apisUpdateBtn}
                                                 </button>
                                             </div>
+                                        </div>
+
+                                        <div className="group mt-12">
+                                            <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-2 font-display group-focus-within:text-accent-green transition-colors flex items-center gap-2">
+                                                <Music size={12} className="text-accent-green" />
+                                                {t.apisGlobalPlaylist}
+                                            </label>
+                                            <p className="text-[10px] text-gray-500 mb-4">{t.apisGlobalPlaylistDesc}</p>
+                                            <input
+                                                type="text"
+                                                value={settings.globalPlaylist || ''}
+                                                onChange={e => setSettings({ ...settings, globalPlaylist: e.target.value })}
+                                                placeholder="https://open.spotify.com/playlist/..."
+                                                className="w-full bg-transparent border-b border-white/10 py-3 text-white font-mono text-sm focus:outline-none focus:border-accent-green transition-colors placeholder:text-gray-700"
+                                            />
                                         </div>
                                     </div>
 

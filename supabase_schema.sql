@@ -62,3 +62,18 @@ create policy "Only admins can manage subscribers" on subscribers for all
 -- 5. Storage Buckets (Images)
 -- Run these in Supabase Dashboard:
 -- insert into storage.buckets (id, name, public) values ('images', 'images', true);
+
+-- 6. Site Settings (Global Key-Value Store)
+create table site_settings (
+  id uuid default gen_random_uuid() primary key,
+  setting_key text not null unique,
+  setting_value text,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- RLS for Site Settings
+alter table site_settings enable row level security;
+create policy "Settings are viewable by everyone" on site_settings for select using (true);
+create policy "Settings are manageable by admins" on site_settings for all 
+  using (auth.role() = 'authenticated');
+
