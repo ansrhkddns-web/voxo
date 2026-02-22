@@ -60,20 +60,20 @@ export default function SpotifyEmbed({ uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvE
 
                     <div className={
                         isSticky && !dismissed
-                            ? "fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[90%] md:w-[420px] shadow-2xl shadow-black/80 animate-fade-in-up"
+                            ? "fixed bottom-0 left-0 w-full z-[100] bg-black/80 backdrop-blur-xl border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-fade-in-up"
                             : "relative w-full opacity-100"
                     }>
                         {isSticky && !dismissed && (
                             <button
                                 onClick={() => setDismissed(true)}
-                                className="absolute -top-3 -right-3 z-50 bg-gray-900 border border-white/20 text-gray-400 hover:text-white rounded-full p-1 shadow-lg hover:scale-110 transition-transform"
-                                title="Close Minimized Player"
+                                className="absolute -top-4 right-4 z-[110] bg-black/80 border border-white/20 text-gray-400 hover:text-white rounded-full p-1.5 shadow-lg hover:scale-110 transition-transform"
+                                title="Close Player"
                             >
-                                <X size={14} />
+                                <X size={14} strokeWidth={1.5} />
                             </button>
                         )}
                         <iframe
-                            style={{ borderRadius: '12px' }}
+                            style={{ borderRadius: isSticky && !dismissed ? '0px' : '12px' }}
                             src={embedUrl}
                             width="100%"
                             height={isSticky && !dismissed ? 152 : embedHeight}
@@ -81,7 +81,7 @@ export default function SpotifyEmbed({ uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvE
                             allowFullScreen={true}
                             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                             loading="lazy"
-                            className={`relative z-10 transition-all duration-700 ${isSticky && !dismissed ? 'border border-white/10' : 'filter grayscale group-hover:grayscale-0 shadow-2xl shadow-black/40'}`}
+                            className={`relative z-10 transition-all duration-700 ${isSticky && !dismissed ? '' : 'filter grayscale group-hover:grayscale-0 shadow-2xl shadow-black/40'}`}
                         />
                         {!isSticky && (
                             <div className="absolute -inset-4 bg-accent-green/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
