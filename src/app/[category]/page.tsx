@@ -8,7 +8,7 @@ import NewsletterForm from "@/components/home/NewsletterForm";
 import { getPosts } from '@/app/actions/postActions';
 import { notFound } from 'next/navigation';
 
-const validCategories = ['news', 'reviews', 'features', 'editors-pick', 'archives'];
+const validCategories = ['news', 'reviews', 'features', 'editors-pick', 'archives', 'focus', 'cover-story'];
 
 export default async function CategoryPage({ params }: { params: { category: string } | Promise<{ category: string }> }) {
     const resolvedParams = params instanceof Promise ? await params : params;

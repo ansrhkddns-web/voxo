@@ -17,10 +17,12 @@ export default async function Home() {
   const posts = await getPosts();
   const publishedPosts = posts?.filter((p: any) => p.is_published) || [];
 
+  const latestCoverStory = publishedPosts.find((p: any) => p.categories?.name?.toLowerCase().replace(/'/g, '').replace(/\s+/g, '-') === 'cover-story');
+
   return (
     <main className="flex min-h-screen flex-col bg-background-dark font-body select-none">
       <Navbar />
-      <Hero />
+      <Hero post={latestCoverStory} />
       <Marquee />
 
       {/* Latest Stories Section */}
