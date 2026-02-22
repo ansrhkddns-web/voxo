@@ -49,16 +49,18 @@ export default function ArtistStats({ data }: ArtistStatsProps) {
                 </h3>
 
                 <div className="space-y-6">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <p className="text-gray-400 text-[10px] font-display uppercase tracking-[0.3em] mb-3">Audience Reach</p>
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-3xl font-display font-light text-white tracking-tighter">{formatNumber(data.followers || 0)}</span>
-                                <span className="text-accent-green text-[10px] font-display uppercase tracking-widest flex items-center">
-                                    <TrendingUp size={12} className="mr-1" /> Followers
-                                </span>
+                    <div className={`grid ${(data.followers || 0) > 0 ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                        {(data.followers || 0) > 0 && (
+                            <div>
+                                <p className="text-gray-400 text-[10px] font-display uppercase tracking-[0.3em] mb-3">Audience Reach</p>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-3xl font-display font-light text-white tracking-tighter">{formatNumber(data.followers || 0)}</span>
+                                    <span className="text-accent-green text-[10px] font-display uppercase tracking-widest flex items-center">
+                                        <TrendingUp size={12} className="mr-1" /> Followers
+                                    </span>
+                                </div>
                             </div>
-                        </div>
+                        )}
                         <div>
                             <p className="text-gray-400 text-[10px] font-display uppercase tracking-[0.3em] mb-3">Monthly Reach</p>
                             <div className="flex items-baseline gap-2">
@@ -70,26 +72,30 @@ export default function ArtistStats({ data }: ArtistStatsProps) {
                         </div>
                     </div>
 
-                    <div className="h-px w-full bg-white/5" />
+                    {data.topTracks && data.topTracks.length > 0 && (
+                        <>
+                            <div className="h-px w-full bg-white/5" />
 
-                    <div>
-                        <p className="text-gray-400 text-[10px] font-display uppercase tracking-[0.3em] mb-4">Top Transmissions</p>
-                        <ul className="space-y-4">
-                            {data.topTracks?.map((track, index) => (
-                                <li key={track.id} className="flex items-center justify-between group">
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-gray-600 text-[9px] font-mono group-hover:text-accent-green transition-colors">
-                                            {(index + 1).toString().padStart(2, '0')}
-                                        </span>
-                                        <span className="text-gray-300 text-[10px] uppercase tracking-widest group-hover:text-white transition-all">
-                                            {track.title}
-                                        </span>
-                                    </div>
-                                    <span className="text-gray-600 text-[9px] font-mono">{track.duration}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
+                            <div>
+                                <p className="text-gray-400 text-[10px] font-display uppercase tracking-[0.3em] mb-4">Top Transmissions</p>
+                                <ul className="space-y-4">
+                                    {data.topTracks.map((track, index) => (
+                                        <li key={track.id} className="flex items-center justify-between group">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-gray-600 text-[9px] font-mono group-hover:text-accent-green transition-colors">
+                                                    {(index + 1).toString().padStart(2, '0')}
+                                                </span>
+                                                <span className="text-gray-300 text-[10px] uppercase tracking-widest group-hover:text-white transition-all">
+                                                    {track.title}
+                                                </span>
+                                            </div>
+                                            <span className="text-gray-600 text-[9px] font-mono">{track.duration}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </>
+                    )}
 
                     <div className="h-px w-full bg-white/5" />
 

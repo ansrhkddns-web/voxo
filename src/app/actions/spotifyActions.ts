@@ -11,6 +11,34 @@ async function scrapeSpotifyStats(url: string, type: 'artist' | 'album' | 'track
     try {
         console.log(`VOXO_SCRAPER: Attempting robust rescue for [${url}]`);
 
+        // Intercept Track & Album links to get exact Artist URI via Embed Widget
+        if (type === 'album' || type === 'track') {
+            const idMatch = url.match(/(?:track|album)\/([a-zA-Z0-9]+)/);
+            if (idMatch) {
+                try {
+                    const embedRes = await fetch(`https://open.spotify.com/embed/${type}/${idMatch[1]}`, {
+                        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' },
+                        cache: 'no-store'
+                    });
+                    if (embedRes.ok) {
+                        const embedHtml = await embedRes.text();
+                        const nextDataMatch = embedHtml.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
+                        if (nextDataMatch) {
+                            const data = JSON.parse(nextDataMatch[1]);
+                            const artistUri = data.props?.pageProps?.state?.data?.entity?.artists?.[0]?.uri;
+                            if (artistUri) {
+                                const artistId = artistUri.split(':').pop();
+                                console.log(`VOXO_SCRAPER: Redirecting ${type} to artist -> ${artistId}`);
+                                return await scrapeSpotifyStats(`https://open.spotify.com/artist/${artistId}`, 'artist');
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.log(`VOXO_SCRAPER: Embed intercept failed`, err);
+                }
+            }
+        }
+
         const response = await fetch(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -93,23 +121,7 @@ async function scrapeSpotifyStats(url: string, type: 'artist' | 'album' | 'track
             }
         }
 
-        // 4. Album-to-Artist Redirection
-        if (type === 'album' || type === 'track') {
-            const artistLinkMatch = html.match(/https:\/\/open\.spotify\.com\/artist\/([a-zA-Z0-9]+)/);
-            if (artistLinkMatch) {
-                const artistStats = await scrapeSpotifyStats(artistLinkMatch[0], 'artist');
-                if (artistStats) {
-                    monthly_listeners = artistStats.monthly_listeners || monthly_listeners;
-                    followers = artistStats.followers || followers;
-                    // Inherit the artist's top tracks as they are more representative for the stats panel
-                    if (artistStats.topTracks && artistStats.topTracks.length > 0) {
-                        tracks = artistStats.topTracks;
-                    }
-                    // If we were looking for an artist name but started with an album link
-                    if (name === "" || name.includes("|")) name = artistStats.name;
-                }
-            }
-        }
+
 
         return {
             name,
