@@ -6,15 +6,23 @@ import { motion } from 'framer-motion';
 interface HeroProps {
     post?: {
         title: string;
-        excerpt: string;
+        excerpt?: string;
+        content?: string;
         cover_image: string;
         slug: string;
-    } | null;
+    } | null | any;
 }
 
 export default function Hero({ post }: HeroProps) {
     const title = post?.title || 'V O X Y N';
-    const subtitle = post?.excerpt || 'THE NEW SYNTH • REDEFINING BOUNDARIES';
+
+    let extractedExcerpt = '';
+    if (post?.content) {
+        const metaMatch = post.content.match(/<div id="voxo-metadata" data-excerpt="(.*?)"/);
+        if (metaMatch) extractedExcerpt = metaMatch[1].replace(/&quot;/g, '"');
+    }
+
+    const subtitle = post?.excerpt || extractedExcerpt || 'THE NEW SYNTH • REDEFINING BOUNDARIES';
     const bgImage = post?.cover_image || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBjO7KPUXt-RmJ7hVDcehFYap-aEc3LxZYZCqgxJkhkMgVddoikvox-8--Y-AqhJOV6_uHDQW79JGS9cnD6uHkvogxTLxF9ZwpoGg3Nfh8WKEIs6acJxqGcw-Wu_MBUSXBliEv7_gr6SnCioZ9oFvI6humJfvsWPF-BYSpuIXPkwwLCSuPBLsyExWfxpA9lx-wIf32LCXgroohCwmTrSJzXxYXu99pUj1_IvY3mXQj4xrvfrr-LsLZao80uhUzhVfLnt9SO3_gzjz3l';
     const postLink = post?.slug ? `/post/${post.slug}` : '#';
 
