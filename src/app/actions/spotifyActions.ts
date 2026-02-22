@@ -116,8 +116,9 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
         if (!artistId && artistName) {
             const searchTargets = [
                 artistName.trim(), // 1. Literal name
-                artistName.replace(/[!@#$%^&*()]/g, ' ').trim(), // 2. Cleaned name
-                artistName.split(/[ /]/)[0] // 3. First word/segment
+                artistName.split(' / ')[0].trim(), // 2. Split by slash (handling collab/thematic names)
+                artistName.replace(/[!@#$%^&*()]/g, ' ').trim(), // 3. Cleaned name
+                artistName.split(/[ /]/)[0] // 4. First word/segment
             ];
 
             for (const target of searchTargets) {
