@@ -137,9 +137,8 @@ export default async function PostDetail({ params }: { params: any }) {
                         </div>
                     )}
 
-                    {(post.spotify_uri || post.artist_name || post.spotify_artist_id) && (
-                        <ArtistStats data={artistStats} />
-                    )}
+                    {/* FORCED DIAGNOSTIC: Render even if metadata is missing to see the Error Box */}
+                    <ArtistStats data={artistStats || { error: "No metadata (URI/Name/ID) found in database for this post." }} />
 
                     <div className="space-y-8">
                         <div className="flex items-center gap-2">
