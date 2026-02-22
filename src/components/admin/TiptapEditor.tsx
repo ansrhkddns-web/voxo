@@ -15,7 +15,7 @@ import { TableCell } from '@tiptap/extension-table-cell';
 import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
 import { Typography } from '@tiptap/extension-typography';
-import { Extension, Mark, textblockTypeInputRule, markInputRule, nodeInputRule } from '@tiptap/core';
+import { Extension, Mark, textblockTypeInputRule, markInputRule, nodeInputRule, InputRule } from '@tiptap/core';
 import { Strike } from '@tiptap/extension-strike';
 import { Youtube } from '@tiptap/extension-youtube';
 import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
@@ -118,9 +118,24 @@ const VoxoBBCode = Extension.create({
             }),
 
             // BBCode Quote: [quote=author] text [/quote]
-            textblockTypeInputRule({
+            new InputRule({
                 find: /^\[quote=(.*?)\]\s*(.*)\s*\[\/quote\]$/,
-                type: this.editor.schema.nodes.blockquote,
+                handler: ({ state, range, match }) => {
+                    const author = match[1];
+                    const content = match[2];
+
+                    const blockquote = this.editor.schema.nodes.blockquote.create(null, [
+                        this.editor.schema.nodes.paragraph.create(null, [
+                            this.editor.schema.text(`${author} 님이 먼저 게시:`, [this.editor.schema.marks.bold.create()]),
+                        ]),
+                        this.editor.schema.nodes.paragraph.create(null, [
+                            this.editor.schema.text(content),
+                        ]),
+                    ]);
+
+                    state.tr.replaceWith(range.from, range.to, blockquote);
+                    return null;
+                },
             }),
 
             // BBCode Code Block: [code] ... [/code]
