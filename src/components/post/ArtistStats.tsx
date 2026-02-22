@@ -20,11 +20,14 @@ interface ArtistStatsProps {
 }
 
 export default function ArtistStats({ data }: ArtistStatsProps) {
-    // Graceful exit: If no data or error, don't show the noisy error box anymore
-    if (!data || data.error) {
+    // Graceful check for v3.2 Rescue Mode
+    if (!data || (data.error && !data.name)) {
         console.log("VOXO_SPOTIFY: Signal Lost ->", data?.error);
         return null;
     }
+
+    const isMock = (data as any).isMock || (data as any).is_mock;
+    const rescueActive = data.error?.includes("RESCUE");
 
     const formatFollowers = (num: number) => {
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
