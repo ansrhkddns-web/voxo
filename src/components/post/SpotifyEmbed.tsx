@@ -60,7 +60,7 @@ export default function SpotifyEmbed({ uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvE
 
                     <div className={
                         isSticky && !dismissed
-                            ? "fixed bottom-0 left-0 w-full z-[100] bg-black/80 backdrop-blur-xl border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-fade-in-up"
+                            ? "fixed bottom-0 left-0 w-full z-[100] bg-[#121212] border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-fade-in-up flex justify-center items-center"
                             : "relative w-full opacity-100"
                     }>
                         {isSticky && !dismissed && (
@@ -76,12 +76,12 @@ export default function SpotifyEmbed({ uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvE
                             style={{ borderRadius: isSticky && !dismissed ? '0px' : '12px' }}
                             src={embedUrl}
                             width="100%"
-                            height={isSticky && !dismissed ? 152 : embedHeight}
+                            height={isSticky && !dismissed ? 80 : embedHeight}
                             frameBorder="0"
                             allowFullScreen={true}
                             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                             loading="lazy"
-                            className={`relative z-10 transition-all duration-700 ${isSticky && !dismissed ? '' : 'filter grayscale group-hover:grayscale-0 shadow-2xl shadow-black/40'}`}
+                            className={`relative z-10 transition-all duration-700 ${isSticky && !dismissed ? '' : 'filter grayscale group-hover:grayscale-0 shadow-2xl shadow-black/40'} ${isSticky && !dismissed ? 'max-w-7xl mx-auto block' : ''}`}
                         />
                         {!isSticky && (
                             <div className="absolute -inset-4 bg-accent-green/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
@@ -92,7 +92,8 @@ export default function SpotifyEmbed({ uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvE
                 <div className="relative z-10 py-12 text-center border border-dashed border-white/5 rounded-2xl bg-black/40 backdrop-blur-sm">
                     <p className="text-[9px] uppercase tracking-[0.4em] text-gray-700 font-display">Awaiting audio sequence synchronization...</p>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 }
