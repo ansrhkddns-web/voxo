@@ -20,25 +20,11 @@ interface ArtistStatsProps {
 }
 
 export default function ArtistStats({ data }: ArtistStatsProps) {
-    console.log("VOXO_ARTIST_STATS_CLIENT: Received data ->", data);
-
-    // FORCE UPDATE MARKER: v3.0 (GLOBAL SIGNAL TEST ACTIVE)
-    if (!data || data.error) return (
-        <div className="bg-red-600 border-2 border-white p-6 z-50 relative">
-            <h3 className="text-white text-[12px] font-bold uppercase tracking-[0.4em] mb-4 flex items-center gap-3">
-                <span className="w-4 h-1 bg-white" />
-                CRITICAL SIGNAL ERROR (v3.0)
-            </h3>
-            <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-white">
-                ERROR: {data?.error || "DATA IS NULL/UNDEFINED"}
-                <br /><br />
-                CHECK LIST:<br />
-                1. .env.local KEYS (Client ID/Secret)<br />
-                2. ARTIST NAME IN POST (Is it empty?)<br />
-                3. RESTART SERVER (npm run dev)
-            </p>
-        </div>
-    );
+    // Graceful exit: If no data or error, don't show the noisy error box anymore
+    if (!data || data.error) {
+        console.log("VOXO_SPOTIFY: Signal Lost ->", data?.error);
+        return null;
+    }
 
     const formatFollowers = (num: number) => {
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
