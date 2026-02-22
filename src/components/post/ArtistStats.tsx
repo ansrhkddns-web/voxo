@@ -20,7 +20,9 @@ interface ArtistStatsProps {
 }
 
 export default function ArtistStats({ data }: ArtistStatsProps) {
-    // FORCE UPDATE MARKER: v2.1 (DIAGNOSTIC ACTIVE)
+    console.log("VOXO_ARTIST_STATS_CLIENT: Received data ->", data);
+
+    // FORCE UPDATE MARKER: v2.3 (CLIENT LOGGING ACTIVE)
     if (!data || data.error) return (
         <div className="bg-red-600 border-2 border-white p-6 z-50 relative">
             <h3 className="text-white text-[12px] font-bold uppercase tracking-[0.4em] mb-4 flex items-center gap-3">
