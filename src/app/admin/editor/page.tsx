@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
-import TiptapEditor from "@/components/admin/TiptapEditor";
+import MarkdownEditor from "@/components/admin/MarkdownEditor";
 import { getCategories } from '@/app/actions/categoryActions';
 import { createPost, getPostById, updatePost } from '@/app/actions/postActions';
 import { uploadImage } from '@/app/actions/uploadActions';
@@ -215,7 +215,7 @@ function EditorContent() {
                             />
 
                             <div className="border-t border-white/5 pt-12">
-                                <TiptapEditor
+                                <MarkdownEditor
                                     content={content}
                                     onChange={setContent}
                                 />
