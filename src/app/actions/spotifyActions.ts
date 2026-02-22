@@ -101,6 +101,10 @@ async function scrapeSpotifyStats(url: string, type: 'artist' | 'album' | 'track
                 if (artistStats) {
                     monthly_listeners = artistStats.monthly_listeners || monthly_listeners;
                     followers = artistStats.followers || followers;
+                    // Inherit the artist's top tracks as they are more representative for the stats panel
+                    if (artistStats.topTracks && artistStats.topTracks.length > 0) {
+                        tracks = artistStats.topTracks;
+                    }
                     // If we were looking for an artist name but started with an album link
                     if (name === "" || name.includes("|")) name = artistStats.name;
                 }
