@@ -11,6 +11,7 @@ const VOXYN_RESCUE_DATA = {
     genres: ["Darkpop", "Electronic", "Cinematic"],
     image: "https://i.scdn.co/image/ab67616d0000b273b7a66f07a7a5a8a6a6a6a6a6",
     external_url: "https://open.spotify.com/artist/2H6zWGBd7JUFTVLeuAkw3H",
+    artist_id: "2H6zWGBd7JUFTVLeuAkw3H", // Added for Follow button
     topTracks: [
         { id: "1", title: "I turn it off", duration: "3:49" },
         { id: "2", title: "Interference", duration: "3:04" },
@@ -133,6 +134,7 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
             genres: artistData.genres?.slice(0, 3) || [],
             image: artistData.images?.[0]?.url,
             external_url: artistData.external_urls?.spotify,
+            artist_id: artistId, // Added for Follow button
             topTracks: (topTracksData.tracks || []).slice(0, 5).map((t: any) => ({
                 id: t.id,
                 title: t.name,
