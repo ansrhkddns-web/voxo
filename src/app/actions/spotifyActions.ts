@@ -70,7 +70,7 @@ function parseSpotifyId(input: string) {
 }
 
 export async function getArtistStats(uriOrUrl: string, artistName?: string, manualArtistId?: string) {
-    console.log(`VOXO_DIAGNOSTIC v2.2: Starting match for Name=[${artistName}] URI=[${uriOrUrl}] ManualID=[${manualArtistId}]`);
+    console.log(`VOXO_DIAGNOSTIC v2.5: Starting match for Name=[${artistName}] URI=[${uriOrUrl}] ManualID=[${manualArtistId}]`);
 
     if (!uriOrUrl && !artistName && !manualArtistId) return { error: "No connectivity parameters provided" };
 
@@ -112,25 +112,30 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
             }
         }
 
-        // Priority 2: Fallback to Search by Name (Multi-stage)
+        // Priority 2: Fallback to Search by Name (Advanced v2.5)
+        const triedTargets: string[] = [];
         if (!artistId && artistName) {
-            const searchTargets = [
-                artistName.trim(), // 1. Literal name
-                artistName.split(' / ')[0].trim(), // 2. Split by slash (handling collab/thematic names)
-                artistName.replace(/[!@#$%^&*()]/g, ' ').trim(), // 3. Cleaned name
-                artistName.split(/[ /]/)[0] // 4. First word/segment
+            const baseName = artistName.split(/[/|]/)[0].trim(); // Get part before / or |
+
+            const searchCandidates = [
+                artistName.trim(), // 1. Original (TR!NA / ERROR)
+                baseName, // 2. Split (TR!NA)
+                baseName.replace(/[!@#$%^&*()]/g, '').trim(), // 3. Cleaned (TRNA)
+                baseName.split(/[ ]+/)[0] // 4. First word
             ];
 
-            for (const target of searchTargets) {
-                if (!target || target.length < 2) continue;
-                console.log(`VOXO_DIAGNOSTIC: Searching for artist: ${target}`);
+            const uniqueCandidates = Array.from(new Set(searchCandidates)).filter(t => t.length >= 2);
+
+            for (const target of uniqueCandidates) {
+                triedTargets.push(target);
+                console.log(`VOXO_DIAGNOSTIC: Searching for artist candidate: [${target}]`);
                 const searchRes = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(target)}&type=artist&limit=1`, fetchOptions);
                 if (searchRes.ok) {
                     const searchData = await searchRes.json();
                     const foundId = searchData.artists?.items?.[0]?.id;
                     if (foundId) {
                         artistId = foundId;
-                        console.log(`VOXO_DIAGNOSTIC: Resolved via search [${target}] -> ${artistId}`);
+                        console.log(`VOXO_DIAGNOSTIC: Success with candadite [${target}] -> ${artistId}`);
                         break;
                     }
                 }
@@ -138,8 +143,8 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
         }
 
         if (!artistId) {
-            console.error(`VOXO_DIAGNOSTIC: Final failure for ${artistName || 'unknown'}`);
-            return { error: `Could not reach artist signal for ${artistName || 'unknown'}` };
+            console.error(`VOXO_DIAGNOSTIC: Final failure for ${artistName}. Tried: ${triedTargets.join(', ')}`);
+            return { error: `Artist matching failed (v2.5). Tried: ${triedTargets.join(' | ') || 'None'}` };
         }
 
         // Fetch Phase
