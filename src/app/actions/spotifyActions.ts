@@ -3,24 +3,68 @@
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
-// VOXYN REAL RESCUE DATA: Current stats for Voxyn (extracted from profile)
-const VOXYN_RESCUE_DATA = {
-    name: "Voxyn",
-    followers: 349,
-    monthly_listeners: 3916, // Real monthly listeners from screenshot
-    genres: ["Darkpop", "Electronic", "Cinematic"],
-    image: "https://i.scdn.co/image/ab67616d0000b273b7a66f07a7a5a8a6a6a6a6a6",
-    external_url: "https://open.spotify.com/artist/2H6zWGBd7JUFTVLeuAkw3H",
-    artist_id: "2H6zWGBd7JUFTVLeuAkw3H", // Added for Follow button
-    topTracks: [
-        { id: "1", title: "I turn it off", duration: "3:49" },
-        { id: "2", title: "Interference", duration: "3:04" },
-        { id: "3", title: "The World We Found", duration: "3:42" },
-        { id: "4", title: "Guardian Angel", duration: "3:59" },
-        { id: "5", title: "You Did It Again", duration: "2:29" }
-    ],
-    is_rescue: true
-};
+// Helper to scrape public Spotify page for stats when API is 403
+async function scrapeSpotifyStats(url: string, type: 'artist' | 'album' | 'track') {
+    try {
+        const response = await fetch(url, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' },
+            cache: 'no-store'
+        });
+
+        if (!response.ok) return null;
+        const html = await response.text();
+
+        // 1. Extract Monthly Listeners from meta or text
+        let monthly_listeners = 0;
+        const listenMatch = html.match(/([\d,.]+)\s*monthly listeners/i);
+        if (listenMatch) {
+            monthly_listeners = parseInt(listenMatch[1].replace(/,/g, ''));
+        }
+
+        // 2. Extract Followers from text
+        let followers = 0;
+        const followMatch = html.match(/([\d,.]+)\s*Followers/i);
+        if (followMatch) {
+            followers = parseInt(followMatch[1].replace(/,/g, ''));
+        }
+
+        // 3. Extract Artist Name
+        let name = "";
+        const titleMatch = html.match(/<title>(.*?)\s*\|\s*Spotify<\/title>/i);
+        if (titleMatch) name = titleMatch[1].replace(/ - Album by.*/i, '').replace(/ - Single by.*/i, '').trim();
+
+        // 4. Extract Top Tracks (for Albums)
+        let tracks: any[] = [];
+        const trackRegex = /"name":"([^"]+)"/g;
+        let match;
+        const seen = new Set();
+        while ((match = trackRegex.exec(html)) !== null && tracks.length < 5) {
+            const tName = match[1];
+            if (!seen.has(tName) && !tName.includes(name)) {
+                tracks.push({ id: Math.random().toString(36), title: tName, duration: "3:00" });
+                seen.add(tName);
+            }
+        }
+
+        // 5. Extract Artist ID from URL for Follow button
+        let artist_id = "";
+        const idMatch = url.match(/artist\/([a-zA-Z0-9]+)/);
+        if (idMatch) artist_id = idMatch[1];
+
+        return {
+            name,
+            followers,
+            monthly_listeners,
+            topTracks: tracks,
+            image: "",
+            artist_id, // Added for Follow button
+            is_rescue: true,
+            is_scraped: true
+        };
+    } catch (e) {
+        return null;
+    }
+}
 
 async function getAccessToken() {
     if (!CLIENT_ID || !CLIENT_SECRET) return null;
@@ -67,15 +111,15 @@ function parseSpotifyId(input: string) {
 
 export async function getArtistStats(uriOrUrl: string, artistName?: string, manualArtistId?: string) {
     const targetId = manualArtistId?.trim();
-    // Broad match for Voxyn to ensure rescue mode triggers for the user's primary artist
-    const isVoxyn = targetId === "15Vp5TfG6R9vKDR2hbeF5W" ||
-        targetId === "2H6zWGBd7JUFTVLeuAkw3H" ||
-        artistName?.toLowerCase().includes("voxyn");
+    const parsed = parseSpotifyId(uriOrUrl);
+    const publicUrl = uriOrUrl?.startsWith('http') ? uriOrUrl : (parsed ? `https://open.spotify.com/${parsed.type}/${parsed.id}` : null);
 
     try {
         const token = await getAccessToken();
+
+        // --- FALLBACK 1: TOKEN FAIL ---
         if (!token) {
-            if (isVoxyn) return { ...VOXYN_RESCUE_DATA, error: "AUTH_FAIL_RESCUE" };
+            if (publicUrl) return await scrapeSpotifyStats(publicUrl, parsed?.type as any || 'artist');
             return { error: "AUTH_FAILED" };
         }
 
@@ -83,17 +127,14 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
         let artistId = targetId || null;
 
         // 1. Resolve ID from Link/URI
-        if (!artistId && uriOrUrl) {
-            const parsed = parseSpotifyId(uriOrUrl);
-            if (parsed) {
-                if (parsed.type === 'artist') {
-                    artistId = parsed.id;
-                } else {
-                    const res = await fetch(`https://api.spotify.com/v1/${parsed.type}s/${parsed.id}`, fetchOptions);
-                    if (res.ok) {
-                        const data = await res.json();
-                        artistId = data.artists?.[0]?.id || data.artist?.id || null;
-                    }
+        if (!artistId && parsed) {
+            if (parsed.type === 'artist') {
+                artistId = parsed.id;
+            } else {
+                const res = await fetch(`https://api.spotify.com/v1/${parsed.type}s/${parsed.id}`, fetchOptions);
+                if (res.ok) {
+                    const data = await res.json();
+                    artistId = data.artists?.[0]?.id || data.artist?.id || null;
                 }
             }
         }
@@ -108,15 +149,17 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
             }
         }
 
+        // --- FALLBACK 2: RESOLUTION FAIL BUT URL EXISTS ---
         if (!artistId) {
-            if (isVoxyn) return { ...VOXYN_RESCUE_DATA, error: "NO_ID_RESCUE" };
+            if (publicUrl) return await scrapeSpotifyStats(publicUrl, parsed?.type as any || 'artist');
             return { error: "ARTIST_NOT_FOUND" };
         }
 
-        // 3. Final Fetch with Rescue Fallback for 403s
+        // 3. Final Fetch with Scraper Fallback for 403s
         const artistRes = await fetch(`https://api.spotify.com/v1/artists/${artistId}`, fetchOptions);
         if (!artistRes.ok) {
-            if (isVoxyn || artistId === "2H6zWGBd7JUFTVLeuAkw3H") return { ...VOXYN_RESCUE_DATA, error: `RESCUE_ACTIVE_${artistRes.status}` };
+            if (publicUrl) return await scrapeSpotifyStats(publicUrl, 'artist');
+            if (artistId) return await scrapeSpotifyStats(`https://open.spotify.com/artist/${artistId}`, 'artist');
             return { error: `API_ERROR_${artistRes.status}` };
         }
 
@@ -134,7 +177,7 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
             genres: artistData.genres?.slice(0, 3) || [],
             image: artistData.images?.[0]?.url,
             external_url: artistData.external_urls?.spotify,
-            artist_id: artistId, // Added for Follow button
+            artist_id: artistId,
             topTracks: (topTracksData.tracks || []).slice(0, 5).map((t: any) => ({
                 id: t.id,
                 title: t.name,
@@ -142,7 +185,7 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
             }))
         };
     } catch (error) {
-        if (isVoxyn) return { ...VOXYN_RESCUE_DATA, error: "EXCEPTION_RESCUE" };
+        if (publicUrl) return await scrapeSpotifyStats(publicUrl, 'artist');
         return { error: "SYSTEM_EXCEPTION" };
     }
 }
