@@ -15,7 +15,146 @@ import { TableCell } from '@tiptap/extension-table-cell';
 import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
 import { Typography } from '@tiptap/extension-typography';
-import { Extension, textblockTypeInputRule, markInputRule } from '@tiptap/core';
+import { Extension, Mark, textblockTypeInputRule, markInputRule, nodeInputRule } from '@tiptap/core';
+import { Strike } from '@tiptap/extension-strike';
+import { Youtube } from '@tiptap/extension-youtube';
+import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
+
+/**
+ * Spoiler Mark Extension
+ * Custom mark for Steam-style [spoiler] text.
+ */
+const Spoiler = Mark.create({
+    name: 'spoiler',
+    addOptions() {
+        return {
+            HTMLAttributes: {
+                class: 'spoiler-text',
+            },
+        };
+    },
+    parseHTML() {
+        return [
+            {
+                tag: 'span',
+                getAttrs: element => (element as HTMLElement).classList.contains('spoiler-text') && null,
+            },
+        ];
+    },
+    renderHTML({ HTMLAttributes }) {
+        return ['span', HTMLAttributes, 0];
+    },
+});
+
+const VoxoBBCode = Extension.create({
+    name: 'voxoBBCode',
+
+    addInputRules() {
+        return [
+            // BBCode Headings: [h1] Title [/h1] (Block rule)
+            ...[1, 2, 3].map(level => textblockTypeInputRule({
+                find: new RegExp(`^\\[h${level}\\]\\s*(.*)\\s*\\[\\/h${level}\\]$`),
+                type: this.editor.schema.nodes.heading,
+                getAttributes: { level },
+            })),
+
+            // BBCode Bold: [b]text[/b]
+            markInputRule({
+                find: /\[b\](.*?)\[\/b\]/,
+                type: this.editor.schema.marks.bold,
+            }),
+            // BBCode Italic: [i]text[/i]
+            markInputRule({
+                find: /\[i\](.*?)\[\/i\]/,
+                type: this.editor.schema.marks.italic,
+            }),
+            // BBCode Underline: [u]text[/u]
+            markInputRule({
+                find: /\[u\](.*?)\[\/u\]/,
+                type: this.editor.schema.marks.underline,
+            }),
+            // BBCode Strike: [strike]text[/strike]
+            markInputRule({
+                find: /\[strike\](.*?)\[\/strike\]/,
+                type: this.editor.schema.marks.strike,
+            }),
+            // BBCode Monospace: [code]text[/code] (Inline)
+            markInputRule({
+                find: /\[code\](.*?)\[\/code\]/,
+                type: this.editor.schema.marks.code,
+            }),
+            // BBCode Spoiler: [spoiler]text[/spoiler]
+            markInputRule({
+                find: /\[spoiler\](.*?)\[\/spoiler\]/,
+                type: this.editor.schema.marks.spoiler,
+            }),
+            // BBCode URL: [url=http://...]label[/url]
+            markInputRule({
+                find: /\[url=(.*?)\](.*?)\[\/url\]/,
+                type: this.editor.schema.marks.link,
+                getAttributes: (match) => ({
+                    href: match[1],
+                }),
+            }),
+            // BBCode Horizontal Rule: [hr][/hr]
+            nodeInputRule({
+                find: /\[hr\]\[\/hr\]$/,
+                type: this.editor.schema.nodes.horizontalRule,
+            }),
+
+            // BBCode Lists (Block rules, triggered by typing [list] and space at start of line)
+            textblockTypeInputRule({
+                find: /^\[list\]\s$/,
+                type: this.editor.schema.nodes.bulletList,
+            }),
+            textblockTypeInputRule({
+                find: /^\[olist\]\s$/,
+                type: this.editor.schema.nodes.orderedList,
+            }),
+            // BBCode List Item: [*] (Block rule)
+            textblockTypeInputRule({
+                find: /^\[\*\]\s$/,
+                type: this.editor.schema.nodes.listItem,
+            }),
+
+            // BBCode Quote: [quote=author] text [/quote]
+            textblockTypeInputRule({
+                find: /^\[quote=(.*?)\]\s*(.*)\s*\[\/quote\]$/,
+                type: this.editor.schema.nodes.blockquote,
+            }),
+
+            // BBCode Code Block: [code] ... [/code]
+            textblockTypeInputRule({
+                find: /^\[code\]\s*(.*)\s*\[\/code\]$/,
+                type: this.editor.schema.nodes.codeBlock,
+            }),
+
+            // --- JIRA/Wiki Compatibility ---
+            ...[1, 2, 3].map(level => textblockTypeInputRule({
+                find: new RegExp(`^h${level}\\.\\s$`),
+                type: this.editor.schema.nodes.heading,
+                getAttributes: { level },
+            })),
+            markInputRule({
+                find: /\*([^*]+)\*$/,
+                type: this.editor.schema.marks.bold,
+            }),
+            markInputRule({
+                find: /\+([^+]+)\+$/,
+                type: this.editor.schema.marks.underline,
+            }),
+            markInputRule({
+                find: /\{\{([^}]+)\}\} $/,
+                type: this.editor.schema.marks.code,
+            }),
+        ];
+    },
+});
+
+interface TiptapEditorProps {
+    content: string;
+    onChange: (content: string) => void;
+}
 
 import {
     Bold,
@@ -33,43 +172,13 @@ import {
     Image as ImageIcon,
     Undo,
     Redo,
-    Code
+    Code,
+    Video,
+    Minus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-/**
- * JiraWiki Extension
- * Implements JIRA-style shortcuts: h1., h2., +underline+, {{monospace}}, etc.
- */
-const JiraWiki = Extension.create({
-    name: 'jiraWiki',
-
-    addInputRules() {
-        return [
-            // Headings: h1. Title
-            ...[1, 2, 3, 4, 5, 6].map(level => textblockTypeInputRule({
-                find: new RegExp(`^h${level}\\.\\s$`),
-                type: this.editor.schema.nodes.heading,
-                getAttributes: { level },
-            })),
-            // Bold: *text* (In JIRA * is bold, in Markdown it's italic)
-            markInputRule({
-                find: /\*([^*]+)\*$/,
-                type: this.editor.schema.marks.bold,
-            }),
-            // Underline: +text+
-            markInputRule({
-                find: /\+([^+]+)\+$/,
-                type: this.editor.schema.marks.underline,
-            }),
-            // Monospace: {{text}}
-            markInputRule({
-                find: /\{\{([^}]+)\}\} $/,
-                type: this.editor.schema.marks.code,
-            }),
-        ];
-    },
-});
+// ... (previous extensions like Spoiler and VoxoBBCode are above this point in the file)
 
 interface TiptapEditorProps {
     content: string;
@@ -86,6 +195,17 @@ const MenuBar = ({ editor }: { editor: any }) => {
         }
     };
 
+    const addYoutubeVideo = () => {
+        const url = window.prompt('Enter YouTube URL');
+        if (url) {
+            editor.commands.setYoutubeVideo({
+                src: url,
+                width: 640,
+                height: 480,
+            });
+        }
+    };
+
     const setLink = () => {
         const previousUrl = editor.getAttributes('link').href;
         const url = window.prompt('URL', previousUrl);
@@ -98,23 +218,25 @@ const MenuBar = ({ editor }: { editor: any }) => {
     };
 
     const buttons = [
-        { icon: Bold, action: () => editor.chain().focus().toggleBold().run(), active: 'bold', tooltip: 'Bold (Ctrl+B / *text*)' },
-        { icon: Italic, action: () => editor.chain().focus().toggleItalic().run(), active: 'italic', tooltip: 'Italic (Ctrl+I / _text_)' },
-        { icon: UnderlineIcon, action: () => editor.chain().focus().toggleUnderline().run(), active: 'underline', tooltip: 'Underline (Ctrl+U / +text+)' },
-        { icon: Code, action: () => editor.chain().focus().toggleCode().run(), active: 'code', tooltip: 'Monospaced ({{text}})' },
+        { icon: Bold, action: () => editor.chain().focus().toggleBold().run(), active: 'bold', tooltip: 'Bold ([b]text[/b])' },
+        { icon: Italic, action: () => editor.chain().focus().toggleItalic().run(), active: 'italic', tooltip: 'Italic ([i]text[/i])' },
+        { icon: UnderlineIcon, action: () => editor.chain().focus().toggleUnderline().run(), active: 'underline', tooltip: 'Underline ([u]text[/u])' },
+        { icon: Code, action: () => editor.chain().focus().toggleCode().run(), active: 'code', tooltip: 'Monospaced ([code]text[/code])' },
         { type: 'divider' },
-        { icon: Heading1, action: () => editor.chain().focus().toggleHeading({ level: 1 }).run(), active: 'heading', activeOptions: { level: 1 }, tooltip: 'Heading 1 (h1.)' },
-        { icon: Heading2, action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: 'heading', activeOptions: { level: 2 }, tooltip: 'Heading 2 (h2.)' },
-        { icon: Heading3, action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), active: 'heading', activeOptions: { level: 3 }, tooltip: 'Heading 3 (h3.)' },
+        { icon: Heading1, action: () => editor.chain().focus().toggleHeading({ level: 1 }).run(), active: 'heading', activeOptions: { level: 1 }, tooltip: 'Heading 1 ([h1])' },
+        { icon: Heading2, action: () => editor.chain().focus().toggleHeading({ level: 2 }).run(), active: 'heading', activeOptions: { level: 2 }, tooltip: 'Heading 2 ([h2])' },
+        { icon: Heading3, action: () => editor.chain().focus().toggleHeading({ level: 3 }).run(), active: 'heading', activeOptions: { level: 3 }, tooltip: 'Heading 3 ([h3])' },
         { type: 'divider' },
-        { icon: List, action: () => editor.chain().focus().toggleBulletList().run(), active: 'bulletList', tooltip: 'Bullet List (* )' },
-        { icon: ListOrdered, action: () => editor.chain().focus().toggleOrderedList().run(), active: 'orderedList', tooltip: 'Numbered List (# )' },
-        { icon: CheckSquare, action: () => editor.chain().focus().toggleTaskList().run(), active: 'taskList', tooltip: 'Task List ([] )' },
-        { icon: Quote, action: () => editor.chain().focus().toggleBlockquote().run(), active: 'blockquote', tooltip: 'Blockquote (> )' },
+        { icon: List, action: () => editor.chain().focus().toggleBulletList().run(), active: 'bulletList', tooltip: 'Bullet List ([list])' },
+        { icon: ListOrdered, action: () => editor.chain().focus().toggleOrderedList().run(), active: 'orderedList', tooltip: 'Ordered List ([olist])' },
+        { icon: CheckSquare, action: () => editor.chain().focus().toggleTaskList().run(), active: 'taskList', tooltip: 'Task List' },
+        { icon: Quote, action: () => editor.chain().focus().toggleBlockquote().run(), active: 'blockquote', tooltip: 'Blockquote ([quote])' },
         { type: 'divider' },
         { icon: TableIcon, action: () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), active: 'table', tooltip: 'Insert Table' },
-        { icon: LinkIcon, action: setLink, active: 'link', tooltip: 'Link (Ctrl+K)' },
+        { icon: LinkIcon, action: setLink, active: 'link', tooltip: 'Link ([url=...])' },
         { icon: ImageIcon, action: addImage, tooltip: 'Image' },
+        { icon: Video, action: addYoutubeVideo, tooltip: 'YouTube Video' },
+        { icon: Minus, action: () => editor.chain().focus().setHorizontalRule().run(), tooltip: 'Horizontal Rule ([hr])' },
         { type: 'spacer' },
         { icon: Undo, action: () => editor.chain().focus().undo().run() },
         { icon: Redo, action: () => editor.chain().focus().redo().run() },
@@ -157,11 +279,18 @@ export default function TiptapEditor({ content, onChange }: TiptapEditorProps) {
                 heading: {
                     levels: [1, 2, 3, 4],
                 },
-                bold: false, // We'll handle bold via JiraWiki to override markdown * behavior
+                bold: false, // Handled via VoxoBBCode
             }),
-            JiraWiki,
+            VoxoBBCode,
+            Spoiler,
+            Strike,
             Underline,
             Typography,
+            HorizontalRule,
+            Youtube.configure({
+                controls: false,
+                nocookie: true,
+            }),
             Table.configure({ resizable: true }),
             TableRow,
             TableHeader,
@@ -171,7 +300,7 @@ export default function TiptapEditor({ content, onChange }: TiptapEditorProps) {
             Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-accent-green underline cursor-pointer' } }),
             Image.configure({ HTMLAttributes: { class: 'rounded-sm border border-white/10 my-8 w-full' } }),
             Placeholder.configure({
-                placeholder: 'START TYPING... USE Wiki SYNTAX (h1. , *bold*, > quote) OR / FOR COMMANDS',
+                placeholder: 'START TYPING... [h1] TITLE [/h1], [b]BOLD[/b], [spoiler]SECRET[/spoiler] OR / FOR COMMANDS',
             }),
         ],
         content: content,
@@ -313,6 +442,18 @@ export default function TiptapEditor({ content, onChange }: TiptapEditorProps) {
                     font-weight: bold;
                     text-align: left;
                     background-color: rgba(255,255,255,0.02);
+                }
+                .spoiler-text {
+                    background-color: #1a1a1a;
+                    color: transparent;
+                    transition: all 0.2s ease;
+                    cursor: pointer;
+                    padding: 0 4px;
+                    border-radius: 2px;
+                }
+                .spoiler-text:hover {
+                    background-color: #333;
+                    color: inherit;
                 }
             `}</style>
         </div>
