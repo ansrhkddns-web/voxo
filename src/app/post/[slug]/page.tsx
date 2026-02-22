@@ -68,66 +68,78 @@ export default async function PostDetail({ params }: { params: { slug: string } 
         <main className="flex min-h-screen flex-col bg-background-dark select-none">
             <Navbar />
 
-            {/* Article Hero */}
-            <header className="relative w-full h-[85vh] md:h-screen flex flex-col justify-end overflow-hidden">
-                {/* Background Image & Overlay */}
-                <div className="absolute inset-0 w-full h-full z-0">
-                    <img
-                        alt={post.title}
-                        className="w-full h-full object-cover object-top opacity-60 grayscale scale-105"
-                        src={post.cover_image || "https://images.unsplash.com/photo-1514525253361-bee8718a300a?q=80&w=1974&auto=format&fit=crop"}
-                    />
-                    {/* Dark gradient focused on the bottom for readability */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-background-dark via-background-dark/80 to-transparent"></div>
-                    <div className="absolute inset-0 bg-gradient-to-r from-background-dark/80 via-transparent to-transparent"></div>
-                </div>
+            {/* Article Hero - Redesigned for Split Layout */}
+            <header className="relative w-full bg-background-dark pt-32 pb-16 px-6 md:px-12 max-w-7xl mx-auto">
+                <div className="flex flex-col items-start gap-8 animate-fade-in-up">
+                    {/* Category & Badge */}
+                    <div className="flex items-center gap-4">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full border border-accent-green/30 bg-accent-green/5 text-[9px] uppercase tracking-widest text-accent-green font-display">
+                            {post.categories?.name || 'Review'}
+                        </span>
+                        <div className="h-px w-12 bg-white/10"></div>
+                    </div>
 
-                {/* Hero Content (Bottom-Left Aligned) */}
-                <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-12 pb-16 md:pb-24">
-                    <div className="flex flex-col items-start gap-4 max-w-4xl animate-fade-in-up">
-                        {/* Category */}
-                        <div className="flex items-center gap-3">
-                            <span className="inline-block h-px w-8 bg-accent-green"></span>
-                            <p className="text-[10px] md:text-[11px] tracking-[0.4em] uppercase text-accent-green/80 font-display font-medium">
-                                {post.categories?.name || 'Review'}
-                            </p>
+                    {/* Title - Large, Clean, Modern */}
+                    <h1 className="font-display font-light text-4xl md:text-6xl lg:text-8xl tracking-tight text-white leading-[1.1] max-w-6xl drop-shadow-sm">
+                        {post.title}
+                    </h1>
+
+                    {/* Subtitle / Excerpt (Optional, using part of content if possible or generic) */}
+                    <p className="text-gray-400 font-serif italic text-lg md:text-xl max-w-3xl leading-relaxed">
+                        Exploratory resonance and architectural analysis of {post.artist_name || 'the collective'}&apos;s latest sonic transmission. Deep diving into the textures and emotional gradients.
+                    </p>
+
+                    {/* Metadata Row */}
+                    <div className="flex flex-wrap items-center gap-y-4 gap-x-8 pt-8 border-t border-white/5 w-full text-gray-400 text-[10px] tracking-[0.2em] font-display uppercase">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-gray-600 text-[8px]">Written By</span>
+                            <span className="text-white hover:text-accent-green transition-colors cursor-pointer border-b border-transparent hover:border-accent-green/30 pb-0.5">
+                                VOXO EDITORIAL
+                            </span>
                         </div>
-
-                        {/* Title */}
-                        <h1 className="font-display font-light text-5xl md:text-7xl lg:text-8xl xl:text-9xl tracking-[0.02em] md:tracking-normal uppercase text-white leading-[0.9] mt-2 mb-6 drop-shadow-2xl">
-                            {post.title}
-                        </h1>
-
-                        {/* Metadata Row */}
-                        <div className="flex flex-wrap items-center gap-y-3 gap-x-6 text-gray-400 text-[9px] md:text-[10px] tracking-[0.2em] md:tracking-[0.3em] font-display uppercase">
-                            <span className="flex items-center gap-2 hover:text-white transition-colors cursor-pointer border-b border-accent-green/30 pb-1">
-                                By VOXO Editorial
-                            </span>
-                            <span className="hidden md:inline text-white/20">•</span>
+                        <div className="w-px h-8 bg-white/10 hidden md:block"></div>
+                        <div className="flex flex-col gap-1">
+                            <span className="text-gray-600 text-[8px]">Publication</span>
                             <span className="flex items-center gap-2">
-                                <Clock size={12} className="text-accent-green/50" />
-                                10 Min Read
+                                <Clock size={10} className="text-accent-green/50" />
+                                10 MIN READ
                             </span>
-                            <span className="hidden md:inline text-white/20">•</span>
-                            <span className="text-gray-500">
+                        </div>
+                        <div className="w-px h-8 bg-white/10 hidden md:block"></div>
+                        <div className="flex flex-col gap-1">
+                            <span className="text-gray-600 text-[8px]">Date Released</span>
+                            <span className="text-gray-300">
                                 {formattedDate}
                             </span>
                         </div>
                     </div>
                 </div>
-
-                {/* Scroll Indicator */}
-                <div className="absolute bottom-8 right-8 md:bottom-12 md:right-12 animate-bounce opacity-50 z-10 hidden md:block">
-                    <div className="w-2 h-2 border-r border-b border-accent-green rotate-45"></div>
-                </div>
             </header>
 
+            {/* Separated Cover Image Section */}
+            <section className="w-full px-6 md:px-12 max-w-7xl mx-auto mb-20 animate-fade-in">
+                <div className="relative aspect-[16/9] md:aspect-[21/9] w-full overflow-hidden rounded-sm group">
+                    <img
+                        alt={post.title}
+                        className="w-full h-full object-cover grayscale opacity-80 group-hover:opacity-100 group-hover:scale-[1.02] transition-all duration-1000 ease-out"
+                        src={post.cover_image || "https://images.unsplash.com/photo-1514525253361-bee8718a300a?q=80&w=1974&auto=format&fit=crop"}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background-dark/40 to-transparent pointer-events-none"></div>
+
+                    {/* Media Caption */}
+                    <div className="absolute bottom-4 left-4 flex items-center gap-2">
+                        <div className="w-1 h-1 rounded-full bg-accent-green animate-pulse"></div>
+                        <span className="text-[8px] uppercase tracking-[0.3em] text-white/50 font-display">Archival Footage / Transmission {slug.substring(0, 4)}</span>
+                    </div>
+                </div>
+            </section>
+
             {/* Article Content */}
-            <section className="max-w-7xl mx-auto px-4 md:px-12 py-32 grid grid-cols-1 lg:grid-cols-12 gap-20">
+            <section className="max-w-7xl mx-auto px-4 md:px-12 py-16 grid grid-cols-1 lg:grid-cols-12 gap-20">
                 <div className="lg:col-span-8">
                     <article className="font-serif text-gray-400 text-lg md:text-xl leading-relaxed space-y-12">
                         {post.artist_name && (
-                            <p className="text-white text-2xl md:text-3xl font-light italic leading-snug font-serif">
+                            <p className="text-white text-2xl md:text-4xl font-light italic leading-snug font-serif tracking-tight border-l-2 border-accent-green/30 pl-8 my-16">
                                 Examining the resonance within {post.artist_name}&apos;s latest transmission...
                             </p>
                         )}
