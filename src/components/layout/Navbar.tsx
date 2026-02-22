@@ -18,15 +18,18 @@ export default function Navbar() {
 
                 {/* Center/Left: Navigation Links */}
                 <div className="hidden md:flex items-center gap-12">
-                    {['News', 'Reviews', 'Features', 'Archives'].map((item) => (
-                        <Link
-                            key={item}
-                            href={`/${item.toLowerCase()}`}
-                            className="text-[10px] uppercase tracking-[0.3em] font-display text-gray-400 hover:text-white transition-colors"
-                        >
-                            {item}
-                        </Link>
-                    ))}
+                    {['News', 'Reviews', 'Features', "Editor's Pick", 'Archives'].map((item) => {
+                        const href = item === "Editor's Pick" ? "/editors-pick" : `/${item.toLowerCase()}`;
+                        return (
+                            <Link
+                                key={item}
+                                href={href}
+                                className="text-[10px] whitespace-nowrap uppercase tracking-[0.3em] font-display text-gray-400 hover:text-white transition-colors"
+                            >
+                                {item}
+                            </Link>
+                        );
+                    })}
                 </div>
 
                 {/* Center: Logo */}
