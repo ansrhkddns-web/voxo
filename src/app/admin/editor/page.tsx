@@ -14,6 +14,7 @@ import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
 import MarkdownEditor from "@/components/admin/MarkdownEditor";
 import { getCategories } from '@/app/actions/categoryActions';
+import { getTags } from '@/app/actions/tagActions';
 import { createPost, getPostById, updatePost } from '@/app/actions/postActions';
 import { uploadImage } from '@/app/actions/uploadActions';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -31,14 +32,16 @@ function EditorContent() {
     const [spotifyUri, setSpotifyUri] = useState('');
     const [rating, setRating] = useState('8.0');
     const [artistName, setArtistName] = useState('');
-    const [tags, setTags] = useState('');
+    const [tags, setTags] = useState<string[]>([]);
     const [coverUrl, setCoverUrl] = useState('');
     const [categories, setCategories] = useState<any[]>([]);
+    const [availableTags, setAvailableTags] = useState<any[]>([]);
     const [isPublishing, setIsPublishing] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [loading, setLoading] = useState(!!postId);
     const [excerpt, setExcerpt] = useState('');
     const [intro, setIntro] = useState('');
+    const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
 
     const { t } = useAdminLanguage();
 
@@ -46,6 +49,8 @@ function EditorContent() {
         const fetch = async () => {
             const data = await getCategories();
             setCategories(data);
+            const tgData = await getTags();
+            setAvailableTags(tgData);
 
             if (postId) {
                 try {
@@ -65,7 +70,7 @@ function EditorContent() {
                     setSpotifyUri(post.spotify_uri || '');
                     setRating(post.rating?.toString() || '8.0');
                     setArtistName(post.artist_name || '');
-                    setTags(post.tags?.join(', ') || '');
+                    setTags(post.tags || []);
                     setCoverUrl(post.cover_image || '');
                 } catch (error) {
                     toast.error('Failed to load archive sequence');
@@ -132,7 +137,7 @@ function EditorContent() {
                 cover_image: coverUrl,
                 rating: parseFloat(rating),
                 artist_name: artistName,
-                tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
+                tags: tags,
                 is_published: !isDraft,
                 slug
             };
@@ -280,7 +285,7 @@ function EditorContent() {
                                     <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">{t('artistName', 'editor')}</label>
                                     <input
                                         placeholder={t('artistPlaceholder', 'editor')}
-                                        className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-white text-[10px] uppercase tracking-widest focus:outline-none focus:border-accent-green transition-all"
+                                        className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-white text-[10px] tracking-widest focus:outline-none focus:border-accent-green transition-all"
                                         value={artistName}
                                         onChange={(e) => setArtistName(e.target.value)}
                                     />
@@ -302,12 +307,57 @@ function EditorContent() {
 
                                 <div>
                                     <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">{t('tags', 'editor')}</label>
-                                    <input
-                                        placeholder={t('tagsPlaceholder', 'editor')}
-                                        className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-white text-[10px] uppercase tracking-widest focus:outline-none focus:border-accent-green transition-all"
-                                        value={tags}
-                                        onChange={(e) => setTags(e.target.value)}
-                                    />
+                                    <div className="relative">
+                                        <div
+                                            className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-white min-h-[45px] flex flex-wrap gap-2 cursor-pointer focus:outline-none focus:border-accent-green transition-all"
+                                            onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
+                                        >
+                                            {tags.length === 0 && <span className="text-[10px] tracking-widest text-gray-500 uppercase font-display select-none">{t('tagsPlaceholder', 'editor')}</span>}
+                                            {tags.map(tag => (
+                                                <span
+                                                    key={tag}
+                                                    className="bg-accent-green/10 border border-accent-green/30 text-accent-green text-[9px] uppercase tracking-widest px-2 py-1 flex items-center gap-1"
+                                                >
+                                                    {tag}
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setTags(tags.filter(t => t !== tag));
+                                                        }}
+                                                        className="hover:text-white transition-colors"
+                                                    >
+                                                        &times;
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                        {isTagDropdownOpen && (
+                                            <div className="absolute top-full left-0 w-full bg-gray-950 border border-white/10 mt-1 max-h-48 overflow-y-auto z-10 shadow-2xl">
+                                                {availableTags.length === 0 ? (
+                                                    <div className="p-4 text-[9px] uppercase tracking-widest text-gray-500 font-display">No tags configured</div>
+                                                ) : (
+                                                    availableTags.map(tag => (
+                                                        <div
+                                                            key={tag.id}
+                                                            onClick={() => {
+                                                                if (!tags.includes(tag.name)) {
+                                                                    setTags([...tags, tag.name]);
+                                                                } else {
+                                                                    setTags(tags.filter(t => t !== tag.name));
+                                                                }
+                                                            }}
+                                                            className={`p-3 text-[10px] uppercase tracking-widest font-display cursor-pointer hover:bg-white/5 transition-colors flex items-center justify-between ${tags.includes(tag.name) ? 'text-accent-green bg-accent-green/5' : 'text-gray-400'
+                                                                }`}
+                                                        >
+                                                            <span>{tag.name}</span>
+                                                            {tags.includes(tag.name) && <span className="w-1.5 h-1.5 bg-accent-green rounded-full"></span>}
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div>
@@ -316,7 +366,7 @@ function EditorContent() {
                                         <Music className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-700" size={14} strokeWidth={1} />
                                         <input
                                             placeholder={t('audioPlaceholder', 'editor')}
-                                            className="w-full bg-transparent border-b border-white/10 rounded-none py-3 pl-8 pr-0 text-white text-[10px] tracking-widest focus:outline-none focus:border-accent-green transition-all font-mono uppercase"
+                                            className="w-full bg-transparent border-b border-white/10 rounded-none py-3 pl-8 pr-0 text-white text-[10px] tracking-widest focus:outline-none focus:border-accent-green transition-all font-mono"
                                             value={spotifyUri}
                                             onChange={(e) => setSpotifyUri(e.target.value)}
                                         />

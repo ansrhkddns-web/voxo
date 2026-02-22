@@ -11,7 +11,8 @@ import {
     LogOut,
     PlusSquare,
     Users,
-    Mail
+    Mail,
+    Tag
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
@@ -20,6 +21,7 @@ import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
 const NAV_ITEMS_DATA = [
     { id: 'dashboard', href: '/admin', icon: LayoutDashboard },
     { id: 'categories', href: '/admin/categories', icon: Layers },
+    { id: 'tags', href: '/admin/tags', icon: Tag },
     { id: 'allPosts', href: '/admin/posts', icon: FileText },
     { id: 'subscribers', href: '/admin/subscribers', icon: Users },
     { id: 'newsletter', href: '/admin/newsletter', icon: Mail },
