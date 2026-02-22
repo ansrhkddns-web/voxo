@@ -229,7 +229,6 @@ export async function getArtistStats(uriOrUrl: string, artistName?: string, manu
             genres: artistData.genres?.slice(0, 3) || [],
             image: artistData.images?.[0]?.url,
             external_url: artistData.external_urls?.spotify,
-            artist_id: artistId,
             topTracks: (topTracksData.tracks || []).slice(0, 5).map((t: any) => ({
                 id: t.id,
                 title: t.name,

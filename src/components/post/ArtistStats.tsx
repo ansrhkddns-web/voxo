@@ -11,7 +11,6 @@ interface ArtistStatsProps {
         genres?: string[];
         image?: string;
         external_url?: string;
-        artist_id?: string;
         topTracks?: {
             id: string;
             title: string;
