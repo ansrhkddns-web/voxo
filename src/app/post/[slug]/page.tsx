@@ -141,7 +141,7 @@ export default async function PostDetail({ params }: { params: { slug: string } 
                 <div className="relative aspect-[16/9] md:aspect-[21/9] w-full overflow-hidden rounded-none group bg-[#050505]">
                     <img
                         alt={post.title}
-                        className="w-full h-full object-cover grayscale opacity-80 group-hover:opacity-100 group-hover:scale-[1.03] transition-all duration-[2000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-[1.03] transition-all duration-[2000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                         src={post.cover_image || "https://images.unsplash.com/photo-1514525253361-bee8718a300a?q=80&w=1974&auto=format&fit=crop"}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-background-dark/40 to-transparent pointer-events-none"></div>
@@ -159,9 +159,12 @@ export default async function PostDetail({ params }: { params: { slug: string } 
                 <div className="lg:col-span-8">
                     <article className="font-serif text-[#e5e5e5] text-lg md:text-[21px] leading-[2.2] space-y-16 tracking-[0.02em]">
                         {customIntro && (
-                            <p className="text-[#F5F5F7] text-2xl md:text-4xl font-light italic leading-[1.6] font-serif tracking-[0.02em] border-l-2 border-accent-green/30 pl-8 my-20 whitespace-pre-wrap">
-                                {customIntro}
-                            </p>
+                            <div className="relative border-l border-white/10 pl-8 my-24 py-2">
+                                <span className="absolute -left-[1px] top-0 w-[1px] h-8 bg-accent-green/50"></span>
+                                <p className="text-gray-400 text-lg md:text-xl font-light italic leading-relaxed font-serif tracking-wide whitespace-pre-wrap">
+                                    {customIntro}
+                                </p>
+                            </div>
                         )}
 
                         <div

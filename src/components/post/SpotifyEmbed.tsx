@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Play } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Play, X } from 'lucide-react';
 
 interface SpotifyEmbedProps {
     uri?: string;
@@ -31,27 +31,63 @@ export default function SpotifyEmbed({ uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvE
         ? `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`
         : '';
     const isTrack = type === 'track';
-    const embedHeight = isTrack ? "152" : "380";
+    const embedHeight = isTrack ? 152 : 380;
+
+    const [isSticky, setIsSticky] = useState(false);
+    const [dismissed, setDismissed] = useState(false);
+    const placeholderRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                setIsSticky(!entry.isIntersecting);
+            },
+            { threshold: 0.1 }
+        );
+        if (placeholderRef.current) {
+            observer.observe(placeholderRef.current);
+        }
+        return () => observer.disconnect();
+    }, []);
 
     return (
-        <div className="my-12 group">
+        <div ref={placeholderRef} className="my-20 group relative w-full">
             {/* Real Spotify Embed */}
             {embedUrl ? (
-                <div className="relative">
-                    <iframe
-                        style={{ borderRadius: '12px' }}
-                        src={embedUrl}
-                        width="100%"
-                        height={embedHeight}
-                        frameBorder="0"
-                        allowFullScreen={true}
-                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                        loading="lazy"
-                        className="relative z-10 shadow-2xl shadow-black/40 filter grayscale hover:grayscale-0 transition-all duration-700"
-                    />
-                    {/* Minimalist background glow for cinematic effect */}
-                    <div className="absolute -inset-4 bg-accent-green/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
-                </div>
+                <>
+                    {/* Placeholder space when floating */}
+                    <div style={{ height: isSticky && !dismissed ? embedHeight : 0 }} className="w-full transition-all duration-700" />
+
+                    <div className={
+                        isSticky && !dismissed
+                            ? "fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[90%] md:w-[420px] shadow-2xl shadow-black/80 animate-fade-in-up"
+                            : "relative w-full opacity-100"
+                    }>
+                        {isSticky && !dismissed && (
+                            <button
+                                onClick={() => setDismissed(true)}
+                                className="absolute -top-3 -right-3 z-50 bg-gray-900 border border-white/20 text-gray-400 hover:text-white rounded-full p-1 shadow-lg hover:scale-110 transition-transform"
+                                title="Close Minimized Player"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
+                        <iframe
+                            style={{ borderRadius: '12px' }}
+                            src={embedUrl}
+                            width="100%"
+                            height={isSticky && !dismissed ? 152 : embedHeight}
+                            frameBorder="0"
+                            allowFullScreen={true}
+                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                            loading="lazy"
+                            className={`relative z-10 transition-all duration-700 ${isSticky && !dismissed ? 'border border-white/10' : 'filter grayscale group-hover:grayscale-0 shadow-2xl shadow-black/40'}`}
+                        />
+                        {!isSticky && (
+                            <div className="absolute -inset-4 bg-accent-green/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
+                        )}
+                    </div>
+                </>
             ) : (
                 <div className="relative z-10 py-12 text-center border border-dashed border-white/5 rounded-2xl bg-black/40 backdrop-blur-sm">
                     <p className="text-[9px] uppercase tracking-[0.4em] text-gray-700 font-display">Awaiting audio sequence synchronization...</p>

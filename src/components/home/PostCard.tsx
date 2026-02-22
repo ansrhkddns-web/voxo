@@ -21,7 +21,7 @@ export default function PostCard({ title, category, image, readTime, excerpt, sl
                 <div className="relative aspect-[3/4] overflow-hidden bg-[#050505] mb-8">
                     <img
                         alt={title}
-                        className="w-full h-full object-cover filter grayscale opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all duration-[1500ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                        className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all duration-[1500ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                         src={image}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-50"></div>

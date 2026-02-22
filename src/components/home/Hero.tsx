@@ -27,7 +27,7 @@ export default function Hero({ post }: HeroProps) {
     const postLink = post?.slug ? `/post/${post.slug}` : '#';
 
     return (
-        <header className="relative w-full h-[100svh] flex flex-col items-center justify-center overflow-hidden bg-black">
+        <header className="relative w-full h-[100svh] flex flex-col items-center justify-center overflow-hidden bg-black group/hero">
             <motion.div
                 initial={{ scale: 1.05, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
@@ -36,10 +36,10 @@ export default function Hero({ post }: HeroProps) {
             >
                 <img
                     alt="Cover Image"
-                    className="w-full h-full object-cover object-top opacity-50 grayscale"
+                    className="w-full h-full object-cover object-top opacity-50 grayscale group-hover/hero:grayscale-0 group-hover/hero:opacity-60 transition-all duration-[2000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                     src={bgImage}
                 />
-                <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/70 to-[#050505]"></div>
+                <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/70 to-[#050505] transition-opacity duration-[2000ms]"></div>
             </motion.div>
 
             <div className="relative z-10 text-center flex flex-col items-center max-w-5xl px-4 mt-20">
