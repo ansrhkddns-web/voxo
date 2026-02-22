@@ -60,28 +60,34 @@ export default function SpotifyEmbed({ uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvE
 
                     <div className={
                         isSticky && !dismissed
-                            ? "fixed bottom-0 left-0 w-full z-[100] bg-[#121212] border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-fade-in-up flex justify-center items-center"
+                            ? "fixed bottom-0 left-0 w-full z-[100] bg-[#121212] border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-fade-in-up overflow-hidden h-[64px]"
                             : "relative w-full opacity-100"
                     }>
                         {isSticky && !dismissed && (
-                            <button
-                                onClick={() => setDismissed(true)}
-                                className="absolute -top-4 right-4 z-[110] bg-black/80 border border-white/20 text-gray-400 hover:text-white rounded-full p-1.5 shadow-lg hover:scale-110 transition-transform"
-                                title="Close Player"
-                            >
-                                <X size={14} strokeWidth={1.5} />
-                            </button>
+                            <div className="absolute top-0 right-0 h-full w-24 bg-gradient-to-l from-[#121212] via-[#121212]/90 to-transparent z-[110] flex items-center justify-end pr-4 pointer-events-none">
+                                <button
+                                    onClick={() => setDismissed(true)}
+                                    className="bg-black/60 border border-white/10 text-gray-400 hover:text-white rounded-full p-1.5 shadow-lg hover:scale-110 hover:bg-black/80 transition-all pointer-events-auto"
+                                    title="Close Player"
+                                >
+                                    <X size={14} strokeWidth={1.5} />
+                                </button>
+                            </div>
                         )}
                         <iframe
-                            style={{ borderRadius: isSticky && !dismissed ? '0px' : '12px' }}
                             src={embedUrl}
-                            width="100%"
                             height={isSticky && !dismissed ? 80 : embedHeight}
                             frameBorder="0"
                             allowFullScreen={true}
                             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
                             loading="lazy"
-                            className={`relative z-10 transition-all duration-700 ${isSticky && !dismissed ? '' : 'filter grayscale group-hover:grayscale-0 shadow-2xl shadow-black/40'} ${isSticky && !dismissed ? 'max-w-7xl mx-auto block' : ''}`}
+                            style={{
+                                borderRadius: isSticky && !dismissed ? '0px' : '12px',
+                                width: isSticky && !dismissed ? '125%' : '100%',
+                                transform: isSticky && !dismissed ? 'scale(0.8)' : 'none',
+                                transformOrigin: 'top left'
+                            }}
+                            className={`relative z-10 transition-all duration-700 ${isSticky && !dismissed ? 'block' : 'filter grayscale group-hover:grayscale-0 shadow-2xl shadow-black/40'}`}
                         />
                         {!isSticky && (
                             <div className="absolute -inset-4 bg-accent-green/5 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none" />
