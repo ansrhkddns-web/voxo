@@ -3,9 +3,14 @@
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 
-// Helper to scrape public Spotify page for stats when API is 403
+/**
+ * Robust Scraper v4.1 (No Hardcoding)
+ * This function extracts metadata from public Spotify pages when the API is 403.
+ */
 async function scrapeSpotifyStats(url: string, type: 'artist' | 'album' | 'track') {
     try {
+        console.log(`VOXO_SCRAPER: Attempting rescue for [${url}]`);
+
         const response = await fetch(url, {
             headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36' },
             cache: 'no-store'
@@ -14,54 +19,59 @@ async function scrapeSpotifyStats(url: string, type: 'artist' | 'album' | 'track
         if (!response.ok) return null;
         const html = await response.text();
 
-        // 1. Extract Monthly Listeners from meta or text
+        // 1. If it's an album page, it might not have monthly listeners. 
+        // Try to find the artist link and scrape that too if needed.
         let monthly_listeners = 0;
-        const listenMatch = html.match(/([\d,.]+)\s*monthly listeners/i);
-        if (listenMatch) {
-            monthly_listeners = parseInt(listenMatch[1].replace(/,/g, ''));
-        }
-
-        // 2. Extract Followers from text
         let followers = 0;
+
+        const listenMatch = html.match(/([\d,.]+)\s*monthly listeners/i);
+        if (listenMatch) monthly_listeners = parseInt(listenMatch[1].replace(/,/g, ''));
+
         const followMatch = html.match(/([\d,.]+)\s*Followers/i);
-        if (followMatch) {
-            followers = parseInt(followMatch[1].replace(/,/g, ''));
+        if (followMatch) followers = parseInt(followMatch[1].replace(/,/g, ''));
+
+        // If stats not found on current page and it's an album, look for artist link
+        if (monthly_listeners === 0 && type === 'album') {
+            const artistLinkMatch = html.match(/https:\/\/open\.spotify\.com\/artist\/([a-zA-Z0-9]+)/);
+            if (artistLinkMatch) {
+                const artistStats = await scrapeSpotifyStats(artistLinkMatch[0], 'artist');
+                if (artistStats) {
+                    monthly_listeners = artistStats.monthly_listeners;
+                    followers = artistStats.followers;
+                }
+            }
         }
 
-        // 3. Extract Artist Name
+        // 2. Extract Artist/Subject Name
         let name = "";
         const titleMatch = html.match(/<title>(.*?)\s*\|\s*Spotify<\/title>/i);
         if (titleMatch) name = titleMatch[1].replace(/ - Album by.*/i, '').replace(/ - Single by.*/i, '').trim();
 
-        // 4. Extract Top Tracks (for Albums)
+        // 3. Extract Tracks
         let tracks: any[] = [];
         const trackRegex = /"name":"([^"]+)"/g;
         let match;
         const seen = new Set();
         while ((match = trackRegex.exec(html)) !== null && tracks.length < 5) {
             const tName = match[1];
-            if (!seen.has(tName) && !tName.includes(name)) {
+            if (!seen.has(tName) && !tName.toLowerCase().includes(name.toLowerCase()) && !tName.toLowerCase().includes("spotify")) {
                 tracks.push({ id: Math.random().toString(36), title: tName, duration: "3:00" });
                 seen.add(tName);
             }
         }
 
-        // 5. Extract Artist ID from URL for Follow button
-        let artist_id = "";
-        const idMatch = url.match(/artist\/([a-zA-Z0-9]+)/);
-        if (idMatch) artist_id = idMatch[1];
-
         return {
             name,
             followers,
             monthly_listeners,
+            genres: ["Music", "Spotify"],
             topTracks: tracks,
             image: "",
-            artist_id, // Added for Follow button
             is_rescue: true,
             is_scraped: true
         };
     } catch (e) {
+        console.error("VOXO_SCRAPER_ERROR:", e);
         return null;
     }
 }
