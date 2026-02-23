@@ -60,13 +60,13 @@ export default function SpotifyEmbed({ uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvE
 
                     <div className={
                         isSticky && !dismissed
-                            ? "fixed bottom-0 left-0 w-full z-[100] bg-[#121212] border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-fade-in-up overflow-hidden h-[64px]"
+                            ? "fixed bottom-0 left-0 w-full z-[100] bg-[#121212] border-t border-white/10 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] animate-fade-in-up overflow-visible h-[64px]"
                             : "relative w-full opacity-100"
                     }>
                         {isSticky && !dismissed && (
                             <button
                                 onClick={() => setDismissed(true)}
-                                className="absolute top-2 right-2 z-[110] bg-black/60 border border-white/10 text-gray-400 hover:text-white rounded-full p-1.5 shadow-lg hover:scale-110 hover:bg-black/80 transition-all pointer-events-auto"
+                                className="absolute -top-12 right-4 md:right-8 z-[110] bg-black border border-white/10 text-gray-400 hover:text-white rounded-full p-2 shadow-lg hover:scale-110 hover:bg-zinc-900 transition-all pointer-events-auto"
                                 title="Close Player"
                             >
                                 <X size={14} strokeWidth={1.5} />
