@@ -21,13 +21,12 @@ import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
 // We dynamically compute names in the render loop now instead of a static array for name, but keep href/icon here
 const NAV_ITEMS_DATA = [
     { id: 'dashboard', href: '/admin', icon: LayoutDashboard },
+    { id: 'allPosts', href: '/admin/posts', icon: FileText },
     { id: 'categories', href: '/admin/categories', icon: Layers },
     { id: 'tags', href: '/admin/tags', icon: Tag },
-    { id: 'allPosts', href: '/admin/posts', icon: FileText },
     { id: 'subscribers', href: '/admin/subscribers', icon: Users },
     { id: 'newsletter', href: '/admin/newsletter', icon: Mail },
     { id: 'settings', href: '/admin/settings', icon: Settings },
-    { id: 'aiDesk', href: '/admin/ai-desk', icon: Sparkles },
 ];
 
 export default function AdminSidebar() {
@@ -45,13 +44,22 @@ export default function AdminSidebar() {
             </div>
 
             <div className="p-6 flex flex-col gap-10 flex-1 mt-4">
-                <Link
-                    href="/admin/editor"
-                    className="flex items-center justify-center gap-2 w-full border border-white/10 hover:border-white/30 bg-transparent text-white text-[10px] uppercase tracking-[0.2em] py-3 rounded-none transition-all duration-300"
-                >
-                    <PlusSquare size={14} className="text-accent-green" />
-                    <span>{t('newPost', 'sidebar')}</span>
-                </Link>
+                <div className="flex flex-col gap-3">
+                    <Link
+                        href="/admin/editor"
+                        className="flex items-center justify-center gap-2 w-full border border-white/10 hover:border-white/30 bg-transparent text-white text-[10px] uppercase tracking-[0.2em] py-3 rounded-none transition-all duration-300"
+                    >
+                        <PlusSquare size={14} className="text-accent-green" />
+                        <span>{t('newPost', 'sidebar')}</span>
+                    </Link>
+                    <Link
+                        href="/admin/ai-desk"
+                        className="flex items-center justify-center gap-2 w-full border border-white/10 hover:border-white/30 bg-transparent text-white text-[10px] uppercase tracking-[0.2em] py-3 rounded-none transition-all duration-300"
+                    >
+                        <Sparkles size={14} className="text-accent-green" />
+                        <span>{t('aiDesk', 'sidebar') || 'AI AUTO DESK'}</span>
+                    </Link>
+                </div>
 
                 <nav className="flex flex-col gap-2">
                     <p className="text-[9px] uppercase tracking-[0.3em] text-gray-700 mb-2 ml-2">{t('navigation', 'sidebar')}</p>
