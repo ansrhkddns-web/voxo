@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
                 log(`[Debug] KEY LENGTH: ${apiKey.length}, DB CHECK PASSED.`);
 
                 const genAI = new GoogleGenerativeAI(apiKey);
-                const modelAlias = 'gemini-1.5-flash';
+                const modelAlias = 'gemini-2.5-flash';
                 console.log(`\n\n=== EXECUTING AI ROUTE ===\nUSING MODEL ALIAS: ${modelAlias}\n=======================\n\n`);
                 log(`[Debug] TARGET MODEL: ${modelAlias}`);
                 const model = genAI.getGenerativeModel({ model: modelAlias });

@@ -28,8 +28,8 @@ export async function generatePostDraft(formData: FormData) {
     }
 
     try {
-        // Use gemini-1.5-flash to avoid 404
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        // Use gemini-2.5-flash to avoid 404
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         // --- STEP 1: Research Agent (Fact Checking & Data Gathering) ---
         console.log("VOXO_AI: [Agent 1] Researching...");
