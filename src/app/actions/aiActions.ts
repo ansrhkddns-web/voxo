@@ -4,6 +4,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@/lib/supabase/server';
 import { getSetting } from '@/app/actions/settingsActions';
 
+import { getArtistStats } from '@/app/actions/spotifyActions';
+
 export async function generatePostDraft(formData: FormData) {
     // 1. Try DB first, then ENV
     let apiKey = await getSetting('gemini_api_key');
@@ -26,43 +28,119 @@ export async function generatePostDraft(formData: FormData) {
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        // Use gemini-1.5-pro or flash latest to avoid 404
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro-latest' });
 
-        const prompt = `
-당신은 'Voxo'라는 이름의 고품격 시네마틱 음악 매거진의 전문 에디터입니다.
-다음 정보를 바탕으로 SEO가 최적화된 심도 있는 음악 기사 형식의 리뷰를 작성해주세요.
+        // --- STEP 1: Research Agent (Fact Checking & Data Gathering) ---
+        console.log("VOXO_AI: [Agent 1] Researching...");
+        const researchPrompt = `
+You are an expert music researcher. Gather factual information about the artist "${artistName}" and the song "${songTitle}".
+Provide a concise summary including:
+- Artist background (genre, debut, significant achievements)
+- Song details (release year, album, theme, producer if known)
+- Any interesting trivia or context about this specific track.
+Do not write a review, just bullet points of facts.
+        `.trim();
+        const researchResult = await model.generateContent(researchPrompt);
+        const facts = researchResult.response.text();
 
-- 아티스트: ${artistName}
-- 대표곡(타이틀): ${songTitle}
-- 기사 컨셉: ${concept || '심도 있는 감성적 리뷰'}
+        // --- STEP 2: Writing Agent (Voxo Editorial Style) ---
+        console.log("VOXO_AI: [Agent 2] Writing Content...");
+        const writePrompt = `
+당신은 'Voxo'라는 이름의 고품격 시네마틱 음악 매거진의 수석 에디터입니다.
+다음은 리서치 팀이 조사한 팩트입니다. 이를 바탕으로 깊이 있는 리뷰 기사를 약 1500자 분량으로 작성해주세요.
+
+[팩트 자료]
+${facts}
+
+[기사 컨셉/요청사항]
+${concept || '음악의 철학적, 감성적 분석에 초점을 맞출 것'}
 
 요구사항:
-1. 제목: 독자의 이목을 끄는 시네마틱하고 상징적인 제목을 하나 만들어주세요. (제목 앞에는 '제목: ' 이라고 붙여주세요)
-2. 내용: Voxo 매거진 스타일로, 곡명과 아티스트에 대한 철학적이고 감성적인 분석을 담아주세요. 마치 한 편의 영화를 음악으로 듣는 듯한 깊이 있는 평론이어야 합니다. 약 1000자 이상으로 작성하세요.
-3. SEO 태그: 글의 맨 마지막 줄에 '#태그1, #태그2, #태그3' 형식으로 관련 키워드 3~5개를 추천해주세요.
-4. 문단은 적절히 나누고 HTML이 아닌 일반 플레인 텍스트 마크다운(Markdown) 형식으로 작성하세요.
+1. 제목: 상징적이고 눈길을 끄는 시네마틱한 한국어 제목 하나. (제일 첫 줄에 '제목: [작성한 제목]' 이라고 명시)
+2. 내용: 곡의 분위기와 아티스트의 행보를 문학적이고 깊이 있는 어조로 서술하세요. (HTML이 아닌 일반 Markdown 텍스트로 문단을 적절히 나누어 작성)
+3. 부제목(Intro): Voxo 매거진 특유의 시적인 서두(Intro) 한 줄을 제목 아래에 포함해주세요. (서두는 '서두: [작성한 서두]' 라고 명시)
         `.trim();
+        const writeResult = await model.generateContent(writePrompt);
+        const articleText = writeResult.response.text();
 
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text();
+        // --- STEP 3: SEO Agent (Keywords Extraction) ---
+        console.log("VOXO_AI: [Agent 3] Extracting SEO Tags...");
+        const seoPrompt = `
+다음 기사 내용을 바탕으로, 구글 검색 엔진 최적화(SEO)에 유리한 메타 태그/키워드 3~5개를 추출해주세요.
+결과는 쉼표로만 구분된 텍스트로 출력하세요. (예: 아티스트명, 팝 음악, 감성, 앨범 리뷰)
 
-        // 파싱 (제목, 본문, 태그)
+[기사 내용]
+${articleText}
+        `.trim();
+        const seoResult = await model.generateContent(seoPrompt);
+        const tags = seoResult.response.text().split(',').map(tag => tag.trim().replace(/^#/, ''));
+
+        // Parse title, intro, and body
         let title = `${artistName} - ${songTitle} 리뷰`;
-        let content = responseText;
+        let intro = `Examining the resonance within ${artistName}'s sonic landscape.`;
+        let content = articleText;
 
-        const titleMatch = responseText.match(/제목:\s*(.*)/);
+        const titleMatch = articleText.match(/제목:\s*(.*)/);
         if (titleMatch) {
             title = titleMatch[1].trim();
             content = content.replace(titleMatch[0], '').trim();
         }
 
-        // 간단한 HTML 변환 (줄바꿈 -> p 태그)
-        const htmlContent = content.split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br/>')}</p>`).join('\n');
+        const introMatch = content.match(/서두:\s*(.*)/);
+        if (introMatch) {
+            intro = introMatch[1].trim();
+            content = content.replace(introMatch[0], '').trim();
+        }
 
-        // Supabase에 임시 저장
+        // Convert simple markdown to HTML paragraphs
+        let htmlContent = content.split('\n\n').map(p => {
+            const text = p.trim();
+            if (!text) return '';
+            if (text.startsWith('#')) return `<h3>${text.replace(/^#+\s*/, '')}</h3>`;
+            return `<p>${text.replace(/\n/g, '<br/>')}</p>`;
+        }).filter(Boolean).join('\n');
+
+        // --- STEP 4: Media Fetching (Spotify & YouTube) ---
+        console.log("VOXO_AI: Fetching Multimedia...");
+        let spotifyUri = null;
+        let coverImage = null;
+        try {
+            const spotifyData = await getArtistStats(`${artistName} ${songTitle}`, artistName) as any;
+            if (spotifyData && !spotifyData.error) {
+                spotifyUri = spotifyData.external_url;
+                coverImage = spotifyData.image;
+            }
+        } catch (e) { console.error("Spotify fetch failed:", e); }
+
+        let youtubeIframe = "";
+        try {
+            // Simple public HTML scrape for YouTube
+            const yQuery = encodeURIComponent(`${artistName} ${songTitle} official music video`);
+            const yRes = await fetch(`https://m.youtube.com/results?search_query=${yQuery}`, {
+                headers: { 'User-Agent': 'Mozilla/5.0' },
+                cache: 'no-store'
+            });
+            const yHtml = await yRes.text();
+            const vMatch = yHtml.match(/watch\?v=([a-zA-Z0-9_-]{11})/);
+            if (vMatch && vMatch[1]) {
+                const videoId = vMatch[1];
+                youtubeIframe = `<div class="my-10 w-full aspect-video"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/${videoId}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+                // Prepend youtube video to content
+                htmlContent = youtubeIframe + '\n' + htmlContent;
+            }
+        } catch (e) { console.error("YouTube parse failed:", e); }
+
+        // Inject Voxo Metadata for custom Intro/Excerpt
+        const metadataDiv = `<div id="voxo-metadata" data-excerpt="${intro.replace(/"/g, '&quot;')}" data-intro="${intro.replace(/"/g, '&quot;')}"></div>\n`;
+        htmlContent = metadataDiv + htmlContent;
+
+
+        // --- STEP 5: Database Save ---
+        console.log("VOXO_AI: Saving to Database...");
         const supabase = await createClient();
 
-        // 카테고리 (기본값 설정 - 필요시 수정)
+        // Get Category
         const { data: categoryData } = await supabase.from('categories').select('id').limit(1).single();
 
         const slug = `${artistName}-${songTitle}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
@@ -71,9 +149,12 @@ export async function generatePostDraft(formData: FormData) {
             title: title,
             content: htmlContent,
             artist_name: artistName,
-            is_published: false, // 임시저장
+            is_published: false,
             slug: `${slug}-${Date.now()}`,
-            category_id: categoryData?.id || null
+            category_id: categoryData?.id || null,
+            spotify_uri: spotifyUri,
+            cover_image: coverImage,
+            tags: tags
         }).select().single();
 
         if (insertError) {
@@ -84,6 +165,13 @@ export async function generatePostDraft(formData: FormData) {
         return { success: true, postId: post.id };
     } catch (error: any) {
         console.error('Gemini AI Error:', error);
-        return { success: false, error: error.message || 'AI 생성 중 알 수 없는 오류가 발생했습니다.' };
+
+        // Let's try to fallback to gemini-1.5-flash if pro latest also 404s
+        let errMsg = error.message || 'AI 생성 중 알 수 없는 오류가 발생했습니다.';
+        if (errMsg.includes('404')) {
+            errMsg = 'Gemini API 모델명 오류(404)가 발생했습니다. 구글 AI Studio에서 해당 API Key가 gemini-1.5 모델 사용 권한을 가졌는지 확인해주세요.';
+        }
+
+        return { success: false, error: errMsg };
     }
 }
