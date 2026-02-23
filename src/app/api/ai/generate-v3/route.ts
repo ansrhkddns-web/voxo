@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getSetting } from '@/app/actions/settingsActions';
 import { getArtistStats } from '@/app/actions/spotifyActions';
 
+export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // Set Vercel max duration for longer AI tasks
 
 export async function POST(req: NextRequest) {
@@ -39,8 +40,13 @@ export async function POST(req: NextRequest) {
                     throw new Error('GEMINI_API_KEY가 설정되지 않았습니다.');
                 }
 
+                log(`[Debug] KEY LENGTH: ${apiKey.length}, DB CHECK PASSED.`);
+
                 const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro-latest' });
+                const modelAlias = 'gemini-1.5-flash';
+                console.log(`\n\n=== EXECUTING AI ROUTE ===\nUSING MODEL ALIAS: ${modelAlias}\n=======================\n\n`);
+                log(`[Debug] TARGET MODEL: ${modelAlias}`);
+                const model = genAI.getGenerativeModel({ model: modelAlias });
 
                 // --- STEP 1: Research Agent ---
                 sendEvent('state', { currentAgent: 'research', progress: 25 });

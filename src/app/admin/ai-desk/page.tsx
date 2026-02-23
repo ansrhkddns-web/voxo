@@ -55,10 +55,18 @@ export default function AIDeskPage() {
         setCurrentAgent('idle');
 
         try {
-            const response = await fetch('/api/ai/generate', {
+            // Append a timestamp to completely bypass Next.js route caching
+            const timestamp = new Date().getTime();
+            const response = await fetch(`/api/ai/generate-v3?t=${timestamp}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                },
                 body: JSON.stringify(formData),
+                cache: 'no-store', // Force Next.js App Router to bypass client cache
             });
 
             if (!response.ok) {
@@ -258,10 +266,10 @@ export default function AIDeskPage() {
                                         return (
                                             <React.Fragment key={agent.id}>
                                                 <div className={`relative flex flex-col justify-between w-full sm:w-48 h-32 p-4 rounded-lg border transition-all duration-500 ${state === 'active'
-                                                        ? 'bg-accent-green/10 border-accent-green/50 shadow-[0_0_20px_rgba(20,200,100,0.1)]'
-                                                        : state === 'done'
-                                                            ? 'bg-black border-white/20 opacity-60'
-                                                            : 'bg-black border-white/5 opacity-40'
+                                                    ? 'bg-accent-green/10 border-accent-green/50 shadow-[0_0_20px_rgba(20,200,100,0.1)]'
+                                                    : state === 'done'
+                                                        ? 'bg-black border-white/20 opacity-60'
+                                                        : 'bg-black border-white/5 opacity-40'
                                                     }`}>
                                                     {/* Top Badges */}
                                                     <div className="flex items-start justify-between">
