@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
             try {
                 const body = await req.json();
-                const { artistName, songTitle, concept } = body;
+                const { artistName, songTitle, language, categoryId, concept } = body;
 
                 if (!artistName || !songTitle) {
                     sendEvent('error', { message: '가수명과 대표곡은 필수입니다.' });
@@ -49,8 +49,6 @@ export async function POST(req: NextRequest) {
                 const model = genAI.getGenerativeModel({ model: modelAlias });
 
                 // Fetch Additional Context
-                const language = await getSetting('ai_post_language') || 'English';
-                const categoryId = await getSetting('ai_post_category');
                 let categoryName = 'General';
                 let supabase = await createClient(); // Initialize early for category fetch
 

@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, Loader2, Music, Mic2, Tag, CheckCircle2, ChevronRight, Terminal, Database, Activity, Type } from 'lucide-react';
+import { Sparkles, Loader2, Music, Mic2, Tag, CheckCircle2, ChevronRight, Terminal, Database, Activity, Type, Globe } from 'lucide-react';
 import AdminSidebar from '@/components/admin/AdminSidebar';
+import { getCategories } from '@/app/actions/categoryActions';
 
 type AgentStatus = 'idle' | 'research' | 'write' | 'seo' | 'media' | 'done';
 
@@ -25,11 +26,29 @@ export default function AIDeskPage() {
     const logsEndRef = useRef<HTMLDivElement>(null);
 
     // Form State
+    const [categories, setCategories] = useState<any[]>([]);
     const [formData, setFormData] = useState({
         artistName: '',
         songTitle: '',
+        language: 'English',
+        categoryId: '',
         concept: ''
     });
+
+    useEffect(() => {
+        const fetchCats = async () => {
+            try {
+                const cats = await getCategories();
+                setCategories(cats || []);
+                if (cats && cats.length > 0) {
+                    setFormData(prev => ({ ...prev, categoryId: cats[0].id }));
+                }
+            } catch (e) {
+                console.error("Failed to fetch categories", e);
+            }
+        };
+        fetchCats();
+    }, []);
 
     const scrollToBottom = () => {
         logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -41,7 +60,7 @@ export default function AIDeskPage() {
         }
     }, [logs, step]);
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
@@ -212,7 +231,43 @@ export default function AIDeskPage() {
                                     </div>
                                 </div>
 
-                                <div className="space-y-4 pt-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mt-6 pt-6 border-t border-white/5">
+                                    <div className="space-y-4">
+                                        <label className="flex items-center gap-2 text-[9px] uppercase tracking-[0.3em] text-gray-500 focus-within:text-accent-green transition-colors">
+                                            <Globe size={12} /> 포스팅 작성 언어 (Language)
+                                        </label>
+                                        <select
+                                            name="language"
+                                            value={formData.language}
+                                            onChange={handleInputChange}
+                                            className="w-full bg-black border-b border-white/10 py-3 text-white focus:outline-none focus:border-accent-green transition-colors text-sm font-mono appearance-none uppercase tracking-widest"
+                                        >
+                                            <option value="English">ENGLISH</option>
+                                            <option value="Korean">한국어</option>
+                                            <option value="Japanese">日本語</option>
+                                            <option value="Chinese">中文</option>
+                                            <option value="Spanish">Español</option>
+                                            <option value="French">Français</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <label className="flex items-center gap-2 text-[9px] uppercase tracking-[0.3em] text-gray-500 focus-within:text-accent-green transition-colors">
+                                            <Database size={12} /> 저장 될 카테고리 (및 글 톤앤매너 설정)
+                                        </label>
+                                        <select
+                                            name="categoryId"
+                                            value={formData.categoryId}
+                                            onChange={handleInputChange}
+                                            className="w-full bg-black border-b border-white/10 py-3 text-white focus:outline-none focus:border-accent-green transition-colors text-sm font-mono appearance-none uppercase tracking-widest"
+                                        >
+                                            {categories.map((cat: any) => (
+                                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4 pt-6 border-t border-white/5">
                                     <label className="flex items-center gap-2 text-[9px] uppercase tracking-[0.3em] text-gray-500 focus-within:text-accent-green transition-colors">
                                         <Tag size={12} /> Direction / Concept (Optional)
                                     </label>

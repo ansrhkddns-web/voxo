@@ -21,6 +21,8 @@ export async function generatePostDraft(formData: FormData) {
 
     const artistName = formData.get('artistName') as string;
     const songTitle = formData.get('songTitle') as string;
+    const language = formData.get('language') as string || 'English';
+    const categoryId = formData.get('categoryId') as string;
     const concept = formData.get('concept') as string;
 
     if (!artistName || !songTitle) {
@@ -32,8 +34,6 @@ export async function generatePostDraft(formData: FormData) {
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         // Fetch Additional Context
-        const language = await getSetting('ai_post_language') || 'English';
-        const categoryId = await getSetting('ai_post_category');
         let categoryName = 'General';
         let supabase = await createClient(); // Initialize early for category fetch
 

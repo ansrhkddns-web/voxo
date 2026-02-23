@@ -6,7 +6,6 @@ import { Save, Loader2, Globe, Lock, Bell, Database, Type, Music, Sparkles, Bot 
 import toast, { Toaster } from 'react-hot-toast';
 import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
 import { getSetting, updateSetting } from '@/app/actions/settingsActions';
-import { getCategories } from '@/app/actions/categoryActions';
 
 const TRANSLATIONS = {
     en: {
@@ -24,8 +23,6 @@ const TRANSLATIONS = {
 
         // AI Agents Tab
         aiAgentsTitle: 'AI Core Prompts',
-        aiPostLanguage: 'Generation Language',
-        aiPostCategory: 'Default Post Category',
         aiPromptResearch: 'Research Agent Prompt',
         aiPromptWrite: 'Editor Agent Prompt',
         aiPromptSeo: 'SEO Agent Prompt',
@@ -75,8 +72,6 @@ const TRANSLATIONS = {
 
         // AI Agents Tab
         aiAgentsTitle: 'AI 코어 프롬프트',
-        aiPostLanguage: '포스팅 작성 언어',
-        aiPostCategory: '저장 될 카테고리 (및 글 톤앤매너 설정)',
         aiPromptResearch: '리서치 에이전트 지시어',
         aiPromptWrite: '작성 에이전트 지시어',
         aiPromptSeo: 'SEO 에이전트 지시어',
@@ -118,7 +113,6 @@ type Language = 'en' | 'ko';
 export default function AdminSettings() {
     const [isSaving, setIsSaving] = useState(false);
     const [activeTab, setActiveTab] = useState('general');
-    const [categories, setCategories] = useState<any[]>([]);
 
     const { language, setLanguage } = useAdminLanguage();
 
@@ -130,8 +124,6 @@ export default function AdminSettings() {
         geminiApiKey: '',
         globalPlaylist: '',
         maintenanceMode: false,
-        aiPostLanguage: 'English',
-        aiPostCategory: '',
         aiPromptResearch: `You are an expert music researcher. Gather factual information about the artist "{artistName}" and the song "{songTitle}".\nProvide a concise summary including:\n- Artist background (genre, debut, significant achievements)\n- Song details (release year, album, theme, producer if known)\n- Any interesting trivia or context about this specific track.\nDo not write a review, just bullet points of facts.`,
         aiPromptWrite: `당신은 'Voxo'라는 이름의 고품격 시네마틱 음악 매거진의 수석 에디터입니다.\n다음 팩트를 바탕으로 리뷰 기사를 약 1500자 분량으로 작성해주세요.\n\n[팩트 자료]\n{facts}\n\n[기사 컨셉/요청사항]\n{concept}\n[카테고리 분류: {categoryName}]\n\n요구사항:\n1. 언어: 이 기사는 무조건 '{language}' 언어로만 작성되어야 합니다.\n2. 제목: 상징적이고 눈길을 끄는 시네마틱한 제목 하나. (제일 첫 줄에 '제목: [작성한 제목]' 이라고 명시)\n3. 내용: 곡의 분위기와 아티스트의 행보를 문학적이고 깊이 있는 어조로 서술하세요. (HTML이 아닌 일반 Markdown 텍스트로 문단을 적절히 나누어 작성)\n4. 부제목(Intro): Voxo 매거진 특유의 시적인 서두(Intro) 한 줄을 제목 아래에 포함해주세요. (서두는 '서두: [작성한 서두]' 라고 명시)`,
         aiPromptSeo: `다음 기사 내용을 바탕으로, 구글 검색 엔진 최적화(SEO)에 유리한 메타 태그/키워드 3~5개를 추출해주세요.\n결과는 쉼표로만 구분된 텍스트로 출력하세요. (예: 아티스트명, 팝 음악, 감성, 앨범 리뷰)\n\n[기사 내용]\n{articleText}`,
@@ -149,20 +141,6 @@ export default function AdminSettings() {
                 console.error("Failed to parse settings", e);
             }
         }
-
-        // Load Categories
-        const loadCats = async () => {
-            try {
-                const cats = await getCategories();
-                setCategories(cats || []);
-                if (cats && cats.length > 0) {
-                    setSettings(prev => ({ ...prev, aiPostCategory: prev.aiPostCategory || cats[0].id }));
-                }
-            } catch (e) {
-                console.error("Failed to load categories", e);
-            }
-        };
-        loadCats();
 
         // Load DB settings
         const loadDbSettings = async () => {
@@ -202,8 +180,6 @@ export default function AdminSettings() {
 
         // Save DB properties
         await updateSetting('global_spotify_playlist', settings.globalPlaylist);
-        await updateSetting('ai_post_language', settings.aiPostLanguage);
-        await updateSetting('ai_post_category', settings.aiPostCategory);
         await updateSetting('ai_prompt_research', settings.aiPromptResearch);
         await updateSetting('ai_prompt_write', settings.aiPromptWrite);
         await updateSetting('ai_prompt_seo', settings.aiPromptSeo);
@@ -418,39 +394,6 @@ export default function AdminSettings() {
                                     <p className="text-[10px] text-gray-500 uppercase tracking-widest">{t.aiPromptDesc}</p>
 
                                     <div className="space-y-12">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            <div className="group">
-                                                <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">{t.aiPostLanguage}</label>
-                                                <select
-                                                    value={settings.aiPostLanguage}
-                                                    onChange={e => setSettings({ ...settings, aiPostLanguage: e.target.value })}
-                                                    className="w-full bg-black border-b border-white/10 py-3 text-white focus:outline-none focus:border-accent-green transition-colors text-sm font-mono appearance-none uppercase tracking-widest"
-                                                >
-                                                    <option value="English">English</option>
-                                                    <option value="Korean">Korean</option>
-                                                    <option value="Japanese">Japanese</option>
-                                                    <option value="Chinese">Chinese</option>
-                                                    <option value="Spanish">Spanish</option>
-                                                    <option value="French">French</option>
-                                                </select>
-                                            </div>
-
-                                            <div className="group">
-                                                <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">{t.aiPostCategory}</label>
-                                                <select
-                                                    value={settings.aiPostCategory}
-                                                    onChange={e => setSettings({ ...settings, aiPostCategory: e.target.value })}
-                                                    className="w-full bg-black border-b border-white/10 py-3 text-white focus:outline-none focus:border-accent-green transition-colors text-sm font-mono appearance-none uppercase tracking-widest"
-                                                >
-                                                    {categories.map((cat: any) => (
-                                                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        </div>
-
-                                        <div className="h-px w-full bg-white/5 my-8"></div>
-
                                         <div className="group">
                                             <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">{t.aiPromptConcept}</label>
                                             <textarea
