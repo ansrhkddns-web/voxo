@@ -70,10 +70,28 @@ export async function generatePostDraft(formData: FormData) {
 
         // --- STEP 3: SEO Agent (Keywords Extraction) ---
         console.log("VOXO_AI: [Agent 3] Extracting SEO Tags...");
-        const dbSeo = await getSetting('ai_prompt_seo');
-        const seoPromptTemplate = dbSeo || `다음 기사 내용을 바탕으로, 구글 검색 엔진 최적화(SEO)에 유리한 메타 태그/키워드 3~5개를 추출해주세요.\n결과는 쉼표로만 구분된 텍스트로 출력하세요. (예: 아티스트명, 팝 음악, 감성, 앨범 리뷰)\n\n[기사 내용]\n{articleText}`;
 
-        const seoPrompt = seoPromptTemplate.replace(/{articleText}/g, articleText);
+        // Fetch existing tags from database
+        const { data: allTags } = await supabase.from('tags').select('name');
+        const existingTagsStr = allTags ? allTags.map(t => t.name).join(', ') : '';
+
+        const dbSeo = await getSetting('ai_prompt_seo');
+        const seoPromptTemplate = dbSeo || `다음 기사 내용을 바탕으로, 구글 검색 엔진 최적화(SEO)에 가장 적합한 메타 태그/키워드들을 추출해주세요.
+
+[기존 태그 목록]
+{existingTags}
+
+[기사 내용]
+{articleText}
+
+요구사항:
+1. 먼저, 위의 [기존 태그 목록] 중에서 이 기사의 내용과 정확히 일치하거나 매우 연관성이 높은 태그가 있다면 최우선으로 선택하여 결과의 맨 앞쪽에 배치하세요.
+2. 기존 태그만으로는 부족하거나 이 기사만을 위한 필수 키워드(예: 아티스트명, 특정 곡명 등)가 있다면 추가하되, 문장이 아닌 '매우 짧고 단순한 단어' 형태로 최대 4~5개까지만 덧붙이세요.
+3. 결과는 오직 쉼표(,)로만 구분된 텍스트 형식으로 출력해야 합니다. (예: 팝 음악, R&B, 아티스트명, 감성적인)`;
+
+        const seoPrompt = seoPromptTemplate
+            .replace(/{articleText}/g, articleText)
+            .replace(/{existingTags}/g, existingTagsStr);
         const seoResult = await model.generateContent(seoPrompt);
         const tags = seoResult.response.text().split(',').map(tag => tag.trim().replace(/^#/, ''));
 

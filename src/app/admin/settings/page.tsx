@@ -126,7 +126,7 @@ export default function AdminSettings() {
         maintenanceMode: false,
         aiPromptResearch: `You are an expert music researcher. Gather factual information about the artist "{artistName}" and the song "{songTitle}".\nProvide a concise summary including:\n- Artist background (genre, debut, significant achievements)\n- Song details (release year, album, theme, producer if known)\n- Any interesting trivia or context about this specific track.\nDo not write a review, just bullet points of facts.`,
         aiPromptWrite: `당신은 'Voxo'라는 이름의 고품격 시네마틱 음악 매거진의 수석 에디터입니다.\n다음 팩트를 바탕으로 리뷰 기사를 약 1500자 분량으로 작성해주세요.\n\n[팩트 자료]\n{facts}\n\n[기사 컨셉/요청사항]\n{concept}\n[카테고리 분류: {categoryName}]\n\n요구사항:\n1. 언어: 이 기사는 무조건 '{language}' 언어로만 작성되어야 합니다.\n2. 제목: 상징적이고 눈길을 끄는 시네마틱한 제목 하나. (제일 첫 줄에 '제목: [작성한 제목]' 이라고 명시)\n3. 내용: 곡의 분위기와 아티스트의 행보를 문학적이고 깊이 있는 어조로 서술하세요. (HTML이 아닌 일반 Markdown 텍스트로 문단을 적절히 나누어 작성)\n4. 부제목(Intro): Voxo 매거진 특유의 시적인 서두(Intro) 한 줄을 제목 아래에 포함해주세요. (서두는 '서두: [작성한 서두]' 라고 명시)`,
-        aiPromptSeo: `다음 기사 내용을 바탕으로, 구글 검색 엔진 최적화(SEO)에 유리한 메타 태그/키워드 3~5개를 추출해주세요.\n결과는 쉼표로만 구분된 텍스트로 출력하세요. (예: 아티스트명, 팝 음악, 감성, 앨범 리뷰)\n\n[기사 내용]\n{articleText}`,
+        aiPromptSeo: `다음 기사 내용을 바탕으로, 구글 검색 엔진 최적화(SEO)에 가장 적합한 메타 태그/키워드들을 추출해주세요.\n\n[기존 태그 목록]\n{existingTags}\n\n[기사 내용]\n{articleText}\n\n요구사항:\n1. 먼저, 위의 [기존 태그 목록] 중에서 이 기사의 내용과 정확히 일치하거나 매우 연관성이 높은 태그가 있다면 최우선으로 선택하여 결과의 맨 앞쪽에 배치하세요.\n2. 기존 태그만으로는 부족하거나 이 기사만을 위한 필수 키워드가 있다면 추가하되, 문장이 아닌 '매우 짧고 단순한 단어' 형태로 최대 4~5개까지만 덧붙이세요.\n3. 결과는 오직 쉼표(,)로만 구분된 텍스트 형식으로 출력해야 합니다.`,
         aiPromptConcept: `음악의 철학적, 감성적 분석에 초점을 맞출 것`,
     });
 
@@ -428,7 +428,7 @@ export default function AdminSettings() {
 
                                         <div className="group">
                                             <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">{t.aiPromptSeo}</label>
-                                            <p className="text-[8px] text-gray-500 mb-2 font-mono">Available variables: {'{articleText}'}</p>
+                                            <p className="text-[8px] text-gray-500 mb-2 font-mono">Available variables: {'{articleText}'}, {'{existingTags}'}</p>
                                             <textarea
                                                 value={settings.aiPromptSeo}
                                                 onChange={e => setSettings({ ...settings, aiPromptSeo: e.target.value })}
