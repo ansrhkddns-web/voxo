@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import PostCard from './PostCard';
+import { timeAgo } from '@/lib/utils';
 
 interface Tag {
     id: string;
@@ -53,7 +54,7 @@ export default function LatestStories({ posts, tags }: LatestStoriesProps) {
                             title={post.title}
                             category={post.categories?.name || 'Review'}
                             image={post.cover_image || 'https://images.unsplash.com/photo-1514525253361-bee8718a300a?q=80&w=1974&auto=format&fit=crop'}
-                            readTime="10 Min Read"
+                            readTime={timeAgo(post.published_at || post.created_at, 'Korean')}
                             excerpt={post.content?.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
                             slug={post.slug}
                             rating={post.rating}

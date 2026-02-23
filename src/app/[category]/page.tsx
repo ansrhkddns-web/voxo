@@ -7,6 +7,7 @@ import PostCard from "@/components/home/PostCard";
 import NewsletterForm from "@/components/home/NewsletterForm";
 import { getPosts } from '@/app/actions/postActions';
 import { notFound } from 'next/navigation';
+import { timeAgo } from '@/lib/utils';
 
 const validCategories = ['news', 'reviews', 'features', 'editors-pick', 'archives', 'focus', 'cover-story'];
 
@@ -59,7 +60,7 @@ export default async function CategoryPage({ params }: { params: { category: str
                                 title={post.title}
                                 category={post.categories?.name || 'Review'}
                                 image={post.cover_image || 'https://images.unsplash.com/photo-1514525253361-bee8718a300a?q=80&w=1974&auto=format&fit=crop'}
-                                readTime="10 Min Read"
+                                readTime={timeAgo(post.published_at || post.created_at, 'Korean')}
                                 excerpt={post.content?.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
                                 slug={post.slug}
                                 rating={post.rating}

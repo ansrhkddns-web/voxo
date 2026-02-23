@@ -7,7 +7,7 @@ import ArtistStats from "@/components/post/ArtistStats";
 import SpotifyEmbed from "@/components/post/SpotifyEmbed";
 import RatingMeter from "@/components/post/RatingMeter";
 import ViewCounter from "@/components/post/ViewCounter";
-import { Clock } from 'lucide-react';
+import { Instagram, Twitter, Music2, Share2, Play, Pause, SkipBack, SkipForward, Maximize2, X, Clock, Eye, AlertCircle } from 'lucide-react';
 import { getPostBySlug } from '@/app/actions/postActions';
 import { getArtistStats } from '@/app/actions/spotifyActions';
 import { notFound } from 'next/navigation';
@@ -119,10 +119,10 @@ export default async function PostDetail({ params }: { params: { slug: string } 
                         </div>
                         <div className="w-px h-8 bg-white/10 hidden md:block"></div>
                         <div className="flex flex-col gap-1">
-                            <span className="text-gray-600 text-[8px]">Publication</span>
+                            <span className="text-gray-600 text-[8px]">Views & Exposure</span>
                             <span className="flex items-center gap-2">
-                                <Clock size={10} className="text-accent-green/50" />
-                                10 MIN READ
+                                <Eye size={10} className="text-accent-green/50" />
+                                {post.view_count?.toLocaleString() || 0} VIEWS
                             </span>
                         </div>
                         <div className="w-px h-8 bg-white/10 hidden md:block"></div>
