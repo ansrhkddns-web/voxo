@@ -66,10 +66,10 @@ export default function SpotifyEmbed({ uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvE
                         {isSticky && !dismissed && (
                             <button
                                 onClick={() => setDismissed(true)}
-                                className="absolute -top-12 right-4 md:right-8 z-[110] bg-black border border-white/10 text-gray-400 hover:text-white rounded-full p-2 shadow-lg hover:scale-110 hover:bg-zinc-900 transition-all pointer-events-auto"
+                                className="fixed bottom-5 right-4 z-[120] text-yellow-400 hover:text-yellow-300 transition-all pointer-events-auto hover:scale-110 drop-shadow-md"
                                 title="Close Player"
                             >
-                                <X size={14} strokeWidth={1.5} />
+                                <X size={20} strokeWidth={2.5} />
                             </button>
                         )}
                         <iframe

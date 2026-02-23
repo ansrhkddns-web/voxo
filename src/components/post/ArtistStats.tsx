@@ -21,7 +21,7 @@ interface ArtistStatsProps {
 }
 
 export default function ArtistStats({ data }: ArtistStatsProps) {
-    if (!data || (data.error && !data.name)) {
+    if (!data || (data.error && !data.name && !data.followers && !data.monthly_listeners)) {
         console.log("VOXO_SPOTIFY: Signal Lost ->", data?.error);
         return (
             <div className="bg-gray-950/20 border border-white/5 overflow-hidden font-display relative group">

@@ -25,11 +25,14 @@ async function scrapeSpotifyStats(url: string, type: 'artist' | 'album' | 'track
                         const nextDataMatch = embedHtml.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
                         if (nextDataMatch) {
                             const data = JSON.parse(nextDataMatch[1]);
-                            const artistUri = data.props?.pageProps?.state?.data?.entity?.artists?.[0]?.uri;
-                            if (artistUri) {
+                            const artists = data.props?.pageProps?.state?.data?.entity?.artists;
+                            if (artists && artists.length > 0) {
+                                const artistUri = artists[0].uri || '';
                                 const artistId = artistUri.split(':').pop();
-                                console.log(`VOXO_SCRAPER: Redirecting ${type} to artist -> ${artistId}`);
-                                return await scrapeSpotifyStats(`https://open.spotify.com/artist/${artistId}`, 'artist');
+                                if (artistId) {
+                                    console.log(`VOXO_SCRAPER: Redirecting ${type} to artist -> ${artistId}`);
+                                    return await scrapeSpotifyStats(`https://open.spotify.com/artist/${artistId}`, 'artist');
+                                }
                             }
                         }
                     }
