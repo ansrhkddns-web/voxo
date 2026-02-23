@@ -31,6 +31,17 @@ export async function generatePostDraft(formData: FormData) {
         // Use gemini-2.5-flash to avoid 404
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
+        // Fetch Additional Context
+        const language = await getSetting('ai_post_language') || 'English';
+        const categoryId = await getSetting('ai_post_category');
+        let categoryName = 'General';
+        let supabase = await createClient(); // Initialize early for category fetch
+
+        if (categoryId) {
+            const { data: catData } = await supabase.from('categories').select('name').eq('id', categoryId).single();
+            if (catData) categoryName = catData.name;
+        }
+
         // --- STEP 1: Research Agent (Fact Checking & Data Gathering) ---
         console.log("VOXO_AI: [Agent 1] Researching...");
         const dbResearch = await getSetting('ai_prompt_research');
@@ -47,11 +58,13 @@ export async function generatePostDraft(formData: FormData) {
         const dbConcept = await getSetting('ai_prompt_concept');
 
         const finalConcept = concept || dbConcept || '음악의 철학적, 감성적 분석에 초점을 맞출 것';
-        const writePromptTemplate = dbWrite || `당신은 'Voxo'라는 이름의 고품격 시네마틱 음악 매거진의 수석 에디터입니다.\n다음 팩트를 바탕으로 리뷰 기사를 약 1500자 분량으로 작성해주세요.\n\n[팩트 자료]\n{facts}\n\n[기사 컨셉/요청사항]\n{concept}\n\n요구사항:\n1. 제목: 상징적이고 눈길을 끄는 시네마틱한 한국어 제목 하나. (제일 첫 줄에 '제목: [작성한 제목]' 이라고 명시)\n2. 내용: 곡의 분위기와 아티스트의 행보를 문학적이고 깊이 있는 어조로 서술하세요. (HTML이 아닌 일반 Markdown 텍스트로 문단을 적절히 나누어 작성)\n3. 부제목(Intro): Voxo 매거진 특유의 시적인 서두(Intro) 한 줄을 제목 아래에 포함해주세요. (서두는 '서두: [작성한 서두]' 라고 명시)`;
+        const writePromptTemplate = dbWrite || `당신은 'Voxo'라는 이름의 고품격 시네마틱 음악 매거진의 수석 에디터입니다.\n다음 팩트를 바탕으로 리뷰 기사를 약 1500자 분량으로 작성해주세요.\n\n[팩트 자료]\n{facts}\n\n[기사 컨셉/요청사항]\n{concept}\n[카테고리 분류: {categoryName}]\n\n요구사항:\n1. 언어: 이 기사는 무조건 '{language}' 언어로만 작성되어야 합니다.\n2. 제목: 상징적이고 눈길을 끄는 시네마틱한 제목 하나. (제일 첫 줄에 '제목: [작성한 제목]' 이라고 명시)\n3. 내용: 곡의 분위기와 아티스트의 행보를 문학적이고 깊이 있는 어조로 서술하세요. (HTML이 아닌 일반 Markdown 텍스트로 문단을 적절히 나누어 작성)\n4. 부제목(Intro): Voxo 매거진 특유의 시적인 서두(Intro) 한 줄을 제목 아래에 포함해주세요. (서두는 '서두: [작성한 서두]' 라고 명시)`;
 
         const writePrompt = writePromptTemplate
             .replace(/{facts}/g, facts)
-            .replace(/{concept}/g, finalConcept);
+            .replace(/{concept}/g, finalConcept)
+            .replace(/{language}/g, language)
+            .replace(/{categoryName}/g, categoryName);
         const writeResult = await model.generateContent(writePrompt);
         const articleText = writeResult.response.text();
 
@@ -126,10 +139,6 @@ export async function generatePostDraft(formData: FormData) {
 
         // --- STEP 5: Database Save ---
         console.log("VOXO_AI: Saving to Database...");
-        const supabase = await createClient();
-
-        // Get Category
-        const { data: categoryData } = await supabase.from('categories').select('id').limit(1).single();
 
         const slug = `${artistName}-${songTitle}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 
@@ -139,7 +148,7 @@ export async function generatePostDraft(formData: FormData) {
             artist_name: artistName,
             is_published: false,
             slug: `${slug}-${Date.now()}`,
-            category_id: categoryData?.id || null,
+            category_id: categoryId || null,
             spotify_uri: spotifyUri,
             cover_image: coverImage,
             tags: tags
