@@ -64,15 +64,13 @@ export default function SpotifyEmbed({ uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvE
                             : "relative w-full opacity-100"
                     }>
                         {isSticky && !dismissed && (
-                            <div className="absolute top-0 right-0 h-full w-24 bg-gradient-to-l from-[#121212] via-[#121212]/90 to-transparent z-[110] flex items-center justify-end pr-4 pointer-events-none">
-                                <button
-                                    onClick={() => setDismissed(true)}
-                                    className="bg-black/60 border border-white/10 text-gray-400 hover:text-white rounded-full p-1.5 shadow-lg hover:scale-110 hover:bg-black/80 transition-all pointer-events-auto"
-                                    title="Close Player"
-                                >
-                                    <X size={14} strokeWidth={1.5} />
-                                </button>
-                            </div>
+                            <button
+                                onClick={() => setDismissed(true)}
+                                className="absolute top-2 right-2 z-[110] bg-black/60 border border-white/10 text-gray-400 hover:text-white rounded-full p-1.5 shadow-lg hover:scale-110 hover:bg-black/80 transition-all pointer-events-auto"
+                                title="Close Player"
+                            >
+                                <X size={14} strokeWidth={1.5} />
+                            </button>
                         )}
                         <iframe
                             src={embedUrl}
