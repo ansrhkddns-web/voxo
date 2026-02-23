@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import AdminSidebar from "@/components/admin/AdminSidebar";
-import { Save, Loader2, Globe, Lock, Bell, Database, Type, Music } from 'lucide-react';
+import { Save, Loader2, Globe, Lock, Bell, Database, Type, Music, Sparkles } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
 import { getSetting, updateSetting } from '@/app/actions/settingsActions';
@@ -33,6 +33,8 @@ const TRANSLATIONS = {
         apisSpotify: 'Spotify Client Token',
         apisEncrypted: 'ENCRYPTED',
         apisUpdateBtn: 'Update Key',
+        apisGemini: 'Google Gemini API Key',
+        apisGeminiDesc: 'Enter your Gemini API key from Google AI Studio to enable AI features.',
         apisGlobalPlaylist: 'Global Spotify Playlist URL',
         apisGlobalPlaylistDesc: 'Enter a Spotify Track/Playlist/Album URL to stream globally on the bottom bar.',
 
@@ -71,6 +73,8 @@ const TRANSLATIONS = {
         apisSpotify: '스포티파이 API 토큰',
         apisEncrypted: '암호화됨',
         apisUpdateBtn: '키 교체',
+        apisGemini: '구글 제미나이(Gemini) API Key',
+        apisGeminiDesc: 'AI 포스팅 기능을 활성화하기 위해 발급받은 제미나이 API 키를 입력하세요.',
         apisGlobalPlaylist: '글로벌 라디오 플레이리스트 URL',
         apisGlobalPlaylistDesc: '홈페이지 하단 바 전역에서 재생할 스포티파이 트랙/플레이리스트/앨범 URL을 입력하세요.',
 
@@ -99,6 +103,7 @@ export default function AdminSettings() {
         siteDescription: 'Premium Curated Music Experience',
         contactEmail: 'hello@voxo.edit',
         spotifyClientId: '••••••••••••••••••••••••',
+        geminiApiKey: '',
         globalPlaylist: '',
         maintenanceMode: false,
     });
@@ -118,9 +123,12 @@ export default function AdminSettings() {
         // Load DB settings
         const loadDbSettings = async () => {
             const playlistUrl = await getSetting('global_spotify_playlist');
-            if (playlistUrl) {
-                setSettings(prev => ({ ...prev, globalPlaylist: playlistUrl }));
-            }
+            const geminiKey = await getSetting('gemini_api_key');
+            setSettings(prev => ({
+                ...prev,
+                ...(playlistUrl ? { globalPlaylist: playlistUrl } : {}),
+                ...(geminiKey ? { geminiApiKey: geminiKey } : {})
+            }));
         };
         loadDbSettings();
     }, []);
@@ -136,13 +144,14 @@ export default function AdminSettings() {
         localStorage.setItem('voxoAdminSettings', JSON.stringify(settingsToSave));
 
         // Save DB properties
-        const res = await updateSetting('global_spotify_playlist', settings.globalPlaylist);
+        await updateSetting('global_spotify_playlist', settings.globalPlaylist);
+        const res2 = await updateSetting('gemini_api_key', settings.geminiApiKey || '');
 
         setIsSaving(false);
-        if (res.success) {
+        if (res2.success) {
             toast.success(t.saveSuccess);
         } else {
-            toast.error('Local settings saved, but failed to update Global Playlist in DB.');
+            toast.error('Local settings saved, but failed to update Database.');
         }
     };
 
@@ -300,6 +309,21 @@ export default function AdminSettings() {
                                                     {t.apisUpdateBtn}
                                                 </button>
                                             </div>
+                                        </div>
+
+                                        <div className="group mt-12">
+                                            <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-2 font-display group-focus-within:text-accent-green transition-colors flex items-center gap-2">
+                                                <Sparkles size={12} className="text-accent-green" />
+                                                {t.apisGemini}
+                                            </label>
+                                            <p className="text-[10px] text-gray-500 mb-4">{t.apisGeminiDesc}</p>
+                                            <input
+                                                type="text"
+                                                value={settings.geminiApiKey || ''}
+                                                onChange={e => setSettings({ ...settings, geminiApiKey: e.target.value })}
+                                                placeholder="AIzaSy..."
+                                                className="w-full bg-transparent border-b border-white/10 py-3 text-white font-mono text-sm focus:outline-none focus:border-accent-green transition-colors placeholder:text-gray-700"
+                                            />
                                         </div>
 
                                         <div className="group mt-12">

@@ -2,14 +2,20 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createClient } from '@/lib/supabase/server';
-
-const apiKey = process.env.GEMINI_API_KEY;
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
+import { getSetting } from '@/app/actions/settingsActions';
 
 export async function generatePostDraft(formData: FormData) {
-    if (!genAI || !apiKey) {
-        return { success: false, error: 'GEMINI_API_KEY가 서버에 설정되지 않았습니다. 관리자 문서(env.local)를 참고하여 키를 등록해주세요.' };
+    // 1. Try DB first, then ENV
+    let apiKey = await getSetting('gemini_api_key');
+    if (!apiKey) {
+        apiKey = process.env.GEMINI_API_KEY;
     }
+
+    if (!apiKey) {
+        return { success: false, error: 'GEMINI_API_KEY가 서버(설정 또는 환경변수)에 설정되지 않았습니다. 어드민 페이지 설정 탭에서 키를 등록해주세요.' };
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
 
     const artistName = formData.get('artistName') as string;
     const songTitle = formData.get('songTitle') as string;
