@@ -108,7 +108,7 @@ export default function AIDeskPage() {
                                 setCurrentAgent('done');
                                 setProgress(100);
                                 setTimeout(() => {
-                                    router.push(`/admin/editor/${data.postId}`);
+                                    router.push(`/admin/editor?id=${data.postId}`);
                                 }, 2000);
                             } else if (event === 'error') {
                                 throw new Error(data.message);
