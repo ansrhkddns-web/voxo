@@ -51,14 +51,11 @@ export async function POST(req: NextRequest) {
                 // --- STEP 1: Research Agent ---
                 sendEvent('state', { currentAgent: 'research', progress: 25 });
                 log(`[Gemini Flash 1.5] 웹 검색 및 팩트 체크 코어 가동...`);
-                const researchPrompt = `
-You are an expert music researcher. Gather factual information about the artist "${artistName}" and the song "${songTitle}".
-Provide a concise summary including:
-- Artist background (genre, debut, significant achievements)
-- Song details (release year, album, theme, producer if known)
-- Any interesting trivia or context about this specific track.
-Do not write a review, just bullet points of facts.
-                `.trim();
+                const dbResearch = await getSetting('ai_prompt_research');
+                const researchPromptTemplate = dbResearch || `You are an expert music researcher. Gather factual information about the artist "{artistName}" and the song "{songTitle}".\nProvide a concise summary including:\n- Artist background (genre, debut, significant achievements)\n- Song details (release year, album, theme, producer if known)\n- Any interesting trivia or context about this specific track.\nDo not write a review, just bullet points of facts.`;
+                const researchPrompt = researchPromptTemplate
+                    .replace(/{artistName}/g, artistName)
+                    .replace(/{songTitle}/g, songTitle);
 
                 const researchResult = await model.generateContent(researchPrompt);
                 const facts = researchResult.response.text();
@@ -67,21 +64,15 @@ Do not write a review, just bullet points of facts.
                 // --- STEP 2: Writing Agent ---
                 sendEvent('state', { currentAgent: 'write', progress: 50 });
                 log(`[DeepSeek V3 (Simulated)] 컨텍스트 스트림 수신 완료. 초안 작성 중...`);
-                const writePrompt = `
-당신은 'Voxo'라는 이름의 고품격 시네마틱 음악 매거진의 수석 에디터입니다.
-다음 팩트를 바탕으로 리뷰 기사를 약 1500자 분량으로 작성해주세요.
+                const dbWrite = await getSetting('ai_prompt_write');
+                const dbConcept = await getSetting('ai_prompt_concept');
 
-[팩트 자료]
-${facts}
+                const finalConcept = concept || dbConcept || '음악의 철학적, 감성적 분석에 초점을 맞출 것';
+                const writePromptTemplate = dbWrite || `당신은 'Voxo'라는 이름의 고품격 시네마틱 음악 매거진의 수석 에디터입니다.\n다음 팩트를 바탕으로 리뷰 기사를 약 1500자 분량으로 작성해주세요.\n\n[팩트 자료]\n{facts}\n\n[기사 컨셉/요청사항]\n{concept}\n\n요구사항:\n1. 제목: 상징적이고 눈길을 끄는 시네마틱한 한국어 제목 하나. (제일 첫 줄에 '제목: [작성한 제목]' 이라고 명시)\n2. 내용: 곡의 분위기와 아티스트의 행보를 문학적이고 깊이 있는 어조로 서술하세요. (HTML이 아닌 일반 Markdown 텍스트로 문단을 적절히 나누어 작성)\n3. 부제목(Intro): Voxo 매거진 특유의 시적인 서두(Intro) 한 줄을 제목 아래에 포함해주세요. (서두는 '서두: [작성한 서두]' 라고 명시)`;
 
-[기사 컨셉/요청사항]
-${concept || '음악의 철학적, 감성적 분석에 초점을 맞출 것'}
-
-요구사항:
-1. 제목: 상징적이고 눈길을 끄는 시네마틱한 한국어 제목 하나. (제일 첫 줄에 '제목: [작성한 제목]' 이라고 명시)
-2. 내용: 곡의 분위기와 아티스트의 행보를 문학적이고 깊이 있는 어조로 서술하세요. (HTML이 아닌 일반 Markdown 텍스트로 문단을 적절히 나누어 작성)
-3. 부제목(Intro): Voxo 매거진 특유의 시적인 서두(Intro) 한 줄을 제목 아래에 포함해주세요. (서두는 '서두: [작성한 서두]' 라고 명시)
-                `.trim();
+                const writePrompt = writePromptTemplate
+                    .replace(/{facts}/g, facts)
+                    .replace(/{concept}/g, finalConcept);
                 const writeResult = await model.generateContent(writePrompt);
                 const articleText = writeResult.response.text();
                 log(`[DeepSeek V3 (Simulated)] 초안 작성 완료. Voxo Editorial 톤 앤 매너 적용됨.`);
@@ -89,13 +80,10 @@ ${concept || '음악의 철학적, 감성적 분석에 초점을 맞출 것'}
                 // --- STEP 3: SEO Agent ---
                 sendEvent('state', { currentAgent: 'seo', progress: 75 });
                 log(`[Claude 3.5 Sonnet (Simulated)] SEO 메타 데이터 및 해시태그 추출 중...`);
-                const seoPrompt = `
-다음 기사 내용을 바탕으로, 구글 검색 엔진 최적화(SEO)에 유리한 메타 태그/키워드 3~5개를 추출해주세요.
-결과는 쉼표로만 구분된 텍스트로 출력하세요. (예: 아티스트명, 팝 음악, 감성, 앨범 리뷰)
+                const dbSeo = await getSetting('ai_prompt_seo');
+                const seoPromptTemplate = dbSeo || `다음 기사 내용을 바탕으로, 구글 검색 엔진 최적화(SEO)에 유리한 메타 태그/키워드 3~5개를 추출해주세요.\n결과는 쉼표로만 구분된 텍스트로 출력하세요. (예: 아티스트명, 팝 음악, 감성, 앨범 리뷰)\n\n[기사 내용]\n{articleText}`;
 
-[기사 내용]
-${articleText}
-                `.trim();
+                const seoPrompt = seoPromptTemplate.replace(/{articleText}/g, articleText);
                 const seoResult = await model.generateContent(seoPrompt);
                 const tags = seoResult.response.text().split(',').map(tag => tag.trim().replace(/^#/, ''));
                 log(`[Claude] 키워드 추출 완료: ${tags.join(', ')}`);

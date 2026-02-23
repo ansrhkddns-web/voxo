@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import AdminSidebar from "@/components/admin/AdminSidebar";
-import { Save, Loader2, Globe, Lock, Bell, Database, Type, Music, Sparkles } from 'lucide-react';
+import { Save, Loader2, Globe, Lock, Bell, Database, Type, Music, Sparkles, Bot } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
 import { getSetting, updateSetting } from '@/app/actions/settingsActions';
@@ -19,6 +19,15 @@ const TRANSLATIONS = {
         tabSecurity: 'Security',
         tabIntegrations: 'Integrations',
         tabNotifications: 'Notifications',
+        tabAIAgents: 'AI Agents',
+
+        // AI Agents Tab
+        aiAgentsTitle: 'AI Core Prompts',
+        aiPromptResearch: 'Research Agent Prompt',
+        aiPromptWrite: 'Editor Agent Prompt',
+        aiPromptSeo: 'SEO Agent Prompt',
+        aiPromptConcept: 'Default Editorial Concept',
+        aiPromptDesc: 'Modify the exact instructions injected into the AI modules.',
 
         // General Tab
         generalIdent: 'Global Identity',
@@ -59,6 +68,15 @@ const TRANSLATIONS = {
         tabSecurity: '보안',
         tabIntegrations: '연동 설정',
         tabNotifications: '알림',
+        tabAIAgents: 'AI 에이전트',
+
+        // AI Agents Tab
+        aiAgentsTitle: 'AI 코어 프롬프트',
+        aiPromptResearch: '리서치 에이전트 지시어',
+        aiPromptWrite: '작성 에이전트 지시어',
+        aiPromptSeo: 'SEO 에이전트 지시어',
+        aiPromptConcept: '기본 포스텡 컨셉 (미입력 시 대체값)',
+        aiPromptDesc: '각 AI 모듈에 주입되는 핵심 프롬프트(명령어)를 자유롭게 수정하세요.',
 
         // General Tab
         generalIdent: '기본 정보',
@@ -106,6 +124,10 @@ export default function AdminSettings() {
         geminiApiKey: '',
         globalPlaylist: '',
         maintenanceMode: false,
+        aiPromptResearch: `You are an expert music researcher. Gather factual information about the artist "{artistName}" and the song "{songTitle}".\nProvide a concise summary including:\n- Artist background (genre, debut, significant achievements)\n- Song details (release year, album, theme, producer if known)\n- Any interesting trivia or context about this specific track.\nDo not write a review, just bullet points of facts.`,
+        aiPromptWrite: `당신은 'Voxo'라는 이름의 고품격 시네마틱 음악 매거진의 수석 에디터입니다.\n다음 팩트를 바탕으로 리뷰 기사를 약 1500자 분량으로 작성해주세요.\n\n[팩트 자료]\n{facts}\n\n[기사 컨셉/요청사항]\n{concept}\n\n요구사항:\n1. 제목: 상징적이고 눈길을 끄는 시네마틱한 한국어 제목 하나. (제일 첫 줄에 '제목: [작성한 제목]' 이라고 명시)\n2. 내용: 곡의 분위기와 아티스트의 행보를 문학적이고 깊이 있는 어조로 서술하세요. (HTML이 아닌 일반 Markdown 텍스트로 문단을 적절히 나누어 작성)\n3. 부제목(Intro): Voxo 매거진 특유의 시적인 서두(Intro) 한 줄을 제목 아래에 포함해주세요. (서두는 '서두: [작성한 서두]' 라고 명시)`,
+        aiPromptSeo: `다음 기사 내용을 바탕으로, 구글 검색 엔진 최적화(SEO)에 유리한 메타 태그/키워드 3~5개를 추출해주세요.\n결과는 쉼표로만 구분된 텍스트로 출력하세요. (예: 아티스트명, 팝 음악, 감성, 앨범 리뷰)\n\n[기사 내용]\n{articleText}`,
+        aiPromptConcept: `음악의 철학적, 감성적 분석에 초점을 맞출 것`,
     });
 
     useEffect(() => {
@@ -124,10 +146,19 @@ export default function AdminSettings() {
         const loadDbSettings = async () => {
             const playlistUrl = await getSetting('global_spotify_playlist');
             const geminiKey = await getSetting('gemini_api_key');
+            const research = await getSetting('ai_prompt_research');
+            const write = await getSetting('ai_prompt_write');
+            const seo = await getSetting('ai_prompt_seo');
+            const concept = await getSetting('ai_prompt_concept');
+
             setSettings(prev => ({
                 ...prev,
                 ...(playlistUrl ? { globalPlaylist: playlistUrl } : {}),
-                ...(geminiKey ? { geminiApiKey: geminiKey } : {})
+                ...(geminiKey ? { geminiApiKey: geminiKey } : {}),
+                ...(research ? { aiPromptResearch: research } : {}),
+                ...(write ? { aiPromptWrite: write } : {}),
+                ...(seo ? { aiPromptSeo: seo } : {}),
+                ...(concept ? { aiPromptConcept: concept } : {})
             }));
         };
         loadDbSettings();
@@ -145,6 +176,10 @@ export default function AdminSettings() {
 
         // Save DB properties
         await updateSetting('global_spotify_playlist', settings.globalPlaylist);
+        await updateSetting('ai_prompt_research', settings.aiPromptResearch);
+        await updateSetting('ai_prompt_write', settings.aiPromptWrite);
+        await updateSetting('ai_prompt_seo', settings.aiPromptSeo);
+        await updateSetting('ai_prompt_concept', settings.aiPromptConcept);
         const res2 = await updateSetting('gemini_api_key', settings.geminiApiKey || '');
 
         setIsSaving(false);
@@ -157,8 +192,9 @@ export default function AdminSettings() {
 
     const tabs = [
         { id: 'general', name: t.tabGeneral, icon: Globe },
-        { id: 'security', name: t.tabSecurity, icon: Lock },
+        { id: 'ai_agents', name: t.tabAIAgents, icon: Bot },
         { id: 'integrations', name: t.tabIntegrations, icon: Database },
+        { id: 'security', name: t.tabSecurity, icon: Lock },
         { id: 'notifications', name: t.tabNotifications, icon: Bell },
     ];
 
@@ -196,7 +232,7 @@ export default function AdminSettings() {
                                 <button
                                     key={item.id}
                                     onClick={() => setActiveTab(item.id)}
-                                    className={`w-full flex items-center gap-3 px-4 py-3 text-[10px] uppercase tracking-[0.2em] font-display transition-all ${activeTab === item.id ? 'bg-white/5 text-accent-green border-l border-accent-green' : 'text-gray-500 hover:text-white hover:bg-white/[0.02] border-l border-transparent'}`}
+                                    className={`w - full flex items - center gap - 3 px - 4 py - 3 text - [10px] uppercase tracking - [0.2em] font - display transition - all ${activeTab === item.id ? 'bg-white/5 text-accent-green border-l border-accent-green' : 'text-gray-500 hover:text-white hover:bg-white/[0.02] border-l border-transparent'} `}
                                 >
                                     <item.icon size={14} />
                                     {item.name}
@@ -216,13 +252,13 @@ export default function AdminSettings() {
                                             <div className="flex gap-2 bg-gray-900 border border-white/10 p-1">
                                                 <button
                                                     onClick={() => setLanguage('en')}
-                                                    className={`px-4 py-2 text-[10px] uppercase tracking-widest font-display transition-colors ${language === 'en' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}
+                                                    className={`px - 4 py - 2 text - [10px] uppercase tracking - widest font - display transition - colors ${language === 'en' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'} `}
                                                 >
                                                     English
                                                 </button>
                                                 <button
                                                     onClick={() => setLanguage('ko')}
-                                                    className={`px-4 py-2 text-[10px] uppercase tracking-widest font-display transition-colors ${language === 'ko' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'}`}
+                                                    className={`px - 4 py - 2 text - [10px] uppercase tracking - widest font - display transition - colors ${language === 'ko' ? 'bg-white text-black' : 'text-gray-500 hover:text-white'} `}
                                                 >
                                                     한국어
                                                 </button>
@@ -283,9 +319,9 @@ export default function AdminSettings() {
                                         </div>
                                         <button
                                             onClick={() => setSettings({ ...settings, maintenanceMode: !settings.maintenanceMode })}
-                                            className={`w-12 h-6 rounded-full transition-colors relative flex items-center ${settings.maintenanceMode ? 'bg-red-500' : 'bg-gray-800'}`}
+                                            className={`w - 12 h - 6 rounded - full transition - colors relative flex items - center ${settings.maintenanceMode ? 'bg-red-500' : 'bg-gray-800'} `}
                                         >
-                                            <span className={`w-4 h-4 bg-white rounded-full absolute transition-transform ${settings.maintenanceMode ? 'translate-x-7' : 'translate-x-1'}`} />
+                                            <span className={`w - 4 h - 4 bg - white rounded - full absolute transition - transform ${settings.maintenanceMode ? 'translate-x-7' : 'translate-x-1'} `} />
                                         </button>
                                     </div>
                                 </section>
@@ -344,6 +380,58 @@ export default function AdminSettings() {
 
                                     <div className="p-12 border border-white/5 bg-white/[0.01] flex items-center justify-center text-center mt-8">
                                         <p className="text-gray-500 text-[10px] uppercase tracking-[0.3em] leading-relaxed max-w-sm">{t.placeholderIntegrations}</p>
+                                    </div>
+                                </section>
+                            )}
+
+                            {activeTab === 'ai_agents' && (
+                                <section className="space-y-8">
+                                    <h2 className="text-[10px] uppercase tracking-[0.4em] text-white font-display border-b border-white/10 pb-4">{t.aiAgentsTitle}</h2>
+                                    <p className="text-[10px] text-gray-500 uppercase tracking-widest">{t.aiPromptDesc}</p>
+
+                                    <div className="space-y-12">
+                                        <div className="group">
+                                            <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">{t.aiPromptConcept}</label>
+                                            <textarea
+                                                value={settings.aiPromptConcept}
+                                                onChange={e => setSettings({ ...settings, aiPromptConcept: e.target.value })}
+                                                rows={2}
+                                                className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-accent-green transition-colors resize-y leading-relaxed text-sm font-mono"
+                                            />
+                                        </div>
+
+                                        <div className="group">
+                                            <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">{t.aiPromptResearch}</label>
+                                            <p className="text-[8px] text-gray-500 mb-2 font-mono">Available variables: {'{artistName}'}, {'{songTitle}'}</p>
+                                            <textarea
+                                                value={settings.aiPromptResearch}
+                                                onChange={e => setSettings({ ...settings, aiPromptResearch: e.target.value })}
+                                                rows={5}
+                                                className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-accent-green transition-colors resize-y leading-relaxed text-sm font-mono"
+                                            />
+                                        </div>
+
+                                        <div className="group">
+                                            <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">{t.aiPromptWrite}</label>
+                                            <p className="text-[8px] text-gray-500 mb-2 font-mono">Available variables: {'{facts}'}, {'{concept}'}</p>
+                                            <textarea
+                                                value={settings.aiPromptWrite}
+                                                onChange={e => setSettings({ ...settings, aiPromptWrite: e.target.value })}
+                                                rows={10}
+                                                className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-accent-green transition-colors resize-y leading-relaxed text-sm font-mono"
+                                            />
+                                        </div>
+
+                                        <div className="group">
+                                            <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-4 font-display group-focus-within:text-accent-green transition-colors">{t.aiPromptSeo}</label>
+                                            <p className="text-[8px] text-gray-500 mb-2 font-mono">Available variables: {'{articleText}'}</p>
+                                            <textarea
+                                                value={settings.aiPromptSeo}
+                                                onChange={e => setSettings({ ...settings, aiPromptSeo: e.target.value })}
+                                                rows={4}
+                                                className="w-full bg-transparent border-b border-white/10 py-3 text-white focus:outline-none focus:border-accent-green transition-colors resize-y leading-relaxed text-sm font-mono"
+                                            />
+                                        </div>
                                     </div>
                                 </section>
                             )}
