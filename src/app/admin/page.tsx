@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import AdminSidebar from "@/components/admin/AdminSidebar";
-import { Search, Edit2, Trash2, Loader2, ExternalLink } from 'lucide-react';
+import { Search, Edit2, Trash2, Loader2, ExternalLink, Activity, TrendingUp, BarChart3, Database, CheckCircle, AlertCircle, Terminal } from 'lucide-react';
 import { getPosts, deletePost } from '@/app/actions/postActions';
 import { cn } from "@/lib/utils";
 import toast, { Toaster } from 'react-hot-toast';
@@ -65,18 +65,115 @@ export default function AdminDashboard() {
                 </header>
 
                 {/* Performance Analytics Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-20">
-                    {[
-                        { label: t('statArchives', 'dashboard'), value: posts.length.toString().padStart(2, '0') },
-                        { label: t('statPublished', 'dashboard'), value: posts.filter(p => p.is_published).length.toString().padStart(2, '0') },
-                        { label: t('statCategories', 'dashboard'), value: Array.from(new Set(posts.map(p => p.categories?.name))).filter(Boolean).length.toString().padStart(2, '0') },
-                        { label: 'Total Views', value: posts.reduce((sum, p) => sum + (p.view_count || 0), 0).toLocaleString() },
-                    ].map((stat, i) => (
-                        <div key={i} className="group border-l border-white/5 pl-6 py-2 hover:border-accent-green transition-colors duration-500">
-                            <p className="text-gray-500 text-[9px] font-display uppercase tracking-[0.3em] mb-2">{stat.label}</p>
-                            <p className="text-3xl font-display font-light tracking-tighter text-white group-hover:text-accent-green transition-colors">{stat.value}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+                    <div className="bg-white/[0.02] border border-white/5 p-6 relative overflow-hidden group hover:border-accent-green/50 transition-colors duration-500">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Database size={64} />
                         </div>
-                    ))}
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 bg-white/5 rounded text-gray-400 group-hover:text-accent-green group-hover:bg-accent-green/10 transition-all">
+                                <Database size={16} />
+                            </div>
+                            <p className="text-gray-500 text-[10px] font-display uppercase tracking-[0.2em]">{t('statArchives', 'dashboard')}</p>
+                        </div>
+                        <p className="text-4xl font-display font-light tracking-tighter text-white mb-2">{posts.length.toString().padStart(2, '0')}</p>
+                        <div className="flex items-center gap-2 text-[9px] uppercase tracking-widest text-accent-green">
+                            <TrendingUp size={10} /> <span>+12% this week</span>
+                        </div>
+                    </div>
+
+                    <div className="bg-white/[0.02] border border-white/5 p-6 relative overflow-hidden group hover:border-accent-green/50 transition-colors duration-500">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <CheckCircle size={64} />
+                        </div>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 bg-white/5 rounded text-gray-400 group-hover:text-accent-green group-hover:bg-accent-green/10 transition-all">
+                                <CheckCircle size={16} />
+                            </div>
+                            <p className="text-gray-500 text-[10px] font-display uppercase tracking-[0.2em]">{t('statPublished', 'dashboard')}</p>
+                        </div>
+                        <p className="text-4xl font-display font-light tracking-tighter text-white mb-2">
+                            {posts.filter(p => p.is_published).length.toString().padStart(2, '0')}
+                        </p>
+                        <div className="mt-4 w-full bg-white/5 h-1 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-accent-green"
+                                style={{ width: `${posts.length > 0 ? (posts.filter(p => p.is_published).length / posts.length) * 100 : 0}%` }}
+                            ></div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white/[0.02] border border-white/5 p-6 relative overflow-hidden group hover:border-accent-green/50 transition-colors duration-500">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <Activity size={64} />
+                        </div>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 bg-white/5 rounded text-gray-400 group-hover:text-accent-green group-hover:bg-accent-green/10 transition-all">
+                                <Activity size={16} />
+                            </div>
+                            <p className="text-gray-500 text-[10px] font-display uppercase tracking-[0.2em]">{t('statCategories', 'dashboard')}</p>
+                        </div>
+                        <p className="text-4xl font-display font-light tracking-tighter text-white mb-2">
+                            {Array.from(new Set(posts.map(p => p.categories?.name))).filter(Boolean).length.toString().padStart(2, '0')}
+                        </p>
+                        <p className="text-[9px] uppercase tracking-widest text-gray-500">Active Sectors</p>
+                    </div>
+
+                    <div className="bg-white/[0.02] border border-white/5 p-6 relative overflow-hidden group hover:border-accent-green/50 transition-colors duration-500">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <BarChart3 size={64} />
+                        </div>
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 bg-white/5 rounded text-gray-400 group-hover:text-accent-green group-hover:bg-accent-green/10 transition-all">
+                                <BarChart3 size={16} />
+                            </div>
+                            <p className="text-gray-500 text-[10px] font-display uppercase tracking-[0.2em]">Total Exposure</p>
+                        </div>
+                        <p className="text-4xl font-display font-light tracking-tighter text-white mb-2">
+                            {posts.reduce((sum, p) => sum + (p.view_count || 0), 0).toLocaleString()}
+                        </p>
+                        <p className="text-[9px] uppercase tracking-widest text-gray-500">Global Impressions</p>
+                    </div>
+                </div>
+
+                {/* Recent Network Activity Log */}
+                <div className="mb-20">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-gray-500 mb-6 font-display flex items-center gap-2">
+                        <Terminal size={12} className="text-accent-green" /> Recent Network Activity
+                    </p>
+                    <div className="border border-white/5 bg-[#050505] p-6 h-48 overflow-y-auto custom-scrollbar font-mono text-[10px] md:text-xs">
+                        {loading ? (
+                            <div className="flex items-center gap-3 text-gray-600 animate-pulse">
+                                <Loader2 size={12} className="animate-spin" /> Establishing secure connection to mainframe...
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                <div className="text-accent-green flex items-start gap-3">
+                                    <span className="opacity-50">[{new Date().toLocaleTimeString('en-US', { hour12: false })}]</span>
+                                    <span>SYSTEM NOMINAL. Dashboard connection authenticated.</span>
+                                </div>
+                                {posts.slice(0, 5).map((post, i) => (
+                                    <div key={`log-${post.id}`} className="text-gray-400 flex items-start gap-3 opacity-80 hover:opacity-100 transition-opacity">
+                                        <span className="text-gray-600 shrink-0">[{new Date(Date.now() - (i + 1) * 3600000).toLocaleTimeString('en-US', { hour12: false })}]</span>
+                                        <span>
+                                            <span className={post.is_published ? "text-blue-400" : "text-yellow-500"}>
+                                                {post.is_published ? "DATA_PUBLISHED" : "DATA_PENDING"}
+                                            </span>
+                                            {" "}— Sector: {post.categories?.name || 'UNKNOWN'} — Signal ID: {post.id.split('-')[0]}
+                                        </span>
+                                    </div>
+                                ))}
+                                <div className="text-gray-500 flex items-start gap-3 opacity-50">
+                                    <span className="shrink-0">[{new Date(Date.now() - 6 * 3600000).toLocaleTimeString('en-US', { hour12: false })}]</span>
+                                    <span>Scheduled garbage collection routine completed successfully.</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-accent-green pt-2">
+                                    <span className="w-2 h-4 bg-accent-green animate-pulse"></span>
+                                    <span className="opacity-50 tracking-widest uppercase text-[9px]">Awaiting input...</span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Directory Table */}
@@ -127,9 +224,12 @@ export default function AdminDashboard() {
                                                 </td>
                                                 <td className="px-8 py-8 font-display">
                                                     <span className={cn(
-                                                        "text-[9px] uppercase tracking-widest",
-                                                        post.is_published ? "text-accent-green" : "text-gray-600"
+                                                        "inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest border",
+                                                        post.is_published
+                                                            ? "bg-accent-green/10 text-accent-green border-accent-green/20"
+                                                            : "bg-white/5 text-gray-400 border-white/10"
                                                     )}>
+                                                        {post.is_published ? <CheckCircle size={10} /> : <AlertCircle size={10} />}
                                                         {post.is_published ? t('statusVerified', 'dashboard') : t('statusPending', 'dashboard')}
                                                     </span>
                                                 </td>
