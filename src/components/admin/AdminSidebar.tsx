@@ -12,7 +12,8 @@ import {
     PlusSquare,
     Users,
     Mail,
-    Tag
+    Tag,
+    Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
@@ -26,6 +27,7 @@ const NAV_ITEMS_DATA = [
     { id: 'subscribers', href: '/admin/subscribers', icon: Users },
     { id: 'newsletter', href: '/admin/newsletter', icon: Mail },
     { id: 'settings', href: '/admin/settings', icon: Settings },
+    { id: 'aiDesk', href: '/admin/ai-desk', icon: Sparkles },
 ];
 
 export default function AdminSidebar() {
