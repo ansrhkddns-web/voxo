@@ -3,11 +3,14 @@ export const dynamic = "force-dynamic";
 
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import GlobalPlaylistBar from "@/components/layout/GlobalPlaylistBar";
 import PostCard from "@/components/home/PostCard";
 import NewsletterForm from "@/components/home/NewsletterForm";
 import { getPosts } from '@/app/actions/postActions';
+import { getSiteSettings } from '@/lib/site-settings';
 import { notFound } from 'next/navigation';
 import { timeAgo } from '@/lib/utils';
+import type { PostRecord } from '@/types/content';
 
 const validCategories = ['news', 'reviews', 'features', 'editors-pick', 'archives', 'focus', 'cover-story'];
 
@@ -20,15 +23,16 @@ export default async function CategoryPage({ params }: { params: { category: str
     }
 
     const posts = await getPosts();
+    const siteSettings = await getSiteSettings();
 
     // Filter by category. Handle potential mismatches between URL slug and DB name/slug
-    const publishedPosts = posts?.filter((p: any) => {
-        if (!p.is_published) return false;
-        if (!p.categories?.name) return false;
+    const publishedPosts = posts.filter((post: PostRecord) => {
+        if (!post.is_published) return false;
+        if (!post.categories?.name) return false;
 
-        const dbCatSlug = p.categories.name.toLowerCase().replace(/'/g, '').replace(/\s+/g, '-');
+        const dbCatSlug = post.categories.name.toLowerCase().replace(/'/g, '').replace(/\s+/g, '-');
         return dbCatSlug === categorySlug;
-    }) || [];
+    });
 
     const displayTitle = categorySlug === 'editors-pick' ? "Editor's Pick" : categorySlug;
 
@@ -54,7 +58,7 @@ export default async function CategoryPage({ params }: { params: { category: str
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
                     {publishedPosts.length > 0 ? (
-                        publishedPosts.map((post: any) => (
+                        publishedPosts.map((post) => (
                             <PostCard
                                 key={post.id}
                                 title={post.title}
@@ -63,7 +67,7 @@ export default async function CategoryPage({ params }: { params: { category: str
                                 readTime={timeAgo(post.published_at || post.created_at, 'Korean')}
                                 excerpt={post.content?.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
                                 slug={post.slug}
-                                rating={post.rating}
+                                rating={post.rating ?? undefined}
                             />
                         ))
                     ) : (
@@ -90,6 +94,7 @@ export default async function CategoryPage({ params }: { params: { category: str
             </section>
 
             <Footer />
+            {siteSettings.globalPlaylist && <GlobalPlaylistBar uri={siteSettings.globalPlaylist} />}
         </main>
     );
 }

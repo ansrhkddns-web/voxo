@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect } from 'react';
-import { Play, X } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface SpotifyEmbedProps {
     uri?: string;
@@ -22,7 +22,7 @@ export default function SpotifyEmbed({ uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvE
             const pathParts = url.pathname.split('/').filter(Boolean);
             type = pathParts[0];
             id = pathParts[1];
-        } catch (e) {
+        } catch {
             console.error("Invalid Spotify URL:", uri);
         }
     }

@@ -1,16 +1,12 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
+import type { PostRecord } from '@/types/content';
 
 interface HeroProps {
-    post?: {
-        title: string;
-        excerpt?: string;
-        content?: string;
-        cover_image: string;
-        slug: string;
-    } | null | any;
+    post?: PostRecord | null;
 }
 
 export default function Hero({ post }: HeroProps) {
@@ -22,7 +18,7 @@ export default function Hero({ post }: HeroProps) {
         if (metaMatch) extractedExcerpt = metaMatch[1].replace(/&quot;/g, '"');
     }
 
-    const subtitle = post?.excerpt || extractedExcerpt || 'THE NEW SYNTH • REDEFINING BOUNDARIES';
+    const subtitle = extractedExcerpt || 'THE NEW SYNTH - REDEFINING BOUNDARIES';
     const bgImage = post?.cover_image || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBjO7KPUXt-RmJ7hVDcehFYap-aEc3LxZYZCqgxJkhkMgVddoikvox-8--Y-AqhJOV6_uHDQW79JGS9cnD6uHkvogxTLxF9ZwpoGg3Nfh8WKEIs6acJxqGcw-Wu_MBUSXBliEv7_gr6SnCioZ9oFvI6humJfvsWPF-BYSpuIXPkwwLCSuPBLsyExWfxpA9lx-wIf32LCXgroohCwmTrSJzXxYXu99pUj1_IvY3mXQj4xrvfrr-LsLZao80uhUzhVfLnt9SO3_gzjz3l';
     const postLink = post?.slug ? `/post/${post.slug}` : '#';
 
@@ -34,10 +30,13 @@ export default function Hero({ post }: HeroProps) {
                 transition={{ duration: 3, ease: [0.22, 1, 0.36, 1] }}
                 className="absolute inset-0 w-full h-full z-0"
             >
-                <img
+                <Image
                     alt="Cover Image"
-                    className="w-full h-full object-cover object-top opacity-50 grayscale group-hover/hero:grayscale-0 group-hover/hero:opacity-60 transition-all duration-[2000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                     src={bgImage}
+                    fill
+                    priority
+                    sizes="100vw"
+                    className="object-cover object-top opacity-50 grayscale group-hover/hero:grayscale-0 group-hover/hero:opacity-60 transition-all duration-[2000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                 />
                 <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/70 to-[#050505] transition-opacity duration-[2000ms]"></div>
             </motion.div>

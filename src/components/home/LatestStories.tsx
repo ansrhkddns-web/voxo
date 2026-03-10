@@ -3,17 +3,11 @@
 import React, { useState } from 'react';
 import PostCard from './PostCard';
 import { timeAgo } from '@/lib/utils';
-
-interface Tag {
-    id: string;
-    name: string;
-    slug: string;
-    show_in_menu: boolean;
-}
+import type { PostRecord, TagRecord } from '@/types/content';
 
 interface LatestStoriesProps {
-    posts: any[];
-    tags: Tag[];
+    posts: PostRecord[];
+    tags: TagRecord[];
 }
 
 export default function LatestStories({ posts, tags }: LatestStoriesProps) {
@@ -48,7 +42,7 @@ export default function LatestStories({ posts, tags }: LatestStoriesProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16">
                 {filteredPosts.length > 0 ? (
-                    filteredPosts.map((post: any) => (
+                    filteredPosts.map((post) => (
                         <PostCard
                             key={post.id}
                             title={post.title}
@@ -57,7 +51,7 @@ export default function LatestStories({ posts, tags }: LatestStoriesProps) {
                             readTime={timeAgo(post.published_at || post.created_at, 'Korean')}
                             excerpt={post.content?.replace(/<[^>]*>/g, '').substring(0, 100) + '...'}
                             slug={post.slug}
-                            rating={post.rating}
+                            rating={post.rating ?? undefined}
                         />
                     ))
                 ) : (

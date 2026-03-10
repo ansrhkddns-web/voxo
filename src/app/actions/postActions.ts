@@ -2,8 +2,15 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import type { PostInput, PostRecord, SearchPostResult } from '@/types/content';
 
-export async function getPosts() {
+interface SearchPostRow {
+    title: string;
+    slug: string;
+    categories: Array<{ name: string }> | { name: string } | null;
+}
+
+export async function getPosts(): Promise<PostRecord[]> {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from('posts')
@@ -11,10 +18,10 @@ export async function getPosts() {
         .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data;
+    return (data ?? []) as PostRecord[];
 }
 
-export async function getPostById(id: string) {
+export async function getPostById(id: string): Promise<PostRecord> {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from('posts')
@@ -23,10 +30,10 @@ export async function getPostById(id: string) {
         .single();
 
     if (error) throw error;
-    return data;
+    return data as PostRecord;
 }
 
-export async function createPost(formData: any) {
+export async function createPost(formData: PostInput): Promise<PostRecord> {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -42,10 +49,10 @@ export async function createPost(formData: any) {
     if (error) throw error;
     revalidatePath('/admin');
     revalidatePath('/');
-    return data;
+    return data as PostRecord;
 }
 
-export async function updatePost(id: string, formData: any) {
+export async function updatePost(id: string, formData: PostInput): Promise<PostRecord> {
     const supabase = await createClient();
 
     const { data, error } = await supabase
@@ -58,7 +65,7 @@ export async function updatePost(id: string, formData: any) {
     if (error) throw error;
     revalidatePath('/admin');
     revalidatePath(`/post/${data.slug}`);
-    return data;
+    return data as PostRecord;
 }
 
 export async function deletePost(id: string) {
@@ -72,7 +79,7 @@ export async function deletePost(id: string) {
     revalidatePath('/admin');
 }
 
-export async function getPostBySlug(slug: string) {
+export async function getPostBySlug(slug: string): Promise<PostRecord | null> {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from('posts')
@@ -85,10 +92,10 @@ export async function getPostBySlug(slug: string) {
         console.error("Error fetching post by slug:", error);
         return null;
     }
-    return data;
+    return data as PostRecord | null;
 }
 
-export async function searchPosts(query: string) {
+export async function searchPosts(query: string): Promise<SearchPostResult[]> {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from('posts')
@@ -98,7 +105,11 @@ export async function searchPosts(query: string) {
         .limit(5);
 
     if (error) throw error;
-    return data;
+    return ((data ?? []) as SearchPostRow[]).map((post) => ({
+        title: post.title,
+        slug: post.slug,
+        categories: Array.isArray(post.categories) ? (post.categories[0] ?? null) : post.categories,
+    }));
 }
 
 export async function incrementViewCount(id: string) {

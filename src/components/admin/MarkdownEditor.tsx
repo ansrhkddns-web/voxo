@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
@@ -13,29 +13,18 @@ interface MarkdownEditorProps {
 }
 
 export default function MarkdownEditor({ content, onChange }: MarkdownEditorProps) {
-    const [markdown, setMarkdown] = useState('');
+    const [draftMarkdown, setDraftMarkdown] = useState<string | null>(null);
     const [isPreview, setIsPreview] = useState(false);
-    const [initialized, setInitialized] = useState(false);
-
-    // Initial load: converting parent's HTML into Markdown
-    useEffect(() => {
-        if (!initialized && content) {
-            const turndownService = new TurndownService({
-                headingStyle: 'atx',
-                codeBlockStyle: 'fenced'
-            });
-            // Try parsing HTML
-            setMarkdown(turndownService.turndown(content));
-            setInitialized(true);
-        } else if (!initialized && !content) {
-            setInitialized(true); // new post
-        }
-    }, [content, initialized]);
+    const turndownService = new TurndownService({
+        headingStyle: 'atx',
+        codeBlockStyle: 'fenced'
+    });
+    const markdown = draftMarkdown ?? (content ? turndownService.turndown(content) : '');
 
     // When typing, we update local Markdown state and tell parent the parsed HTML
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const mdText = e.target.value;
-        setMarkdown(mdText);
+        setDraftMarkdown(mdText);
 
         // Parse md -> html for parent database saving
         const html = marked.parse(mdText) as string;

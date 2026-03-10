@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
 import {
     LayoutDashboard,
@@ -17,6 +18,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
+import { createClient } from '@/lib/supabase/client';
+import toast from 'react-hot-toast';
 
 // We dynamically compute names in the render loop now instead of a static array for name, but keep href/icon here
 const NAV_ITEMS_DATA = [
@@ -31,7 +34,20 @@ const NAV_ITEMS_DATA = [
 
 export default function AdminSidebar() {
     const pathname = usePathname();
+    const router = useRouter();
     const { t } = useAdminLanguage();
+    const supabase = createClient();
+
+    const handleLogout = async () => {
+        try {
+            await fetch('/api/admin/logout', { method: 'POST' });
+            await supabase.auth.signOut();
+            router.push('/login');
+            router.refresh();
+        } catch {
+            toast.error('로그아웃 중 문제가 발생했습니다.');
+        }
+    };
 
     return (
         <aside className="w-64 border-r border-white/5 bg-black flex flex-col h-screen sticky top-0 font-display">
@@ -87,7 +103,10 @@ export default function AdminSidebar() {
             </div>
 
             <div className="p-6 border-t border-white/5">
-                <button className="flex items-center gap-3 px-4 py-2 w-full text-[10px] uppercase tracking-[0.2em] text-gray-600 hover:text-red-500 transition-all duration-300">
+                <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 px-4 py-2 w-full text-[10px] uppercase tracking-[0.2em] text-gray-600 hover:text-red-500 transition-all duration-300"
+                >
                     <LogOut size={14} />
                     {t('logout', 'sidebar')}
                 </button>

@@ -1,91 +1,133 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from "next/link";
-import { Search, User, Menu } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Menu, Search, User } from 'lucide-react';
 import SearchOverlay from './SearchOverlay';
 
+const NAV_LINKS = [
+  { href: '/news', label: 'News' },
+  { href: '/reviews', label: 'Reviews' },
+  { href: '/editors-pick', label: "Editor's Pick" },
+  { href: '/focus', label: 'Focus' },
+  { href: '/features', label: 'Features' },
+  { href: '/archives', label: 'Archives' },
+  { href: '/cover-story', label: 'Cover Story' },
+];
+
 export default function Navbar() {
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-                e.preventDefault();
-                setIsSearchOpen(true);
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
+        event.preventDefault();
+        setIsSearchOpen(true);
+      }
 
-    return (
-        <nav className="fixed top-0 w-full z-50 bg-[#050505]/70 backdrop-blur-2xl border-b border-white/5 transition-all duration-1000">
-            <div className="max-w-[1800px] mx-auto px-6 h-20 flex items-center justify-between">
-                {/* Left: Mobile Menu */}
-                <div className="md:hidden">
-                    <Menu className="text-white/70 hover:text-white transition-colors duration-700 cursor-pointer" size={20} strokeWidth={1} />
-                </div>
+      if (event.key === 'Escape') {
+        setIsMobileMenuOpen(false);
+      }
+    };
 
-                {/* Center/Left: Navigation Links */}
-                <div className="hidden md:flex items-center gap-12">
-                    {/* News Links */}
-                    <Link href="/news" className="text-[10px] uppercase tracking-[0.3em] font-display text-gray-400 hover:text-white transition-colors duration-700">
-                        News
-                    </Link>
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
-                    {/* Reviews Dropdown */}
-                    <div className="relative group/nav">
-                        <Link href="/reviews" className="text-[10px] uppercase tracking-[0.3em] font-display text-gray-400 group-hover/nav:text-white transition-colors duration-700 py-4 inline-block">
-                            Reviews
-                        </Link>
-                        {/* Dropdown Menu */}
-                        <div className="absolute left-0 top-full pt-2 opacity-0 -translate-y-2 pointer-events-none group-hover/nav:opacity-100 group-hover/nav:translate-y-0 group-hover/nav:pointer-events-auto transition-all duration-300">
-                            <div className="bg-[#050505]/95 backdrop-blur-2xl border border-white/5 p-6 w-56 flex flex-col gap-5 shadow-2xl">
-                                <Link href="/reviews" className="text-[9px] uppercase tracking-[0.3em] text-gray-500 hover:text-white transition-colors duration-500 font-display block">Reviews</Link>
-                                <Link href="/editors-pick" className="text-[9px] uppercase tracking-[0.3em] text-gray-500 hover:text-white transition-colors duration-500 font-display block">Editor's Pick</Link>
-                                <Link href="/focus" className="text-[9px] uppercase tracking-[0.3em] text-gray-500 hover:text-white transition-colors duration-500 font-display block">Focus</Link>
-                                <Link href="/cover-story" className="text-[9px] uppercase tracking-[0.3em] text-gray-500 hover:text-white transition-colors duration-500 font-display block">Cover Story</Link>
-                            </div>
-                        </div>
-                    </div>
+  return (
+    <nav className="fixed top-0 z-50 w-full border-b border-white/5 bg-[#050505]/70 backdrop-blur-2xl transition-all duration-1000">
+      <div className="mx-auto flex h-20 max-w-[1800px] items-center justify-between px-6">
+        <div className="md:hidden">
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+            className="text-white/70 transition-colors duration-700 hover:text-white"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="cursor-pointer" size={20} strokeWidth={1} />
+          </button>
+        </div>
 
-                    {/* Features & Archives Links */}
-                    {['Features', 'Archives'].map((item) => (
-                        <Link
-                            key={item}
-                            href={`/${item.toLowerCase()}`}
-                            className="text-[10px] uppercase tracking-[0.3em] font-display text-gray-400 hover:text-white transition-colors duration-700"
-                        >
-                            {item}
-                        </Link>
-                    ))}
-                </div>
+        <div className="hidden items-center gap-12 md:flex">
+          <Link href="/news" className="text-[10px] font-display uppercase tracking-[0.3em] text-gray-400 transition-colors duration-700 hover:text-white">
+            News
+          </Link>
 
-                {/* Center: Logo */}
-                <div className="absolute left-1/2 -translate-x-1/2">
-                    <Link href="/" className="font-display text-3xl font-light tracking-[0.5em] text-white uppercase flex items-baseline gap-1">
-                        VO<span className="text-accent-green">X</span>O
-                    </Link>
-                </div>
-
-                {/* Right: Actions */}
-                <div className="flex items-center gap-8">
-                    <button
-                        onClick={() => setIsSearchOpen(true)}
-                        className="text-white hover:text-accent-green transition-colors duration-700 flex items-center gap-2"
-                        title="Search (Cmd+K)"
-                    >
-                        <Search size={18} strokeWidth={1} />
-                        <span className="hidden md:inline-block text-[8px] bg-white/10 px-1.5 py-0.5 rounded text-gray-400 font-mono tracking-tighter">⌘K</span>
-                    </button>
-                    <Link href="/login" className="text-white hover:text-accent-green transition-colors duration-700 flex items-center gap-2">
-                        <User size={18} strokeWidth={1} />
-                    </Link>
-                </div>
+          <div className="group/nav relative">
+            <Link href="/reviews" className="inline-block py-4 text-[10px] font-display uppercase tracking-[0.3em] text-gray-400 transition-colors duration-700 group-hover/nav:text-white">
+              Reviews
+            </Link>
+            <div className="pointer-events-none absolute left-0 top-full -translate-y-2 pt-2 opacity-0 transition-all duration-300 group-hover/nav:pointer-events-auto group-hover/nav:translate-y-0 group-hover/nav:opacity-100">
+              <div className="flex w-56 flex-col gap-5 border border-white/5 bg-[#050505]/95 p-6 shadow-2xl backdrop-blur-2xl">
+                <Link href="/reviews" className="block text-[9px] font-display uppercase tracking-[0.3em] text-gray-500 transition-colors duration-500 hover:text-white">
+                  Reviews
+                </Link>
+                <Link href="/editors-pick" className="block text-[9px] font-display uppercase tracking-[0.3em] text-gray-500 transition-colors duration-500 hover:text-white">
+                  Editor&apos;s Pick
+                </Link>
+                <Link href="/focus" className="block text-[9px] font-display uppercase tracking-[0.3em] text-gray-500 transition-colors duration-500 hover:text-white">
+                  Focus
+                </Link>
+                <Link href="/cover-story" className="block text-[9px] font-display uppercase tracking-[0.3em] text-gray-500 transition-colors duration-500 hover:text-white">
+                  Cover Story
+                </Link>
+              </div>
             </div>
+          </div>
 
-            <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
-        </nav>
-    );
+          {['Features', 'Archives'].map((item) => (
+            <Link
+              key={item}
+              href={`/${item.toLowerCase()}`}
+              className="text-[10px] font-display uppercase tracking-[0.3em] text-gray-400 transition-colors duration-700 hover:text-white"
+            >
+              {item}
+            </Link>
+          ))}
+        </div>
+
+        <div className="absolute left-1/2 -translate-x-1/2">
+          <Link href="/" className="flex items-baseline gap-1 font-display text-3xl font-light uppercase tracking-[0.5em] text-white">
+            VO<span className="text-accent-green">X</span>O
+          </Link>
+        </div>
+
+        <div className="flex items-center gap-8">
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="flex items-center gap-2 text-white transition-colors duration-700 hover:text-accent-green"
+            title="Search (Cmd+K)"
+          >
+            <Search size={18} strokeWidth={1} />
+            <span className="hidden rounded bg-white/10 px-1.5 py-0.5 font-mono text-[8px] tracking-tighter text-gray-400 md:inline-block">
+              CMD+K
+            </span>
+          </button>
+          <Link href="/login" className="flex items-center gap-2 text-white transition-colors duration-700 hover:text-accent-green">
+            <User size={18} strokeWidth={1} />
+          </Link>
+        </div>
+      </div>
+
+      {isMobileMenuOpen && (
+        <div className="border-t border-white/5 bg-[#050505]/95 px-6 py-6 md:hidden">
+          <div className="flex flex-col gap-4">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="font-display text-[10px] uppercase tracking-[0.3em] text-gray-400 transition-colors duration-500 hover:text-white"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+    </nav>
+  );
 }

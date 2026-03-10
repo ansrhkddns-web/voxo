@@ -1,36 +1,46 @@
 import React from 'react';
-import { Twitter, Instagram } from 'lucide-react';
 import Link from 'next/link';
+import { Instagram, Twitter } from 'lucide-react';
+import { getSiteSettings } from '@/lib/site-settings';
 
-export default function Footer() {
+export default async function Footer() {
+    const settings = await getSiteSettings();
+    const currentYear = new Date().getFullYear();
+
     return (
-        <footer className="py-20 px-8 border-t border-white/10 bg-black">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+        <footer className="border-t border-white/10 bg-black px-8 py-20">
+            <div className="flex flex-col items-center justify-between gap-8 md:flex-row">
                 <Link href="/" className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-white rotate-45"></div>
-                    <span className="font-display font-light tracking-[0.2em] text-xs text-white">VOXO</span>
+                    <div className="h-2 w-2 rotate-45 bg-white"></div>
+                    <span className="font-display text-xs font-light tracking-[0.2em] text-white">
+                        VOXO
+                    </span>
                 </Link>
 
                 <div className="flex gap-8">
                     {['About', 'Contact', 'Privacy', 'Terms'].map((item) => (
-                        <a key={item} href="#" className="text-[9px] uppercase tracking-[0.15em] font-medium text-gray-500 hover:text-white transition-colors font-display">
+                        <a
+                            key={item}
+                            href={item === 'Contact' ? `mailto:${settings.contactEmail}` : '#'}
+                            className="font-display text-[9px] font-medium uppercase tracking-[0.15em] text-gray-500 transition-colors hover:text-white"
+                        >
                             {item}
                         </a>
                     ))}
                 </div>
 
                 <div className="flex gap-4">
-                    <a className="text-white hover:text-accent-green transition-colors" href="#">
+                    <a className="text-white transition-colors hover:text-accent-green" href="#">
                         <Twitter size={16} />
                     </a>
-                    <a className="text-white hover:text-accent-green transition-colors" href="#">
+                    <a className="text-white transition-colors hover:text-accent-green" href="#">
                         <Instagram size={16} />
                     </a>
                 </div>
             </div>
 
-            <div className="text-center mt-12 text-[8px] tracking-widest text-gray-800 font-display">
-                © 2024 VOXO MAGAZINE. ALL RIGHTS RESERVED.
+            <div className="mt-12 text-center font-display text-[8px] tracking-widest text-gray-800">
+                {currentYear} {settings.siteName.toUpperCase()}. ALL RIGHTS RESERVED.
             </div>
         </footer>
     );

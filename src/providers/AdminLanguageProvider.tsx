@@ -1,13 +1,23 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, type ReactNode } from 'react';
 
 type Language = 'en' | 'ko';
+
+type TranslationNamespaces =
+    | 'sidebar'
+    | 'common'
+    | 'editor'
+    | 'dashboard'
+    | 'categories'
+    | 'posts'
+    | 'subscribers'
+    | 'newsletter';
 
 interface LanguageContextType {
     language: Language;
     setLanguage: (lang: Language) => void;
-    t: (key: string, namespace?: string) => string;
+    t: (key: string, namespace?: TranslationNamespaces) => string;
 }
 
 const defaultContext: LanguageContextType = {
@@ -16,18 +26,15 @@ const defaultContext: LanguageContextType = {
     t: (key: string) => key,
 };
 
-export const AdminLanguageContext = createContext<LanguageContextType>(defaultContext);
-
-export const useAdminLanguage = () => useContext(AdminLanguageContext);
-
-// Simplified translation dictionary for global components
-export const GLOBAL_TRANSLATIONS: Record<Language, Record<string, Record<string, string>>> = {
+const GLOBAL_TRANSLATIONS: Record<Language, Record<TranslationNamespaces, Record<string, string>>> = {
     en: {
         sidebar: {
             newPost: 'NEW POST',
+            aiDesk: 'AI AUTO DESK',
             dashboard: 'DASHBOARD',
             categories: 'CATEGORIES',
             allPosts: 'ALL POSTS',
+            tags: 'TAGS',
             subscribers: 'SUBSCRIBERS',
             newsletter: 'NEWSLETTER',
             settings: 'SETTINGS',
@@ -45,22 +52,22 @@ export const GLOBAL_TRANSLATIONS: Record<Language, Record<string, Record<string,
         editor: {
             title: 'Article Deployment',
             saveDraft: 'Save Draft',
-            transmit: 'Transmitting...',
-            publish: 'Execute Publish',
-            injectVisual: 'Inject Visual Component',
+            transmit: 'Publishing...',
+            publish: 'Publish Article',
+            injectVisual: 'Upload Cover Image',
             replaceImage: 'Replace Image',
             headlinePlaceholder: 'THE HEADLINE OF TOMORROW...',
             reviewRating: 'Review Rating (0.0 - 10.0)',
             artistName: 'Artist / Track Name',
             artistPlaceholder: 'IDENTITY_STRING',
-            metaClass: 'Meta Classification',
-            selectArchive: 'SELECT ARCHIVE',
-            tags: 'Tags (Comma Separated)',
-            tagsPlaceholder: 'TAG_SEQUENCE_1, TAG_SEQUENCE_2',
-            audioInt: 'Audio Integration (Spotify)',
-            audioPlaceholder: 'URI_SEQUENCE',
-            audioSupport: 'System supports Track / Album / Artist schemas.',
-            decrypting: 'Decryption in progress...'
+            metaClass: 'Category',
+            selectArchive: 'SELECT CATEGORY',
+            tags: 'Tags',
+            tagsPlaceholder: 'TAG_ONE, TAG_TWO',
+            audioInt: 'Spotify Integration',
+            audioPlaceholder: 'URI OR URL',
+            audioSupport: 'Track, album, and artist links are all supported.',
+            decrypting: 'Loading article data...',
         },
         dashboard: {
             status: 'System Status: Online',
@@ -70,26 +77,43 @@ export const GLOBAL_TRANSLATIONS: Record<Language, Record<string, Record<string,
             statPublished: 'Published Units',
             statCategories: 'Category Layers',
             statReadTime: 'Avg Read Time',
+            statDrafts: 'Draft Units',
+            statViews: 'Total Exposure',
+            trendNewThisWeek: 'new this week',
+            trendPublishedRatio: 'published ratio',
+            trendDraftCount: 'drafts pending',
+            trendTotalViews: 'accumulated views',
             dirTitle: 'Article Directory',
             syncing: 'Syncing Database...',
             colTitle: 'Archived Title',
             colClass: 'Classification',
+            colViews: 'Views',
             colStatus: 'Integrity Status',
             colOps: 'Operations',
             emptyState: 'No Data Sequences Found',
+            emptySearch: 'No matching articles found',
             statusVerified: 'Verified / Published',
             statusPending: 'Pending / Draft',
-            generic: 'GENERIC'
+            generic: 'GENERIC',
+            activityTitle: 'Recent Activity',
+            activityLoading: 'Loading dashboard activity...',
+            activitySystemReady: 'Dashboard connection established successfully.',
+            activityPublished: 'published',
+            activityDraft: 'saved as draft',
+            activityCreated: 'created',
+            activityFallback: 'No recent activity yet. Create your first post to start the feed.',
+            activityPrompt: 'Awaiting next update...',
+            resultsLabel: 'results',
         },
         categories: {
             infra: 'Meta Infrastructure',
             title: 'Category Archives',
-            unitLabel: 'UNIT LABEL',
+            unitLabel: 'CATEGORY NAME',
             init: 'INITIALIZE',
             executing: 'EXECUTING...',
             syncing: 'Syncing Database...',
             applying: 'Applying Changes...',
-            refid: 'REF_ID:'
+            refid: 'REF_ID:',
         },
         posts: {
             repo: 'Database Repository',
@@ -105,7 +129,7 @@ export const GLOBAL_TRANSLATIONS: Record<Language, Record<string, Record<string,
             colStatus: 'Status Flag',
             colOps: 'Operations',
             emptyState: 'No Matching Sequences',
-            generic: 'GENERIC'
+            generic: 'GENERIC',
         },
         subscribers: {
             infra: 'Communication Infrastructure',
@@ -116,39 +140,41 @@ export const GLOBAL_TRANSLATIONS: Record<Language, Record<string, Record<string,
             colStatus: 'Status',
             colReg: 'Registered',
             colActions: 'Actions',
-            active: 'Active'
+            active: 'Active',
         },
         newsletter: {
             infra: 'Communication Infrastructure',
             title: 'Broadcast Center',
             transmitting: 'TRANSMITTING...',
-            execBroadcast: 'EXECUTIVE BROADCAST',
+            execBroadcast: 'SEND NEWSLETTER',
             composeBtn: 'Compose Sequence',
             subjectLine: 'Subject Line',
             subjectPlaceholder: 'INPUT_TRANSMISSION_SUBJECT',
             content: 'Transmission Content',
             contentPlaceholder: 'START_BROADCAST_BODY_DATA...',
             safetyTitle: 'Safety Protocol',
-            safetyText: 'By initiating the broadcast sequence, you agree to transmit this data to all registered units within the network. Data deconstruction after transmission is currently technically restricted.',
+            safetyText: 'When you start the broadcast, the content will be sent to every active subscriber. Please review the copy before sending.',
             errMissing: 'Required metadata missing',
-            successInitiated: 'Broadcast sequence successfully initiated',
-            errInterrupt: 'Connection interrupt during transmission'
-        }
+            successInitiated: 'Broadcast sequence completed successfully',
+            errInterrupt: 'Connection interrupt during transmission',
+        },
     },
     ko: {
         sidebar: {
-            newPost: '새 포스트 작성',
+            newPost: '새 글 작성',
+            aiDesk: 'AI 자동 작성',
             dashboard: '대시보드',
-            categories: '카테고리 관리',
-            allPosts: '모든 포스트',
-            subscribers: '구독자 관리',
-            newsletter: '뉴스레터 발송',
-            settings: '시스템 설정',
+            categories: '카테고리',
+            allPosts: '전체 글',
+            tags: '태그',
+            subscribers: '구독자',
+            newsletter: '뉴스레터',
+            settings: '설정',
             logout: '로그아웃',
-            navigation: '내비게이션 메뉴',
+            navigation: '메뉴',
         },
         common: {
-            loading: '로딩 중...',
+            loading: '불러오는 중...',
             save: '저장',
             cancel: '취소',
             delete: '삭제',
@@ -156,145 +182,159 @@ export const GLOBAL_TRANSLATIONS: Record<Language, Record<string, Record<string,
             search: '검색...',
         },
         editor: {
-            title: '아티클 배포',
+            title: '글 편집',
             saveDraft: '임시 저장',
-            transmit: '전송 중...',
-            publish: '아티클 발행',
-            injectVisual: '시각적 컴포넌트 추가',
+            transmit: '발행 중...',
+            publish: '발행하기',
+            injectVisual: '커버 이미지 업로드',
             replaceImage: '이미지 변경',
-            headlinePlaceholder: '내일을 밝힐 헤드라인...',
-            reviewRating: '리뷰 평점 (0.0 - 10.0)',
-            artistName: '아티스트 / 트랙 이름',
-            artistPlaceholder: '식별_문자열 (IDENTITY_STRING)',
-            metaClass: '메타 분류 (카테고리)',
-            selectArchive: '아카이브 선택',
-            tags: '태그 (쉼표로 구분)',
-            tagsPlaceholder: '태그_시퀀스_1, 태그_시퀀스_2',
-            audioInt: '오디오 연동 (스포티파이)',
-            audioPlaceholder: 'URI_시퀀스 (URL)',
-            audioSupport: '시스템은 트랙, 앨범, 아티스트 스키마를 모두 지원합니다.',
-            decrypting: '복호화 진행 중 (로딩)...'
+            headlinePlaceholder: '기사 제목을 입력하세요...',
+            reviewRating: '평점 (0.0 - 10.0)',
+            artistName: '아티스트 / 곡명',
+            artistPlaceholder: '아티스트명을 입력하세요',
+            metaClass: '카테고리',
+            selectArchive: '카테고리 선택',
+            tags: '태그',
+            tagsPlaceholder: '예: synth-pop, live',
+            audioInt: 'Spotify 연동',
+            audioPlaceholder: 'Spotify URI 또는 URL',
+            audioSupport: '트랙, 앨범, 아티스트 링크를 모두 지원합니다.',
+            decrypting: '글 데이터를 불러오는 중...',
         },
         dashboard: {
-            status: '시스템 상태: 온라인',
-            title: '콘텐츠 제어 센터',
-            search: '아티클 검색...',
-            statArchives: '전체 아카이브',
-            statPublished: '발행된 유닛',
-            statCategories: '카테고리 계층',
-            statReadTime: '평균 예상 읽기 시간',
-            dirTitle: '아티클 디렉토리',
-            syncing: '데이터베이스 동기화 중...',
-            colTitle: '보관된 타이틀',
-            colClass: '분류 (카테고리)',
-            colStatus: '무결성 상태',
-            colOps: '관리 작업',
-            emptyState: '데이터 시퀀스를 찾을 수 없습니다.',
-            statusVerified: '검증 완료 / 발행됨',
-            statusPending: '대기 중 / 임시 보관',
-            generic: '제네릭 (기본)'
+            status: '시스템 상태: 정상',
+            title: '콘텐츠 관리',
+            search: '게시글 검색...',
+            statArchives: '전체 게시글',
+            statPublished: '발행 완료',
+            statCategories: '활성 카테고리',
+            statReadTime: '평균 읽기 시간',
+            statDrafts: '임시 저장',
+            statViews: '총 조회수',
+            trendNewThisWeek: '이번 주 신규',
+            trendPublishedRatio: '발행 비율',
+            trendDraftCount: '임시 저장',
+            trendTotalViews: '누적 조회',
+            dirTitle: '게시글 목록',
+            syncing: '데이터를 불러오는 중...',
+            colTitle: '제목',
+            colClass: '카테고리',
+            colViews: '조회수',
+            colStatus: '상태',
+            colOps: '작업',
+            emptyState: '등록된 게시글이 없습니다.',
+            emptySearch: '검색 조건에 맞는 게시글이 없습니다.',
+            statusVerified: '발행 완료',
+            statusPending: '임시 저장',
+            generic: '기본',
+            activityTitle: '최근 활동',
+            activityLoading: '대시보드 활동 내역을 불러오는 중...',
+            activitySystemReady: '대시보드 연결이 정상적으로 완료되었습니다.',
+            activityPublished: '발행됨',
+            activityDraft: '임시 저장됨',
+            activityCreated: '생성됨',
+            activityFallback: '아직 최근 활동이 없습니다. 첫 게시글을 작성해 보세요.',
+            activityPrompt: '다음 업데이트 대기 중...',
+            resultsLabel: '건',
         },
         categories: {
-            infra: '메타 인프라스트럭처',
-            title: '카테고리 아카이브',
-            unitLabel: '카테고리명 입력',
-            init: '초기화 (생성)',
-            executing: '실행 중...',
-            syncing: '데이터베이스 동기화 중...',
+            infra: '분류 관리',
+            title: '카테고리 관리',
+            unitLabel: '카테고리 이름',
+            init: '추가',
+            executing: '처리 중...',
+            syncing: '카테고리를 불러오는 중...',
             applying: '변경 사항 적용 중...',
-            refid: '참조_ID:'
+            refid: '참조 ID:',
         },
         posts: {
-            repo: '데이터베이스 저장소',
-            title: '모든 아카이브 목록',
+            repo: '콘텐츠 저장소',
+            title: '전체 게시글',
             all: '전체',
             published: '발행됨',
-            drafts: '임시 보관',
-            search: '저장소 검색...',
-            querying: '데이터베이스 조회 중...',
-            colIdentify: '아카이브 식별자',
+            drafts: '임시 저장',
+            search: '게시글 검색...',
+            querying: '게시글을 불러오는 중...',
+            colIdentify: '게시글',
             colCat: '카테고리',
             colCreated: '생성일',
-            colStatus: '상태 플래그',
-            colOps: '관리 작업',
-            emptyState: '일치하는 시퀀스가 없습니다.',
-            generic: '제네릭 (기본)'
+            colStatus: '상태',
+            colOps: '작업',
+            emptyState: '조건에 맞는 게시글이 없습니다.',
+            generic: '기본',
         },
         subscribers: {
-            infra: '커뮤니케이션 인프라스트럭처',
-            title: '구독자 디렉토리',
-            units: '활성 유닛',
-            syncing: '디렉토리 동기화 중...',
-            colIdentity: '식별자 (이메일)',
+            infra: '구독 관리',
+            title: '구독자 목록',
+            units: '명',
+            syncing: '구독자 목록을 불러오는 중...',
+            colIdentity: '이메일',
             colStatus: '상태',
             colReg: '등록일',
             colActions: '작업',
-            active: '활성'
+            active: '활성',
         },
         newsletter: {
-            infra: '커뮤니케이션 인프라스트럭처',
-            title: '브로드캐스트 센터',
-            transmitting: '전송 중...',
-            execBroadcast: '브로드캐스트 실행',
-            composeBtn: '새 시퀀스 작성',
-            subjectLine: '제목 라인',
-            subjectPlaceholder: '전송_제목_입력',
-            content: '전송 콘텐츠',
-            contentPlaceholder: '브로드캐스트_본문_데이터_입력...',
-            safetyTitle: '안전 프로토콜',
-            safetyText: '브로드캐스트 시퀀스를 시작하면 이 데이터를 네트워크 내의 모든 등록된 유닛에 전송하는 데 동의하게 됩니다. 전송 후 데이터 해체(발송 취소)는 현재 기술적으로 제한되어 있습니다.',
-            errMissing: '필수 메타데이터가 누락되었습니다',
-            successInitiated: '브로드캐스트 시퀀스가 성공적으로 시작되었습니다',
-            errInterrupt: '전송 중 연결이 끊겼습니다'
-        }
-    }
+            infra: '메일 발송',
+            title: '뉴스레터 발송',
+            transmitting: '발송 중...',
+            execBroadcast: '뉴스레터 보내기',
+            composeBtn: '내용 작성',
+            subjectLine: '제목',
+            subjectPlaceholder: '메일 제목을 입력하세요',
+            content: '본문',
+            contentPlaceholder: '발송할 내용을 입력하세요...',
+            safetyTitle: '안내',
+            safetyText: '발송을 시작하면 활성 구독자 전체에게 메일이 전송됩니다. 보내기 전에 제목과 본문을 다시 확인해 주세요.',
+            errMissing: '제목과 본문을 모두 입력해 주세요.',
+            successInitiated: '뉴스레터 발송이 완료되었습니다.',
+            errInterrupt: '발송 중 오류가 발생했습니다.',
+        },
+    },
 };
 
-export function AdminLanguageProvider({ children }: { children: ReactNode }) {
-    const [language, setLanguageState] = useState<Language>('en');
+export const AdminLanguageContext = createContext<LanguageContextType>(defaultContext);
 
-    useEffect(() => {
-        // Attempt to load settings from local storage
-        const savedSettingsStr = localStorage.getItem('voxoAdminSettings');
-        if (savedSettingsStr) {
-            try {
-                const savedSettings = JSON.parse(savedSettingsStr);
-                if (savedSettings.language === 'en' || savedSettings.language === 'ko') {
-                    // eslint-disable-next-line
-                    setLanguageState(savedSettings.language);
-                }
-            } catch (e) {
-                console.error("Failed to parse language settings", e);
-            }
+export const useAdminLanguage = () => useContext(AdminLanguageContext);
+
+export function AdminLanguageProvider({ children }: { children: ReactNode }) {
+    const [language, setLanguageState] = useState<Language>(() => {
+        if (typeof window === 'undefined') {
+            return 'en';
         }
-    }, []);
+
+        try {
+            const savedSettingsStr = localStorage.getItem('voxoAdminSettings');
+            if (!savedSettingsStr) {
+                return 'en';
+            }
+
+            const savedSettings = JSON.parse(savedSettingsStr) as { language?: Language };
+            return savedSettings.language === 'ko' ? 'ko' : 'en';
+        } catch (error) {
+            console.error('Failed to parse language settings', error);
+            return 'en';
+        }
+    });
 
     const setLanguage = (lang: Language) => {
         setLanguageState(lang);
-        // Also update the local storage settings object so Settings page stays in sync
+
         try {
             const savedSettingsStr = localStorage.getItem('voxoAdminSettings');
-            const settings = savedSettingsStr ? JSON.parse(savedSettingsStr) : {};
+            const settings = savedSettingsStr ? JSON.parse(savedSettingsStr) as Record<string, unknown> : {};
             settings.language = lang;
             localStorage.setItem('voxoAdminSettings', JSON.stringify(settings));
-        } catch { }
+        } catch (error) {
+            console.error('Failed to persist language settings', error);
+        }
     };
 
-    const t = (key: string, namespace: string = 'common'): string => {
-        const defaultDict = GLOBAL_TRANSLATIONS['en'];
-        const currentDict = GLOBAL_TRANSLATIONS[language];
+    const t = (key: string, namespace: TranslationNamespaces = 'common'): string => {
+        const currentDict = GLOBAL_TRANSLATIONS[language]?.[namespace];
+        const fallbackDict = GLOBAL_TRANSLATIONS.en[namespace];
 
-        // Safely retrieve the nested translation
-        if (currentDict && currentDict[namespace] && currentDict[namespace][key]) {
-            return currentDict[namespace][key];
-        }
-
-        // Fallback to English
-        if (defaultDict && defaultDict[namespace] && defaultDict[namespace][key]) {
-            return defaultDict[namespace][key];
-        }
-
-        return key;
+        return currentDict?.[key] || fallbackDict?.[key] || key;
     };
 
     return (

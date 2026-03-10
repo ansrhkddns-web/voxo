@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, X, Loader2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { searchPosts } from '@/app/actions/postActions';
+import type { SearchPostResult } from '@/types/content';
 
 interface SearchOverlayProps {
     isOpen: boolean;
@@ -11,7 +12,7 @@ interface SearchOverlayProps {
 
 export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
     const [query, setQuery] = useState('');
-    const [results, setResults] = useState<any[]>([]);
+    const [results, setResults] = useState<SearchPostResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
 
     useEffect(() => {

@@ -8,10 +8,11 @@ import { cn } from "@/lib/utils";
 import toast, { Toaster } from 'react-hot-toast';
 import Link from 'next/link';
 import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
+import type { PostRecord } from '@/types/content';
 
 export default function AdminPosts() {
     const { t } = useAdminLanguage();
-    const [posts, setPosts] = useState<Array<{ id: string; title: string; slug: string; is_published: boolean; categories: { name: string } | null; created_at: string }>>([]);
+    const [posts, setPosts] = useState<PostRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all');

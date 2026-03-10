@@ -1,32 +1,42 @@
 
-
 import React from 'react';
 export const dynamic = "force-dynamic";
 
 import Navbar from "@/components/layout/Navbar";
 import Hero from "@/components/home/Hero";
 import Marquee from "@/components/home/Marquee";
-import PostCard from "@/components/home/PostCard";
 import Footer from "@/components/layout/Footer";
+import GlobalPlaylistBar from "@/components/layout/GlobalPlaylistBar";
 import NewsletterForm from "@/components/home/NewsletterForm";
 import LatestStories from "@/components/home/LatestStories";
-import { cn } from "@/lib/utils";
 import { getPosts } from '@/app/actions/postActions';
 import { getMenuTags } from '@/app/actions/tagActions';
-import Link from 'next/link';
+import { getSiteSettings } from '@/lib/site-settings';
+import type { PostRecord } from '@/types/content';
 
 export default async function Home() {
   const posts = await getPosts();
-  const publishedPosts = posts?.filter((p: any) => p.is_published) || [];
+  const publishedPosts = posts.filter((post) => post.is_published);
   const menuTags = await getMenuTags();
+  const siteSettings = await getSiteSettings();
+  const marqueeItems = publishedPosts
+    .slice(0, 8)
+    .map((post) => {
+      if (post.artist_name) {
+        return `${post.artist_name} - ${post.title}`;
+      }
 
-  const latestCoverStory = publishedPosts.find((p: any) => p.categories?.name?.toLowerCase().replace(/'/g, '').replace(/\s+/g, '-') === 'cover-story');
+      return post.title;
+    });
+
+  const latestCoverStory =
+    publishedPosts.find((post: PostRecord) => post.categories?.name?.toLowerCase().replace(/'/g, '').replace(/\s+/g, '-') === 'cover-story') ?? null;
 
   return (
     <main className="flex min-h-screen flex-col bg-background-dark font-body select-none">
       <Navbar />
       <Hero post={latestCoverStory} />
-      <Marquee />
+      <Marquee items={marqueeItems} />
 
       <LatestStories posts={publishedPosts} tags={menuTags} />
 
@@ -46,6 +56,7 @@ export default async function Home() {
       </section>
 
       <Footer />
+      {siteSettings.globalPlaylist && <GlobalPlaylistBar uri={siteSettings.globalPlaylist} />}
     </main>
   );
 }

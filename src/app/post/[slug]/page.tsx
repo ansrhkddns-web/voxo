@@ -1,16 +1,22 @@
 import React from 'react';
 export const dynamic = "force-dynamic";
 
+import Image from 'next/image';
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import GlobalPlaylistBar from "@/components/layout/GlobalPlaylistBar";
 import ArtistStats from "@/components/post/ArtistStats";
+import PostShareActions from "@/components/post/PostShareActions";
 import SpotifyEmbed from "@/components/post/SpotifyEmbed";
 import RatingMeter from "@/components/post/RatingMeter";
 import ViewCounter from "@/components/post/ViewCounter";
-import { Instagram, Twitter, Music2, Share2, Play, Pause, SkipBack, SkipForward, Maximize2, X, Clock, Eye, AlertCircle } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import { getPostBySlug } from '@/app/actions/postActions';
 import { getArtistStats } from '@/app/actions/spotifyActions';
+import { getSiteSettings } from '@/lib/site-settings';
 import { notFound } from 'next/navigation';
+import type { PostRecord } from '@/types/content';
+import type { SpotifyStatsResult } from '@/types/spotify';
 
 export default async function PostDetail({ params }: { params: { slug: string } | Promise<{ slug: string }> }) {
     // Robust params handling for various Next.js 15/16 environments
@@ -25,7 +31,7 @@ export default async function PostDetail({ params }: { params: { slug: string } 
     const decodedSlug = decodeURIComponent(slug);
 
     // 1. Primary lookup using decoded slug
-    let post = await getPostBySlug(decodedSlug);
+    let post: PostRecord | null = await getPostBySlug(decodedSlug);
 
     // 2. Fallback: Lookup using raw slug (Next.js sometimes handles encoding differently)
     if (!post && slug !== decodedSlug) {
@@ -52,12 +58,16 @@ export default async function PostDetail({ params }: { params: { slug: string } 
     // Fetch Spotify Artist Stats (Direct ID > Link > Name Fallback)
     console.log(`VOXO_POST_DEBUG: URI=[${post.spotify_uri}] NAME=[${post.artist_name}] ID=[${post.spotify_artist_id}]`);
 
-    const artistStats = (post.spotify_uri || post.artist_name || post.spotify_artist_id)
+    const artistStats: SpotifyStatsResult = (post.spotify_uri || post.artist_name || post.spotify_artist_id)
         ? await getArtistStats(post.spotify_uri || '', post.artist_name || '', post.spotify_artist_id || '')
         : null;
 
-    const artistStatsData = artistStats as any;
-    console.log(`VOXO_POST_DEBUG: Fetch Result ->`, artistStatsData ? (artistStatsData.error ? `ERROR: ${artistStatsData.error}` : `SUCCESS: ${artistStatsData.name}`) : 'NULL (Skipped)');
+    if (artistStats) {
+        const resultSummary = 'error' in artistStats ? `ERROR: ${artistStats.error}` : `SUCCESS: ${artistStats.name}`;
+        console.log(`VOXO_POST_DEBUG: Fetch Result -> ${resultSummary}`);
+    } else {
+        console.log('VOXO_POST_DEBUG: Fetch Result -> NULL (Skipped)');
+    }
 
     // Extract custom excerpts and intros from our injected metadata div
     let customExcerpt = '';
@@ -80,6 +90,7 @@ export default async function PostDetail({ params }: { params: { slug: string } 
         day: 'numeric',
         year: 'numeric'
     }).toUpperCase();
+    const siteSettings = await getSiteSettings();
 
     return (
         <main className="flex min-h-screen flex-col bg-background-dark select-none">
@@ -139,10 +150,12 @@ export default async function PostDetail({ params }: { params: { slug: string } 
             {/* Separated Cover Image Section */}
             <section className="w-full px-6 md:px-12 max-w-7xl mx-auto mb-32 animate-fade-in">
                 <div className="relative aspect-[16/9] md:aspect-[21/9] w-full overflow-hidden rounded-none group bg-[#050505]">
-                    <img
+                    <Image
                         alt={post.title}
-                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-[1.03] transition-all duration-[2000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                         src={post.cover_image || "https://images.unsplash.com/photo-1514525253361-bee8718a300a?q=80&w=1974&auto=format&fit=crop"}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 1400px"
+                        className="object-cover opacity-80 group-hover:opacity-100 group-hover:scale-[1.03] transition-all duration-[2000ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-background-dark/40 to-transparent pointer-events-none"></div>
 
@@ -200,18 +213,13 @@ export default async function PostDetail({ params }: { params: { slug: string } 
                             <span className="w-4 h-[1px] bg-accent-green"></span>
                             <h3 className="text-[10px] uppercase tracking-[0.3em] font-display text-white">Share This Story</h3>
                         </div>
-                        <div className="flex gap-4">
-                            {['TW', 'IG', 'FB', 'LI'].map(social => (
-                                <button key={social} className="w-10 h-10 border border-white/10 flex items-center justify-center text-[10px] uppercase font-display text-gray-500 hover:text-white hover:border-white transition-colors">
-                                    {social}
-                                </button>
-                            ))}
-                        </div>
+                        <PostShareActions title={post.title} excerpt={customExcerpt} />
                     </div>
                 </aside>
             </section>
 
             <Footer />
+            {siteSettings.globalPlaylist && <GlobalPlaylistBar uri={siteSettings.globalPlaylist} />}
         </main>
     );
 }

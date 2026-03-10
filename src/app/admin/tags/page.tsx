@@ -1,13 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import AdminSidebar from "@/components/admin/AdminSidebar";
-import { CirclePlus, Edit2, Trash2, Loader2, Tag, CheckSquare, Square } from 'lucide-react';
-import { getTags, createTag, deleteTag, updateTag } from '@/app/actions/tagActions';
+import React, { useEffect, useState } from 'react';
+import { CheckSquare, CirclePlus, Edit2, Loader2, Square, Tag, Trash2 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import AdminSidebar from '@/components/admin/AdminSidebar';
+import { createTag, deleteTag, getTags, updateTag } from '@/app/actions/tagActions';
+import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
+import type { TagRecord } from '@/types/content';
 
 export default function TagsPage() {
-    const [tags, setTags] = useState<Array<{ id: string; name: string; slug: string; show_in_menu: boolean; menu_order: number }>>([]);
+    const { language } = useAdminLanguage();
+    const isKorean = language === 'ko';
+    const [tags, setTags] = useState<TagRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [newTagName, setNewTagName] = useState('');
     const [newTagShowInMenu, setNewTagShowInMenu] = useState(false);
@@ -19,61 +23,72 @@ export default function TagsPage() {
     const [editingMenuOrder, setEditingMenuOrder] = useState(0);
 
     useEffect(() => {
-        fetchTags();
-    }, []);
+        const fetchTags = async () => {
+            try {
+                const data = await getTags();
+                setTags(data);
+            } catch {
+                toast.error(isKorean ? '태그를 불러오지 못했습니다.' : 'Failed to load tags.');
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    const fetchTags = async () => {
-        try {
-            const data = await getTags();
-            setTags(data);
-        } catch {
-            toast.error('Failed to sync tags');
-        } finally {
-            setLoading(false);
-        }
+        fetchTags();
+    }, [isKorean]);
+
+    const makeSlug = (value: string) =>
+        value
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9가-힣]+/g, '-')
+            .replace(/(^-|-$)+/g, '');
+
+    const resetCreateForm = () => {
+        setNewTagName('');
+        setNewTagShowInMenu(false);
+        setNewTagMenuOrder(0);
     };
 
-    const handleAdd = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newTagName) return;
+    const handleAdd = async (event: React.FormEvent) => {
+        event.preventDefault();
+        if (!newTagName.trim()) return;
 
         setIsAdding(true);
         try {
-            const slug = newTagName.toLowerCase().replace(/ /g, '-');
-            await createTag(newTagName, slug, newTagShowInMenu, newTagMenuOrder);
-            setNewTagName('');
-            setNewTagShowInMenu(false);
-            setNewTagMenuOrder(0);
-            fetchTags();
-            toast.success('Tag deployed');
+            await createTag(newTagName.trim(), makeSlug(newTagName), newTagShowInMenu, newTagMenuOrder);
+            resetCreateForm();
+            setTags(await getTags());
+            toast.success(isKorean ? '태그를 추가했습니다.' : 'Tag created.');
         } catch {
-            toast.error('Deployment failed');
+            toast.error(isKorean ? '태그 추가에 실패했습니다.' : 'Failed to create tag.');
         } finally {
             setIsAdding(false);
         }
     };
 
     const handleUpdate = async (id: string) => {
-        if (!editingName) return;
+        if (!editingName.trim()) return;
+
         try {
-            const slug = editingName.toLowerCase().replace(/ /g, '-');
-            await updateTag(id, editingName, slug, editingShowInMenu, editingMenuOrder);
+            await updateTag(id, editingName.trim(), makeSlug(editingName), editingShowInMenu, editingMenuOrder);
             setEditingId(null);
-            fetchTags();
-            toast.success('Tag recalibrated');
+            setTags(await getTags());
+            toast.success(isKorean ? '태그를 수정했습니다.' : 'Tag updated.');
         } catch {
-            toast.error('Recalibration failed');
+            toast.error(isKorean ? '태그 수정에 실패했습니다.' : 'Failed to update tag.');
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Execute deletion sequence?')) return;
+        if (!confirm(isKorean ? '이 태그를 삭제할까요?' : 'Delete this tag?')) return;
+
         try {
             await deleteTag(id);
-            fetchTags();
-            toast.success('Tag deconstructed');
+            setTags(await getTags());
+            toast.success(isKorean ? '태그를 삭제했습니다.' : 'Tag deleted.');
         } catch {
-            toast.error('Deconstruction failed');
+            toast.error(isKorean ? '태그 삭제에 실패했습니다.' : 'Failed to delete tag.');
         }
     };
 
@@ -82,138 +97,170 @@ export default function TagsPage() {
             <Toaster position="top-center" />
             <AdminSidebar />
 
-            <main className="flex-1 flex flex-col h-screen overflow-hidden">
-                <header className="h-24 border-b border-white/5 bg-black/80 backdrop-blur-xl flex items-center justify-between px-10 sticky top-0 z-50">
+            <main className="flex-1 flex h-screen flex-col overflow-hidden">
+                <header className="sticky top-0 z-50 flex h-24 items-center justify-between border-b border-white/5 bg-black/80 px-10 backdrop-blur-xl">
                     <div className="space-y-1">
-                        <h1 className="text-[10px] uppercase tracking-[0.4em] text-gray-500 font-display">Meta Structure</h1>
-                        <p className="text-xl font-display font-light uppercase tracking-tighter">Tag Directory</p>
+                        <h1 className="font-display text-[10px] uppercase tracking-[0.4em] text-gray-500">
+                            {isKorean ? '태그 구조 관리' : 'Meta Structure'}
+                        </h1>
+                        <p className="font-display text-xl font-light uppercase tracking-tighter">
+                            {isKorean ? '태그 관리' : 'Tag Directory'}
+                        </p>
                     </div>
 
-                    <form onSubmit={handleAdd} className="flex gap-4 items-center">
-                        <label className="flex items-center gap-2 cursor-pointer text-gray-400 hover:text-white transition-colors">
+                    <form onSubmit={handleAdd} className="flex flex-wrap items-center gap-4">
+                        <label className="flex cursor-pointer items-center gap-2 text-gray-400 transition-colors hover:text-white">
                             <input
                                 type="checkbox"
                                 className="hidden"
                                 checked={newTagShowInMenu}
-                                onChange={(e) => setNewTagShowInMenu(e.target.checked)}
+                                onChange={(event) => setNewTagShowInMenu(event.target.checked)}
                             />
                             {newTagShowInMenu ? <CheckSquare size={16} className="text-accent-green" /> : <Square size={16} />}
-                            <span className="text-[9px] uppercase tracking-widest">Show in Menu</span>
+                            <span className="text-[9px] uppercase tracking-widest">
+                                {isKorean ? '메뉴 노출' : 'Show in Menu'}
+                            </span>
                         </label>
+
                         <input
-                            placeholder="INPUT_NEW_TAG"
-                            className="bg-gray-950 border border-white/5 rounded-none py-2.5 px-6 text-[10px] tracking-widest text-white focus:outline-none focus:border-accent-green/50 w-full md:w-56 transition-all placeholder:text-gray-800"
+                            placeholder={isKorean ? '새 태그 이름' : 'NEW TAG'}
+                            className="w-full rounded-none border border-white/5 bg-gray-950 px-6 py-2.5 text-[10px] tracking-widest text-white transition-all placeholder:text-gray-800 focus:border-accent-green/50 focus:outline-none md:w-56"
                             value={newTagName}
-                            onChange={(e) => setNewTagName(e.target.value)}
+                            onChange={(event) => setNewTagName(event.target.value)}
                         />
+
                         <input
                             type="number"
-                            placeholder="ORDER"
-                            className="bg-gray-950 border border-white/5 rounded-none py-2.5 px-4 text-[10px] tracking-widest text-white focus:outline-none focus:border-accent-green/50 w-24 transition-all placeholder:text-gray-800"
+                            placeholder={isKorean ? '순서' : 'ORDER'}
+                            className="w-24 rounded-none border border-white/5 bg-gray-950 px-4 py-2.5 text-[10px] tracking-widest text-white transition-all placeholder:text-gray-800 focus:border-accent-green/50 focus:outline-none"
                             value={newTagMenuOrder}
-                            onChange={(e) => setNewTagMenuOrder(parseInt(e.target.value) || 0)}
+                            onChange={(event) => setNewTagMenuOrder(parseInt(event.target.value) || 0)}
                         />
+
                         <button
                             type="submit"
                             disabled={isAdding}
-                            className="h-10 px-8 bg-white text-black text-[10px] uppercase tracking-[0.2em] font-display font-bold hover:bg-accent-green transition-all flex items-center gap-2 whitespace-nowrap"
+                            className="flex h-10 items-center gap-2 whitespace-nowrap bg-white px-8 font-display text-[10px] font-bold uppercase tracking-[0.2em] text-black transition-all hover:bg-accent-green"
                         >
                             {isAdding ? <Loader2 className="animate-spin" size={14} /> : <CirclePlus size={14} />}
-                            DEPLOY
+                            {isKorean ? (isAdding ? '추가 중...' : '추가') : isAdding ? 'CREATING...' : 'CREATE'}
                         </button>
                     </form>
                 </header>
 
-                <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
+                <div className="custom-scrollbar flex-1 overflow-y-auto p-12">
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center h-64 space-y-4">
+                        <div className="flex h-64 flex-col items-center justify-center space-y-4">
                             <Loader2 className="animate-spin text-accent-green" size={32} strokeWidth={1} />
-                            <p className="text-[9px] uppercase tracking-[0.3em] text-gray-600 animate-pulse">Syncing Network...</p>
+                            <p className="text-[9px] uppercase tracking-[0.3em] text-gray-600 animate-pulse">
+                                {isKorean ? '태그를 불러오는 중...' : 'Syncing tags...'}
+                            </p>
                         </div>
                     ) : (
-                        <div className="max-w-7xl mx-auto">
-                            <div className="border border-white/5 bg-gray-950/20">
-                                <table className="w-full text-left border-collapse">
+                        <div className="mx-auto max-w-7xl">
+                            <div className="overflow-hidden border border-white/5 bg-gray-950/20">
+                                <table className="w-full border-collapse text-left">
                                     <thead>
                                         <tr className="border-b border-white/5 bg-gray-950/50">
-                                            <th className="px-8 py-6 text-[9px] uppercase tracking-[0.3em] text-gray-500 font-display font-bold">Tag Identity</th>
-                                            <th className="px-8 py-6 text-[9px] uppercase tracking-[0.3em] text-gray-500 font-display font-bold">Slug Vector</th>
-                                            <th className="px-8 py-6 text-[9px] uppercase tracking-[0.3em] text-gray-500 font-display font-bold">Menu Display</th>
-                                            <th className="px-8 py-6 text-[9px] uppercase tracking-[0.3em] text-gray-500 font-display font-bold">Priority</th>
-                                            <th className="px-8 py-6 text-[9px] uppercase tracking-[0.3em] text-gray-500 font-display font-bold text-right">Actions</th>
+                                            <th className="px-8 py-6 font-display text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">
+                                                {isKorean ? '태그 이름' : 'Tag Name'}
+                                            </th>
+                                            <th className="px-8 py-6 font-display text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">
+                                                Slug
+                                            </th>
+                                            <th className="px-8 py-6 font-display text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">
+                                                {isKorean ? '메뉴 노출' : 'Menu Display'}
+                                            </th>
+                                            <th className="px-8 py-6 font-display text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">
+                                                {isKorean ? '정렬 순서' : 'Order'}
+                                            </th>
+                                            <th className="px-8 py-6 text-right font-display text-[9px] font-bold uppercase tracking-[0.3em] text-gray-500">
+                                                {isKorean ? '작업' : 'Actions'}
+                                            </th>
                                         </tr>
                                     </thead>
+
                                     <tbody>
                                         {tags.map((tag) => (
-                                            <tr key={tag.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors group">
+                                            <tr key={tag.id} className="group border-b border-white/5 transition-colors hover:bg-white/[0.02]">
                                                 <td className="px-8 py-6">
                                                     {editingId === tag.id ? (
                                                         <input
-                                                            className="bg-black border border-accent-green/50 py-1.5 px-3 text-[11px] tracking-widest text-white focus:outline-none w-48 font-light"
+                                                            className="w-48 border border-accent-green/50 bg-black px-3 py-1.5 text-[11px] font-light tracking-widest text-white focus:outline-none"
                                                             value={editingName}
-                                                            onChange={(e) => setEditingName(e.target.value)}
+                                                            onChange={(event) => setEditingName(event.target.value)}
                                                             autoFocus
-                                                            onKeyDown={(e) => e.key === 'Enter' && handleUpdate(tag.id)}
+                                                            onKeyDown={(event) => event.key === 'Enter' && handleUpdate(tag.id)}
                                                         />
                                                     ) : (
                                                         <div className="flex items-center gap-4">
-                                                            <Tag size={14} className="text-gray-700 group-hover:text-accent-green transition-colors" />
-                                                            <span className="text-[11px] tracking-widest font-light">{tag.name}</span>
+                                                            <Tag size={14} className="text-gray-700 transition-colors group-hover:text-accent-green" />
+                                                            <span className="text-[11px] font-light tracking-widest">{tag.name}</span>
                                                         </div>
                                                     )}
                                                 </td>
+
                                                 <td className="px-8 py-6">
-                                                    <span className="text-[10px] tracking-widest text-gray-500 font-mono">{tag.slug}</span>
+                                                    <span className="font-mono text-[10px] tracking-widest text-gray-500">
+                                                        {tag.slug}
+                                                    </span>
                                                 </td>
+
                                                 <td className="px-8 py-6">
                                                     {editingId === tag.id ? (
-                                                        <label className="flex items-center gap-2 cursor-pointer text-gray-400 hover:text-white transition-colors">
+                                                        <label className="flex cursor-pointer items-center gap-2 text-gray-400 transition-colors hover:text-white">
                                                             <input
                                                                 type="checkbox"
                                                                 className="hidden"
                                                                 checked={editingShowInMenu}
-                                                                onChange={(e) => setEditingShowInMenu(e.target.checked)}
+                                                                onChange={(event) => setEditingShowInMenu(event.target.checked)}
                                                             />
                                                             {editingShowInMenu ? <CheckSquare size={16} className="text-accent-green" /> : <Square size={16} />}
                                                         </label>
+                                                    ) : tag.show_in_menu ? (
+                                                        <span className="border border-accent-green/20 bg-accent-green/10 px-2 py-1 text-[8px] uppercase tracking-widest text-accent-green">
+                                                            {isKorean ? '노출' : 'VISIBLE'}
+                                                        </span>
                                                     ) : (
-                                                        tag.show_in_menu ? (
-                                                            <span className="text-[8px] uppercase tracking-widest px-2 py-1 bg-accent-green/10 text-accent-green border border-accent-green/20">VISIBLE</span>
-                                                        ) : (
-                                                            <span className="text-[8px] uppercase tracking-widest px-2 py-1 bg-gray-800 text-gray-400 border border-gray-700">HIDDEN</span>
-                                                        )
+                                                        <span className="border border-gray-700 bg-gray-800 px-2 py-1 text-[8px] uppercase tracking-widest text-gray-400">
+                                                            {isKorean ? '숨김' : 'HIDDEN'}
+                                                        </span>
                                                     )}
                                                 </td>
+
                                                 <td className="px-8 py-6">
                                                     {editingId === tag.id ? (
                                                         <input
                                                             type="number"
-                                                            className="bg-black border border-accent-green/50 py-1.5 px-3 text-[11px] font-mono text-white focus:outline-none w-16"
+                                                            className="w-16 border border-accent-green/50 bg-black px-3 py-1.5 font-mono text-[11px] text-white focus:outline-none"
                                                             value={editingMenuOrder}
-                                                            onChange={(e) => setEditingMenuOrder(parseInt(e.target.value) || 0)}
-                                                            onKeyDown={(e) => e.key === 'Enter' && handleUpdate(tag.id)}
+                                                            onChange={(event) => setEditingMenuOrder(parseInt(event.target.value) || 0)}
+                                                            onKeyDown={(event) => event.key === 'Enter' && handleUpdate(tag.id)}
                                                         />
                                                     ) : (
-                                                        <span className="text-[10px] tracking-widest text-gray-400 font-mono">{tag.menu_order || 0}</span>
+                                                        <span className="font-mono text-[10px] tracking-widest text-gray-400">
+                                                            {tag.menu_order || 0}
+                                                        </span>
                                                     )}
                                                 </td>
+
                                                 <td className="px-8 py-6">
-                                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                                                         {editingId === tag.id ? (
-                                                            <div className="flex gap-2">
+                                                            <>
                                                                 <button
                                                                     onClick={() => handleUpdate(tag.id)}
-                                                                    className="text-[9px] uppercase tracking-widest bg-accent-green text-black px-4 py-1.5 font-bold hover:bg-white transition-colors"
+                                                                    className="bg-accent-green px-4 py-1.5 text-[9px] font-bold uppercase tracking-widest text-black transition-colors hover:bg-white"
                                                                 >
-                                                                    Save
+                                                                    {isKorean ? '저장' : 'Save'}
                                                                 </button>
                                                                 <button
                                                                     onClick={() => setEditingId(null)}
-                                                                    className="text-[9px] uppercase tracking-widest bg-gray-900 text-white px-4 py-1.5 hover:bg-gray-800 transition-colors"
+                                                                    className="bg-gray-900 px-4 py-1.5 text-[9px] uppercase tracking-widest text-white transition-colors hover:bg-gray-800"
                                                                 >
-                                                                    Cancel
+                                                                    {isKorean ? '취소' : 'Cancel'}
                                                                 </button>
-                                                            </div>
+                                                            </>
                                                         ) : (
                                                             <>
                                                                 <button
@@ -223,13 +270,13 @@ export default function TagsPage() {
                                                                         setEditingShowInMenu(tag.show_in_menu);
                                                                         setEditingMenuOrder(tag.menu_order || 0);
                                                                     }}
-                                                                    className="text-gray-500 hover:text-white transition-colors p-2"
+                                                                    className="p-2 text-gray-500 transition-colors hover:text-white"
                                                                 >
                                                                     <Edit2 size={14} strokeWidth={1} />
                                                                 </button>
                                                                 <button
                                                                     onClick={() => handleDelete(tag.id)}
-                                                                    className="text-gray-700 hover:text-red-500 transition-colors p-2"
+                                                                    className="p-2 text-gray-700 transition-colors hover:text-red-500"
                                                                 >
                                                                     <Trash2 size={14} strokeWidth={1} />
                                                                 </button>
@@ -247,7 +294,7 @@ export default function TagsPage() {
                 </div>
             </main>
 
-            <div className="fixed inset-0 pointer-events-none opacity-[0.02] z-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+            <div className="fixed inset-0 z-50 pointer-events-none opacity-[0.02] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
         </div>
     );
 }

@@ -23,7 +23,7 @@ export default function NewsletterForm() {
                 toast.error(res.message || 'SUBSCRIPTION INTERRUPTED');
                 setStatus('idle');
             }
-        } catch (error) {
+        } catch {
             toast.error('CONNECTION FAILED');
             setStatus('idle');
         }

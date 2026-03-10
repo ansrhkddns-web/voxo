@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Oswald, Montserrat, Playfair_Display } from "next/font/google";
 import "./globals.css";
+import { getSiteSettings } from '@/lib/site-settings';
 
 const inter = Inter({
   variable: "--font-inter",
@@ -25,10 +26,14 @@ const playfair = Playfair_Display({
   style: ["normal", "italic"],
 });
 
-export const metadata: Metadata = {
-  title: "Voxo | Cinematic Music Magazine",
-  description: "High-end music reviews and artist discoveries in cinematic perspective.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings();
+
+  return {
+    title: settings.siteName,
+    description: settings.siteDescription,
+  };
+}
 
 export default async function RootLayout({
   children,

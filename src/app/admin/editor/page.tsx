@@ -11,6 +11,7 @@ import {
     Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import toast, { Toaster } from 'react-hot-toast';
 import MarkdownEditor from "@/components/admin/MarkdownEditor";
 import { getCategories } from '@/app/actions/categoryActions';
@@ -20,6 +21,7 @@ import { uploadImage } from '@/app/actions/uploadActions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
+import type { CategoryRecord, PostInput, TagRecord } from '@/types/content';
 
 function EditorContent() {
     const router = useRouter();
@@ -34,8 +36,8 @@ function EditorContent() {
     const [artistName, setArtistName] = useState('');
     const [tags, setTags] = useState<string[]>([]);
     const [coverUrl, setCoverUrl] = useState('');
-    const [categories, setCategories] = useState<any[]>([]);
-    const [availableTags, setAvailableTags] = useState<any[]>([]);
+    const [categories, setCategories] = useState<CategoryRecord[]>([]);
+    const [availableTags, setAvailableTags] = useState<TagRecord[]>([]);
     const [isPublishing, setIsPublishing] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [loading, setLoading] = useState(!!postId);
@@ -55,24 +57,25 @@ function EditorContent() {
             if (postId) {
                 try {
                     const post = await getPostById(postId);
+                    const postContent = post.content ?? '';
                     setTitle(post.title);
 
-                    const metaMatch = post.content.match(/<div id="voxo-metadata" data-excerpt="(.*?)" data-intro="(.*?)"><\/div>/);
+                    const metaMatch = postContent.match(/<div id="voxo-metadata" data-excerpt="(.*?)" data-intro="(.*?)"><\/div>/);
                     if (metaMatch) {
                         setExcerpt(metaMatch[1].replace(/&quot;/g, '"'));
                         setIntro(metaMatch[2].replace(/&quot;/g, '"'));
-                        setContent(post.content.replace(/<div id="voxo-metadata".*?<\/div>/, ''));
+                        setContent(postContent.replace(/<div id="voxo-metadata".*?<\/div>/, ''));
                     } else {
-                        setContent(post.content);
+                        setContent(postContent);
                     }
 
-                    setCategory(post.category_id);
+                    setCategory(post.category_id || '');
                     setSpotifyUri(post.spotify_uri || '');
                     setRating(post.rating?.toString() || '8.0');
                     setArtistName(post.artist_name || '');
                     setTags(post.tags || []);
                     setCoverUrl(post.cover_image || '');
-                } catch (error) {
+                } catch {
                     toast.error('Failed to load archive sequence');
                 } finally {
                     setLoading(false);
@@ -91,7 +94,7 @@ function EditorContent() {
             const url = await uploadImage(file);
             setCoverUrl(url);
             toast.success('Cover image uploaded');
-        } catch (error) {
+        } catch {
             toast.error('Upload failed');
         } finally {
             setIsUploading(false);
@@ -129,7 +132,7 @@ function EditorContent() {
                 finalContent = `<div id="voxo-metadata" data-excerpt="${safeExcerpt}" data-intro="${safeIntro}"></div>` + content;
             }
 
-            const postData = {
+            const postData: PostInput = {
                 title,
                 content: finalContent,
                 category_id: category,
@@ -150,7 +153,7 @@ function EditorContent() {
                 toast.success(isDraft ? 'Draft sequence saved' : 'Unit published successfully');
             }
             router.push('/admin');
-        } catch (error) {
+        } catch {
             toast.error('Sync failed');
         } finally {
             setIsPublishing(false);
@@ -231,7 +234,13 @@ function EditorContent() {
                             <label className="relative aspect-[21/9] w-full bg-gray-950 border border-white/5 flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-accent-green/30 transition-all overflow-hidden group">
                                 {coverUrl ? (
                                     <div className="relative w-full h-full">
-                                        <img src={coverUrl} alt="Cover" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                        <Image
+                                            src={coverUrl}
+                                            alt="Cover"
+                                            fill
+                                            sizes="(max-width: 1024px) 100vw, 1200px"
+                                            className="object-cover transition-transform duration-700 group-hover:scale-105"
+                                        />
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                             <span className="text-[10px] uppercase tracking-widest bg-black/80 px-4 py-2 border border-white/10">{t('replaceImage', 'editor')}</span>
                                         </div>

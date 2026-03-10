@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { StarterKit } from '@tiptap/starter-kit';
 import { Link } from '@tiptap/extension-link';
@@ -19,6 +19,27 @@ import { Extension, Mark, textblockTypeInputRule, markInputRule, nodeInputRule, 
 import { Strike } from '@tiptap/extension-strike';
 import { Youtube } from '@tiptap/extension-youtube';
 import { HorizontalRule } from '@tiptap/extension-horizontal-rule';
+import {
+    Bold,
+    Italic,
+    Underline as UnderlineIcon,
+    Heading1,
+    Heading2,
+    Heading3,
+    Quote,
+    List,
+    ListOrdered,
+    CheckSquare,
+    Table as TableIcon,
+    Link as LinkIcon,
+    Image as ImageIcon,
+    Undo,
+    Redo,
+    Code,
+    Video,
+    Minus
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 /**
  * Spoiler Mark Extension
@@ -126,7 +147,7 @@ const VoxoBBCode = Extension.create({
 
                     const blockquote = this.editor.schema.nodes.blockquote.create(null, [
                         this.editor.schema.nodes.paragraph.create(null, [
-                            this.editor.schema.text(`${author} 님이 먼저 게시:`, [this.editor.schema.marks.bold.create()]),
+                            this.editor.schema.text(`${author} wrote:`, [this.editor.schema.marks.bold.create()]),
                         ]),
                         this.editor.schema.nodes.paragraph.create(null, [
                             this.editor.schema.text(content),
@@ -171,36 +192,7 @@ interface TiptapEditorProps {
     onChange: (content: string) => void;
 }
 
-import {
-    Bold,
-    Italic,
-    Underline as UnderlineIcon,
-    Heading1,
-    Heading2,
-    Heading3,
-    Quote,
-    List,
-    ListOrdered,
-    CheckSquare,
-    Table as TableIcon,
-    Link as LinkIcon,
-    Image as ImageIcon,
-    Undo,
-    Redo,
-    Code,
-    Video,
-    Minus
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-// ... (previous extensions like Spoiler and VoxoBBCode are above this point in the file)
-
-interface TiptapEditorProps {
-    content: string;
-    onChange: (content: string) => void;
-}
-
-const MenuBar = ({ editor }: { editor: any }) => {
+const MenuBar = ({ editor }: { editor: Editor | null }) => {
     if (!editor) return null;
 
     const addImage = () => {

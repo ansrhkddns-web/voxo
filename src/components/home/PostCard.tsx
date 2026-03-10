@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Star } from 'lucide-react';
 
 interface PostCardProps {
@@ -19,10 +20,12 @@ export default function PostCard({ title, category, image, readTime, excerpt, sl
         <Link href={`/post/${slug}`} className="group cursor-pointer block">
             <article>
                 <div className="relative aspect-[3/4] overflow-hidden bg-[#050505] mb-8">
-                    <img
+                    <Image
                         alt={title}
-                        className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all duration-[1500ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                         src={image}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-cover filter grayscale group-hover:grayscale-0 opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all duration-[1500ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-50"></div>
 
