@@ -3,7 +3,7 @@
 import React from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import PostCard from './PostCard';
-import { estimateReadTimeMinutes, timeAgo } from '@/lib/utils';
+import { estimateReadTimeMinutes, stripHtmlTags, timeAgo } from '@/lib/utils';
 import type { PostRecord, TagRecord } from '@/types/content';
 
 interface LatestStoriesProps {
@@ -21,6 +21,7 @@ export default function LatestStories({ posts, tags }: LatestStoriesProps) {
 
     const updateTagFilter = (nextTag: string) => {
         const nextParams = new URLSearchParams(searchParams.toString());
+
         if (nextTag === 'all') {
             nextParams.delete('tag');
         } else {
@@ -66,8 +67,8 @@ export default function LatestStories({ posts, tags }: LatestStoriesProps) {
                     </h2>
                     <p className="text-sm text-gray-500">
                         {activeTag === 'all'
-                            ? `전체 섹션에서 지금 볼 수 있는 큐레이션 글 ${activeTagCount}개를 모아두었습니다.`
-                            : `${activeTag} 태그가 적용되어 있습니다. 현재 ${activeTagCount}개의 글을 볼 수 있습니다.`}
+                            ? `전체 섹션에서 지금 볼 만한 큐레이션 글 ${activeTagCount}개를 모아두었습니다.`
+                            : `${activeTag} 태그가 적용된 글만 모았습니다. 현재 ${activeTagCount}개의 글을 보고 있습니다.`}
                     </p>
                 </div>
 
@@ -133,7 +134,7 @@ export default function LatestStories({ posts, tags }: LatestStoriesProps) {
                                 'https://images.unsplash.com/photo-1514525253361-bee8718a300a?q=80&w=1974&auto=format&fit=crop'
                             }
                             readTime={`${estimateReadTimeMinutes(post.content)}분 읽기 / ${timeAgo(post.published_at || post.created_at, 'Korean')}`}
-                            excerpt={`${post.content?.replace(/<[^>]*>/g, '').substring(0, 100) || ''}...`}
+                            excerpt={`${stripHtmlTags(post.content || '').slice(0, 100)}...`}
                             slug={post.slug}
                             rating={post.rating ?? undefined}
                             artistName={post.artist_name || undefined}
@@ -150,7 +151,7 @@ export default function LatestStories({ posts, tags }: LatestStoriesProps) {
             </div>
 
             <div className="mt-24 flex justify-center">
-                <span className="mb-4 h-2 w-2 rotate-45 animate-pulse bg-white"></span>
+                <span className="mb-4 h-2 w-2 rotate-45 animate-pulse bg-white" />
             </div>
         </section>
     );

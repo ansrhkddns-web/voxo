@@ -29,47 +29,55 @@ export default function PostCard({
     statLabel,
 }: PostCardProps) {
     return (
-        <Link href={`/post/${slug}`} className="group cursor-pointer block">
+        <Link href={`/post/${slug}`} className="group block cursor-pointer">
             <article>
-                <div className="relative aspect-[3/4] overflow-hidden bg-[#050505] mb-8">
+                <div className="relative mb-8 aspect-[3/4] overflow-hidden bg-[#050505]">
                     <Image
                         alt={title}
                         src={image}
                         fill
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        className="object-cover filter grayscale group-hover:grayscale-0 opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all duration-[1500ms] ease-[cubic-bezier(0.22,1,0.36,1)]"
+                        className="object-cover opacity-70 grayscale transition-all duration-[1500ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-105 group-hover:opacity-100 group-hover:grayscale-0"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-50"></div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-50" />
 
-                    <div className="absolute top-4 left-4 flex gap-2">
-                        <span className="text-[9px] uppercase tracking-[0.3em] text-white bg-black/60 px-3 py-1.5 backdrop-blur-md font-display border border-white/5">
+                    <div className="absolute left-4 top-4 flex gap-2">
+                        <span className="border border-white/5 bg-black/60 px-3 py-1.5 font-display text-[9px] uppercase tracking-[0.3em] text-white backdrop-blur-md">
                             {category}
                         </span>
-                        {rating && (
-                            <span className="text-[9px] uppercase tracking-[0.3em] text-gray-300 bg-black/60 px-3 py-1.5 backdrop-blur-md font-display flex items-center gap-1.5 border border-white/5">
-                                <Star size={8} className="text-accent-green/70" fill="currentColor" /> {rating.toFixed(1)}
+                        {rating ? (
+                            <span className="flex items-center gap-1.5 border border-white/5 bg-black/60 px-3 py-1.5 font-display text-[9px] uppercase tracking-[0.3em] text-gray-300 backdrop-blur-md">
+                                <Star size={8} className="text-accent-green/70" fill="currentColor" />
+                                {rating.toFixed(1)}
                             </span>
-                        )}
+                        ) : null}
                     </div>
                 </div>
-                <div className="flex flex-col gap-4 mt-6">
+
+                <div className="mt-6 flex flex-col gap-4">
                     <div className="flex items-center gap-4">
-                        <span className="w-6 h-px bg-white/20 group-hover:bg-accent-green/50 transition-colors duration-1000" />
-                        <span className="text-[8px] tracking-[0.35em] text-gray-500 uppercase font-display group-hover:text-gray-400 transition-colors duration-1000">{readTime}</span>
+                        <span className="h-px w-6 bg-white/20 transition-colors duration-1000 group-hover:bg-accent-green/50" />
+                        <span className="font-display text-[8px] uppercase tracking-[0.35em] text-gray-500 transition-colors duration-1000 group-hover:text-gray-400">
+                            {readTime}
+                        </span>
                     </div>
+
                     {artistName ? (
-                        <p className="text-[10px] uppercase tracking-[0.28em] text-accent-green/80 font-display">
+                        <p className="font-display text-[10px] uppercase tracking-[0.28em] text-accent-green/80">
                             {artistName}
                         </p>
                     ) : null}
-                    <h3 className="font-display text-2xl md:text-3xl font-light tracking-[0.05em] text-white group-hover:text-accent-green transition-colors duration-[1500ms] uppercase line-clamp-2 leading-snug">
+
+                    <h3 className="line-clamp-2 font-display text-2xl font-light uppercase leading-snug tracking-[0.05em] text-white transition-colors duration-[1500ms] group-hover:text-accent-green md:text-3xl">
                         {title}
                     </h3>
-                    <p className="text-xs font-light text-gray-400 leading-loose tracking-wide line-clamp-2 font-serif italic opacity-70 group-hover:opacity-100 transition-opacity duration-1000">
+
+                    <p className="line-clamp-2 font-serif text-xs font-light italic leading-loose tracking-wide text-gray-400 opacity-70 transition-opacity duration-1000 group-hover:opacity-100">
                         {excerpt}
                     </p>
+
                     {statLabel ? (
-                        <div className="pt-2">
+                        <div className="flex flex-wrap gap-2 pt-2">
                             <span className="inline-flex items-center border border-white/10 px-3 py-2 text-[9px] uppercase tracking-[0.18em] text-gray-500 transition-colors duration-700 group-hover:border-accent-green/30 group-hover:text-gray-300">
                                 {statLabel}
                             </span>
@@ -77,6 +85,6 @@ export default function PostCard({
                     ) : null}
                 </div>
             </article>
-        </Link >
+        </Link>
     );
 }
