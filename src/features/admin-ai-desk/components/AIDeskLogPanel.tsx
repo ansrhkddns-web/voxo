@@ -7,14 +7,23 @@ interface AIDeskLogPanelProps {
     isLoading: boolean;
     currentAgent: AgentStatus;
     logsEndRef: React.RefObject<HTMLDivElement | null>;
+    compact?: boolean;
 }
 
-export function AIDeskLogPanel({ logs, isLoading, currentAgent, logsEndRef }: AIDeskLogPanelProps) {
+export function AIDeskLogPanel({
+    logs,
+    isLoading,
+    currentAgent,
+    logsEndRef,
+    compact = false,
+}: AIDeskLogPanelProps) {
     return (
-        <div className="group relative flex h-[400px] flex-col overflow-hidden rounded-lg border border-white/10 bg-[#0a0a0a] font-mono text-xs shadow-2xl lg:col-span-4 lg:h-auto">
+        <div className={`group relative flex flex-col overflow-hidden rounded-lg border border-white/10 bg-[#0a0a0a] font-mono text-xs shadow-2xl lg:col-span-4 ${
+            compact ? 'h-[220px]' : 'h-[400px] lg:h-auto'
+        }`}>
             <div className="absolute left-0 top-0 h-[1px] w-full bg-gradient-to-r from-transparent via-accent-green/20 to-transparent"></div>
 
-            <div className="flex items-center justify-between border-b border-white/5 bg-black/50 px-4 py-3">
+            <div className={`flex items-center justify-between border-b border-white/5 bg-black/50 ${compact ? 'px-3 py-2.5' : 'px-4 py-3'}`}>
                 <div className="flex items-center gap-2 text-gray-500">
                     <Terminal size={12} />
                     <span className="text-[9px] uppercase tracking-widest">Live Event Source</span>
@@ -26,7 +35,7 @@ export function AIDeskLogPanel({ logs, isLoading, currentAgent, logsEndRef }: AI
                 </div>
             </div>
 
-            <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto p-4">
+            <div className={`custom-scrollbar flex-1 space-y-3 overflow-y-auto ${compact ? 'p-3' : 'p-4'}`}>
                 {logs.length === 0 ? (
                     <div className="leading-relaxed text-gray-600">
                         No logs yet. Start a draft session below to stream the progress here.

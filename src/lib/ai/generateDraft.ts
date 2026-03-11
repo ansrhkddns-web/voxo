@@ -13,6 +13,7 @@ import {
     buildSeoDescription,
     buildShareCopy,
 } from '@/features/admin-editor/utils';
+import { injectManagedArticleMedia } from '@/features/admin-editor/artist-image';
 import {
     buildCurationPromptBlock,
     defaultArticleLengthId,
@@ -234,6 +235,8 @@ function buildWritingPrompt(params: {
         '11. Follow the category opening directive for the first paragraph and the category ending directive for the final paragraph.',
         '12. Use the category middle-paragraph flow to determine how the core body develops from paragraph to paragraph.',
         '13. Keep the title and intro distinct: the title should be compact and magnetic, while the intro should feel like the clickable emotional summary.',
+        '14. Write enough paragraph volume for a feature structure: opening text, mid-article text expansion, late-article text before the official video embed, and one final closing paragraph after the video.',
+        '15. Aim for at least 6 substantial paragraphs so the article can hold two image beats and one late video beat without feeling empty.',
     ].join('\n');
 }
 
@@ -283,6 +286,7 @@ function buildRefinementPrompt(params: {
         '   - one line: "Intro: ..."',
         '   - then the body in plain Markdown-style paragraphs',
         '8. Do not add HTML, image placeholders, markdown images, or raw external URLs.',
+        '9. Maintain enough paragraph volume so the final article can support this layout: text, image, text, image, text, video, closing text.',
         '',
         'Draft to refine:',
         draftText,
@@ -745,7 +749,7 @@ export async function createGeneratedDraftPost(
     try {
         const youtubeEmbed = await fetchYoutubeEmbed(artistName, songTitle);
         if (youtubeEmbed) {
-            htmlContent = `${youtubeEmbed}\n${htmlContent}`;
+            htmlContent = injectManagedArticleMedia(htmlContent, [], youtubeEmbed);
         }
     } catch (error) {
         console.error('YouTube enrichment failed', error);

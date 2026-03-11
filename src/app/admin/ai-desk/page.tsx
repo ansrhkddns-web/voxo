@@ -192,40 +192,44 @@ export default function AIDeskPage() {
             <AdminSidebar />
 
             <main className="flex-1 overflow-y-auto">
-                <div className="mx-auto mb-20 max-w-7xl p-5 font-display sm:p-8 md:p-10 lg:p-12">
-                    <AIDeskHeader progress={progress} completionMode={completionMode} />
+                <div className="mx-auto max-w-7xl p-5 font-display sm:p-8 md:p-10 lg:p-12">
+                    <div className="sticky top-0 z-30 -mx-5 border-b border-white/10 bg-[#050505]/95 px-5 pb-5 pt-4 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-md sm:-mx-8 sm:px-8 md:-mx-10 md:px-10 lg:-mx-12 lg:px-12">
+                        <AIDeskHeader progress={progress} completionMode={completionMode} compact />
 
-                    {error ? (
-                        <div className="mb-8 flex items-center gap-3 border border-red-500/20 bg-red-500/10 p-4 text-xs tracking-wider text-red-400">
-                            <div className="h-1 w-1 animate-ping rounded-full bg-red-500"></div>
-                            {error}
+                        {error ? (
+                            <div className="mb-4 flex items-center gap-3 border border-red-500/20 bg-red-500/10 p-4 text-xs tracking-wider text-red-400">
+                                <div className="h-1 w-1 animate-ping rounded-full bg-red-500"></div>
+                                {error}
+                            </div>
+                        ) : null}
+
+                        <div className="grid grid-cols-1 gap-4 animate-fade-in lg:grid-cols-12">
+                            <AIDeskWorkflow
+                                currentAgent={currentAgent}
+                                progress={progress}
+                                logsCount={logs.length}
+                                isLoading={isLoading}
+                                compact
+                            />
+                            <AIDeskLogPanel
+                                logs={logs}
+                                isLoading={isLoading}
+                                currentAgent={currentAgent}
+                                logsEndRef={logsEndRef}
+                                compact
+                            />
                         </div>
-                    ) : null}
-
-                    <div className="mb-12 grid grid-cols-1 gap-6 animate-fade-in lg:grid-cols-12 lg:gap-8">
-                        <AIDeskWorkflow
-                            currentAgent={currentAgent}
-                            progress={progress}
-                            logsCount={logs.length}
-                            isLoading={isLoading}
-                        />
-                        <AIDeskLogPanel
-                            logs={logs}
-                            isLoading={isLoading}
-                            currentAgent={currentAgent}
-                            logsEndRef={logsEndRef}
-                        />
                     </div>
 
-                    <div className="my-12 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-
-                    <AIDeskForm
-                        formData={formData}
-                        categories={categories}
-                        isLoading={isLoading}
-                        onInputChange={handleInputChange}
-                        onSubmit={handleSubmit}
-                    />
+                    <div className="pb-20 pt-8">
+                        <AIDeskForm
+                            formData={formData}
+                            categories={categories}
+                            isLoading={isLoading}
+                            onInputChange={handleInputChange}
+                            onSubmit={handleSubmit}
+                        />
+                    </div>
                 </div>
             </main>
         </div>

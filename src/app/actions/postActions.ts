@@ -12,6 +12,11 @@ interface SearchPostRow {
     categories: Array<{ name: string }> | { name: string } | null;
 }
 
+interface SupabaseColumnError {
+    code?: string;
+    message?: string;
+}
+
 function normalizeRelatedCategories(
     categories: Array<{ name: string }> | { name: string } | null
 ) {
@@ -41,6 +46,39 @@ async function getPostWriteClient() {
     }
 
     return { client: supabase, userId: null, usedServiceRole: false };
+}
+
+async function getPublishedPostsOrdered(limit: number) {
+    const supabase = await createClient();
+
+    const publishedAtQuery = await supabase
+        .from('posts')
+        .select('*, categories(name)')
+        .eq('is_published', true)
+        .order('published_at', { ascending: false })
+        .limit(limit);
+
+    if (!publishedAtQuery.error) {
+        return (publishedAtQuery.data ?? []) as PostRecord[];
+    }
+
+    const columnError = publishedAtQuery.error as SupabaseColumnError;
+    if (columnError.code !== '42703') {
+        throw publishedAtQuery.error;
+    }
+
+    const createdAtQuery = await supabase
+        .from('posts')
+        .select('*, categories(name)')
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+    if (createdAtQuery.error) {
+        throw createdAtQuery.error;
+    }
+
+    return (createdAtQuery.data ?? []) as PostRecord[];
 }
 
 export async function getPosts(): Promise<PostRecord[]> {
@@ -150,20 +188,9 @@ export async function getRelatedPosts(slug: string, limit = 3): Promise<PostReco
         return [];
     }
 
-    const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('posts')
-        .select('*, categories(name)')
-        .eq('is_published', true)
-        .neq('slug', currentPost.slug)
-        .order('published_at', { ascending: false })
-        .limit(18);
-
-    if (error) {
-        throw error;
-    }
-
-    const candidates = (data ?? []) as PostRecord[];
+    const candidates = (await getPublishedPostsOrdered(18)).filter(
+        (post) => post.slug !== currentPost.slug
+    );
     const currentTags = new Set(currentPost.tags ?? []);
     const currentCategory = currentPost.category_id;
 
@@ -191,19 +218,7 @@ export async function getAdjacentPublishedPosts(slug: string): Promise<{
         return { previous: null, next: null };
     }
 
-    const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('posts')
-        .select('*, categories(name)')
-        .eq('is_published', true)
-        .order('published_at', { ascending: false })
-        .limit(50);
-
-    if (error) {
-        throw error;
-    }
-
-    const posts = (data ?? []) as PostRecord[];
+    const posts = await getPublishedPostsOrdered(50);
     const currentIndex = posts.findIndex((post) => post.slug === currentPost.slug);
 
     if (currentIndex === -1) {

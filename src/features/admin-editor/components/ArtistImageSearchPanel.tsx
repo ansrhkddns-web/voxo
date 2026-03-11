@@ -49,6 +49,11 @@ export function ArtistImageSearchPanel({
                             ? '대표 이미지용 후보를 고르고, 본문 중간에 들어갈 이미지는 5개 후보 중 2개만 선택해 고정 위치에 자동 배치합니다.'
                             : 'Search real artist photos, pick one for the cover, and choose exactly two body images to place at fixed positions.'}
                     </p>
+                    <p className="text-xs leading-relaxed text-gray-600">
+                        {isKorean
+                            ? '다시 검색하면 아티스트, 앨범, 트랙, 라이브, 포트레이트, 에디토리얼, 백스테이지 같은 조건을 번갈아 섞어서 이전과 다른 이미지를 우선 찾아옵니다.'
+                            : 'Each re-search rotates through artist, album, track, live, portrait, editorial, and backstage conditions to surface different images first.'}
+                    </p>
                 </div>
             </div>
 
@@ -97,8 +102,8 @@ export function ArtistImageSearchPanel({
                             ? '이미지 후보 검색 중...'
                             : 'Searching...'
                         : isKorean
-                            ? '이미지 후보 5개 검색'
-                            : 'Search 5 image candidates'}
+                            ? '다른 조건으로 이미지 5개 검색'
+                            : 'Search 5 different candidates'}
                 </span>
             </button>
 

@@ -9,16 +9,23 @@ interface AIDeskWorkflowProps {
     progress: number;
     logsCount: number;
     isLoading: boolean;
+    compact?: boolean;
 }
 
-export function AIDeskWorkflow({ currentAgent, progress, logsCount, isLoading }: AIDeskWorkflowProps) {
+export function AIDeskWorkflow({
+    currentAgent,
+    progress,
+    logsCount,
+    isLoading,
+    compact = false,
+}: AIDeskWorkflowProps) {
     return (
-        <div className="space-y-8 lg:col-span-8">
-            <h3 className="mb-6 flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-gray-500">
+        <div className={`${compact ? 'space-y-4' : 'space-y-8'} lg:col-span-8`}>
+            <h3 className={`flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-gray-500 ${compact ? 'mb-4' : 'mb-6'}`}>
                 <Activity size={12} /> Active Agents Workflow
             </h3>
 
-            <div className="custom-scrollbar flex items-center justify-between gap-4 overflow-x-auto pb-4 sm:flex-row sm:gap-2">
+            <div className={`custom-scrollbar flex items-center gap-3 overflow-x-auto ${compact ? 'pb-1' : 'justify-between pb-4'} sm:flex-row sm:gap-2`}>
                 {aiDeskAgents.map((agent, index) => {
                     const state = getAgentState(currentAgent, agent.id);
                     const Icon = agent.icon;
@@ -26,7 +33,9 @@ export function AIDeskWorkflow({ currentAgent, progress, logsCount, isLoading }:
                     return (
                         <React.Fragment key={agent.id}>
                             <div
-                                className={`relative flex h-32 w-full flex-col justify-between rounded-lg border p-4 transition-all duration-500 sm:w-48 ${
+                                className={`relative flex w-full flex-col justify-between rounded-lg border transition-all duration-500 ${
+                                    compact ? 'h-20 min-w-[140px] p-3 sm:w-36' : 'h-32 p-4 sm:w-48'
+                                } ${
                                     state === 'active'
                                         ? 'border-accent-green/50 bg-accent-green/10 shadow-[0_0_20px_rgba(20,200,100,0.1)]'
                                         : state === 'done'
@@ -35,12 +44,12 @@ export function AIDeskWorkflow({ currentAgent, progress, logsCount, isLoading }:
                                 }`}
                             >
                                 <div className="flex items-start justify-between">
-                                    <div className={`rounded-md p-2 ${state === 'active' ? 'bg-accent-green text-black' : 'bg-white/5 text-gray-400'}`}>
-                                        <Icon size={14} />
+                                    <div className={`rounded-md ${compact ? 'p-1.5' : 'p-2'} ${state === 'active' ? 'bg-accent-green text-black' : 'bg-white/5 text-gray-400'}`}>
+                                        <Icon size={compact ? 12 : 14} />
                                     </div>
 
                                     {state === 'done' ? (
-                                        <span className="flex items-center gap-1 rounded-full bg-accent-green/10 px-2 py-1 text-[8px] uppercase tracking-widest text-accent-green">
+                                        <span className={`flex items-center gap-1 rounded-full bg-accent-green/10 px-2 py-1 uppercase tracking-widest text-accent-green ${compact ? 'text-[7px]' : 'text-[8px]'}`}>
                                             <CheckCircle2 size={10} /> Done
                                         </span>
                                     ) : null}
@@ -48,14 +57,18 @@ export function AIDeskWorkflow({ currentAgent, progress, logsCount, isLoading }:
                                     {state === 'active' ? (
                                         <span className="flex items-center gap-1">
                                             <span className="h-1.5 w-1.5 animate-ping rounded-full bg-accent-green"></span>
-                                            <span className="text-[8px] uppercase tracking-widest text-accent-green">Running</span>
+                                            <span className={`${compact ? 'text-[7px]' : 'text-[8px]'} uppercase tracking-widest text-accent-green`}>Running</span>
                                         </span>
                                     ) : null}
                                 </div>
 
                                 <div>
-                                    <h4 className="mb-1 text-xs font-semibold tracking-wider text-white">{agent.name}</h4>
-                                    <p className="text-[9px] uppercase tracking-wider text-gray-500">{agent.model}</p>
+                                    <h4 className={`mb-1 font-semibold tracking-wider text-white ${compact ? 'text-[11px]' : 'text-xs'}`}>
+                                        {agent.name}
+                                    </h4>
+                                    <p className={`uppercase tracking-wider text-gray-500 ${compact ? 'text-[8px]' : 'text-[9px]'}`}>
+                                        {agent.model}
+                                    </p>
                                 </div>
 
                                 {state === 'active' ? (
@@ -73,15 +86,15 @@ export function AIDeskWorkflow({ currentAgent, progress, logsCount, isLoading }:
                 })}
             </div>
 
-            <div className="mt-12 flex flex-col items-start justify-between gap-6 rounded-lg border border-white/5 bg-black/40 p-6 sm:flex-row sm:items-center">
+            <div className={`grid rounded-lg border border-white/5 bg-black/40 ${compact ? 'grid-cols-1 gap-3 p-4 sm:grid-cols-[auto,1fr]' : 'mt-12 grid-cols-1 gap-6 p-6 sm:grid-cols-[auto,1fr]'}`}>
                 <div className="space-y-1">
                     <h4 className="text-[9px] uppercase tracking-[0.3em] text-gray-500">Session Metrics</h4>
-                    <p className="text-xl font-light tracking-widest text-white">
+                    <p className={`${compact ? 'text-base' : 'text-xl'} font-light tracking-widest text-white`}>
                         {logsCount.toString().padStart(2, '0')} <span className="text-[10px] text-gray-600">LIVE EVENTS</span>
                     </p>
                 </div>
 
-                <div className="w-full space-y-2 sm:w-1/2">
+                <div className="space-y-2">
                     <div className="flex justify-between text-[8px] uppercase tracking-widest text-gray-500">
                         <span>Pipeline Health</span>
                         <span className="text-accent-green">{isLoading ? 'Running' : 'Ready'}</span>

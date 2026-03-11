@@ -19,7 +19,8 @@ import {
 } from '@/features/admin-editor/ai-handoff';
 import {
     extractManagedBodyImages,
-    injectManagedBodyImages,
+    extractManagedVideoEmbed,
+    injectManagedArticleMedia,
     MAX_BODY_IMAGE_SELECTION,
     type ArtistImageCandidate,
 } from '@/features/admin-editor/artist-image';
@@ -80,6 +81,7 @@ function EditorContent() {
     const [artistImageCandidates, setArtistImageCandidates] = useState<ArtistImageCandidate[]>([]);
     const [selectedBodyImages, setSelectedBodyImages] = useState<ArtistImageCandidate[]>([]);
     const [isSearchingArtistImages, setIsSearchingArtistImages] = useState(false);
+    const [artistImageRetryIndex, setArtistImageRetryIndex] = useState(0);
     const [spotifyCandidates, setSpotifyCandidates] = useState<SpotifyTrackCandidate[]>([]);
     const [isSearchingSpotifyCandidates, setIsSearchingSpotifyCandidates] = useState(false);
     const [showLocalDraftNotice, setShowLocalDraftNotice] = useState(false);
@@ -192,6 +194,10 @@ function EditorContent() {
     }, [artistName]);
 
     useEffect(() => {
+        setArtistImageRetryIndex(0);
+    }, [artistImageSearchArtist, artistImageSearchTrack, artistImageSearchAlbum]);
+
+    useEffect(() => {
         if (!aiHandoff) {
             return;
         }
@@ -202,8 +208,9 @@ function EditorContent() {
     }, [aiHandoff]);
 
     useEffect(() => {
+        const embeddedVideo = extractManagedVideoEmbed(content);
         const nextContent = sanitizeLegacyGeneratedContent(
-            injectManagedBodyImages(content, selectedBodyImages)
+            injectManagedArticleMedia(content, selectedBodyImages, embeddedVideo)
         );
 
         if (nextContent !== content) {
@@ -236,6 +243,7 @@ function EditorContent() {
                     artistName: artist,
                     trackTitle: artistImageSearchTrack,
                     albumTitle: artistImageSearchAlbum,
+                    retryIndex: 0,
                     excludeImageUrls: Array.from(
                         new Set([
                             ...selectedBodyImages.map((image) => image.imageUrl),
@@ -379,10 +387,12 @@ function EditorContent() {
 
         setIsSearchingArtistImages(true);
         try {
+            const nextRetryIndex = artistImageRetryIndex + 1;
             const candidates = await searchArtistImageCandidates({
                 artistName: artistImageSearchArtist,
                 trackTitle: artistImageSearchTrack,
                 albumTitle: artistImageSearchAlbum,
+                retryIndex: nextRetryIndex,
                 excludeImageUrls: Array.from(
                     new Set([
                         ...selectedBodyImages.map((image) => image.imageUrl),
@@ -392,11 +402,12 @@ function EditorContent() {
             });
 
             setArtistImageCandidates(candidates);
+            setArtistImageRetryIndex(nextRetryIndex);
 
             if (candidates.length === 0) {
                 toast.error(
                     language === 'ko'
-                        ? '이미지 후보를 찾지 못했습니다. 아티스트 이름이나 앨범명을 조금 다르게 입력해 보세요.'
+                        ? '다른 검색 조건으로 다시 찾아봤지만 이미지를 찾지 못했습니다.'
                         : 'No image candidates found'
                 );
                 return;
@@ -404,7 +415,7 @@ function EditorContent() {
 
             toast.success(
                 language === 'ko'
-                    ? `${candidates.length}개의 이미지 후보를 찾았습니다.`
+                    ? `${candidates.length}개의 이미지 후보를 다른 조건으로 다시 찾았습니다.`
                     : `${candidates.length} image candidates found`
             );
         } catch {

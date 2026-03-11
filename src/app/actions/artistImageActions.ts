@@ -36,6 +36,12 @@ interface DeezerSearchResponse {
     data?: DeezerArtistItem[];
 }
 
+interface SearchDiversificationProfile {
+    label: string;
+    focus: 'artist' | 'album' | 'track';
+    modifiers: string[];
+}
+
 function buildSearchSeed(artistName: string, trackTitle?: string, albumTitle?: string) {
     return [artistName.trim(), trackTitle?.trim(), albumTitle?.trim()].filter(Boolean).join(' ').trim();
 }
@@ -44,22 +50,91 @@ function buildSubtitle(trackTitle?: string, albumTitle?: string) {
     return [trackTitle?.trim(), albumTitle?.trim()].filter(Boolean).join(' / ');
 }
 
-function buildWikipediaTitles(artistName: string) {
-    return [
+function buildSearchDiversificationProfile(
+    retryIndex: number,
+    artistName: string,
+    trackTitle?: string,
+    albumTitle?: string
+): SearchDiversificationProfile {
+    const profiles: SearchDiversificationProfile[] = [
+        {
+            label: 'artist-portrait',
+            focus: 'artist',
+            modifiers: ['portrait', 'singer', 'musician', 'press photo'],
+        },
+        {
+            label: 'album-era',
+            focus: albumTitle ? 'album' : 'artist',
+            modifiers: ['album era', 'photoshoot', 'album cover', 'editorial'],
+        },
+        {
+            label: 'track-performance',
+            focus: trackTitle ? 'track' : 'artist',
+            modifiers: ['live', 'performance', 'music video', 'stage'],
+        },
+        {
+            label: 'candid-daily',
+            focus: 'artist',
+            modifiers: ['candid', 'daily', 'backstage', 'street style'],
+        },
+        {
+            label: 'studio-monochrome',
+            focus: 'artist',
+            modifiers: ['studio portrait', 'black and white', 'close up', 'editorial'],
+        },
+        {
+            label: 'festival-scene',
+            focus: trackTitle ? 'track' : 'artist',
+            modifiers: ['concert', 'festival', 'tour', 'live shot'],
+        },
+    ];
+
+    return profiles[Math.max(retryIndex, 0) % profiles.length];
+}
+
+function buildWikipediaTitles(
+    artistName: string,
+    trackTitle: string | undefined,
+    albumTitle: string | undefined,
+    profile: SearchDiversificationProfile
+) {
+    const titles = [
         artistName,
         `${artistName} (singer)`,
         `${artistName} (musician)`,
         `${artistName} (band)`,
     ];
+
+    if (profile.focus === 'album' && albumTitle) {
+        titles.unshift(`${albumTitle} (album)`, albumTitle);
+    }
+
+    if (profile.focus === 'track' && trackTitle) {
+        titles.unshift(`${trackTitle} (${artistName} song)`, `${trackTitle} (song)`, trackTitle);
+    }
+
+    return Array.from(new Set(titles.map((title) => title.trim()).filter(Boolean)));
 }
 
-function buildWikimediaQueries(artistName: string, trackTitle?: string, albumTitle?: string) {
+function buildWikimediaQueries(
+    artistName: string,
+    trackTitle: string | undefined,
+    albumTitle: string | undefined,
+    profile: SearchDiversificationProfile
+) {
+    const focusSeed =
+        profile.focus === 'album' && albumTitle
+            ? albumTitle.trim()
+            : profile.focus === 'track' && trackTitle
+                ? trackTitle.trim()
+                : artistName.trim();
+
     const queries = [
-        `${artistName} musician`,
-        `${artistName} singer`,
-        `${artistName} live`,
+        `${artistName} ${focusSeed}`.trim(),
         buildSearchSeed(artistName, trackTitle, albumTitle),
         artistName,
+        ...profile.modifiers.map((modifier) => `${artistName} ${modifier}`.trim()),
+        ...profile.modifiers.map((modifier) => `${focusSeed} ${modifier}`.trim()),
     ];
 
     return Array.from(new Set(queries.map((query) => query.trim()).filter(Boolean)));
@@ -81,13 +156,16 @@ function pushCandidate(
 
 async function searchWikipediaSummary(
     artistName: string,
+    trackTitle: string | undefined,
+    albumTitle: string | undefined,
     subtitle: string,
+    profile: SearchDiversificationProfile,
     candidates: ArtistImageCandidate[],
     seen: Set<string>,
     excluded: Set<string>
 ) {
     const locales = ['ko', 'en'];
-    const titles = buildWikipediaTitles(artistName);
+    const titles = buildWikipediaTitles(artistName, trackTitle, albumTitle, profile);
 
     for (const locale of locales) {
         for (const title of titles) {
@@ -127,11 +205,12 @@ async function searchWikimediaCommons(
     trackTitle: string | undefined,
     albumTitle: string | undefined,
     subtitle: string,
+    profile: SearchDiversificationProfile,
     candidates: ArtistImageCandidate[],
     seen: Set<string>,
     excluded: Set<string>
 ) {
-    const queries = buildWikimediaQueries(artistName, trackTitle, albumTitle);
+    const queries = buildWikimediaQueries(artistName, trackTitle, albumTitle, profile);
 
     for (const query of queries) {
         const response = await fetch(
@@ -213,43 +292,64 @@ export async function searchArtistImageCandidates(input: {
     trackTitle?: string;
     albumTitle?: string;
     excludeImageUrls?: string[];
+    retryIndex?: number;
 }): Promise<ArtistImageCandidate[]> {
     const artistName = input.artistName.trim();
     if (!artistName) {
         return [];
     }
 
+    const retryIndex = input.retryIndex ?? 0;
+    const profile = buildSearchDiversificationProfile(
+        retryIndex,
+        artistName,
+        input.trackTitle,
+        input.albumTitle
+    );
     const subtitle = buildSubtitle(input.trackTitle, input.albumTitle);
     const candidates: ArtistImageCandidate[] = [];
     const seen = new Set<string>();
     const excluded = new Set((input.excludeImageUrls || []).filter(Boolean));
 
-    try {
-        const spotify = await getArtistStats('', artistName);
-        if (spotify && !('error' in spotify) && spotify.image) {
-            pushCandidate(candidates, seen, excluded, {
-                id: 'spotify-primary',
-                source: 'Spotify',
-                imageUrl: spotify.image,
-                title: spotify.name || artistName,
-                subtitle: subtitle || 'Artist profile image',
-                externalUrl: spotify.external_url,
-            });
+    if (retryIndex === 0) {
+        try {
+            const spotify = await getArtistStats('', artistName);
+            if (spotify && !('error' in spotify) && spotify.image) {
+                pushCandidate(candidates, seen, excluded, {
+                    id: 'spotify-primary',
+                    source: 'Spotify',
+                    imageUrl: spotify.image,
+                    title: spotify.name || artistName,
+                    subtitle: subtitle || 'Artist profile image',
+                    externalUrl: spotify.external_url,
+                });
+            }
+        } catch (error) {
+            console.error('Spotify artist image lookup failed', error);
         }
-    } catch (error) {
-        console.error('Spotify artist image lookup failed', error);
     }
 
     try {
-        await searchWikipediaSummary(artistName, subtitle, candidates, seen, excluded);
+        await searchWikipediaSummary(
+            artistName,
+            input.trackTitle,
+            input.albumTitle,
+            subtitle,
+            profile,
+            candidates,
+            seen,
+            excluded
+        );
     } catch (error) {
         console.error('Wikipedia summary image lookup failed', error);
     }
 
-    try {
-        await searchDeezerArtist(artistName, subtitle, candidates, seen, excluded);
-    } catch (error) {
-        console.error('Deezer artist image lookup failed', error);
+    if (retryIndex <= 1) {
+        try {
+            await searchDeezerArtist(artistName, subtitle, candidates, seen, excluded);
+        } catch (error) {
+            console.error('Deezer artist image lookup failed', error);
+        }
     }
 
     try {
@@ -258,6 +358,7 @@ export async function searchArtistImageCandidates(input: {
             input.trackTitle,
             input.albumTitle,
             subtitle,
+            profile,
             candidates,
             seen,
             excluded

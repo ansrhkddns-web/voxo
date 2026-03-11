@@ -49,6 +49,38 @@ async function resolvePost(slug: string) {
     return post;
 }
 
+async function resolveArtistStats(post: PostRecord): Promise<SpotifyStatsResult> {
+    if (!post.spotify_uri && !post.artist_name && !post.spotify_artist_id) {
+        return null;
+    }
+
+    try {
+        return await getArtistStats(
+            post.spotify_uri || '',
+            post.artist_name || '',
+            post.spotify_artist_id || ''
+        );
+    } catch (error) {
+        console.error('Failed to load Spotify artist stats', error);
+        return null;
+    }
+}
+
+async function resolvePostCompanions(slug: string) {
+    const [relatedResult, adjacentResult] = await Promise.allSettled([
+        getRelatedPosts(slug, 3),
+        getAdjacentPublishedPosts(slug),
+    ]);
+
+    return {
+        relatedPosts: relatedResult.status === 'fulfilled' ? relatedResult.value : [],
+        adjacentPosts:
+            adjacentResult.status === 'fulfilled'
+                ? adjacentResult.value
+                : { previous: null, next: null },
+    };
+}
+
 export async function generateMetadata({
     params,
 }: {
@@ -61,7 +93,14 @@ export async function generateMetadata({
         return {};
     }
 
-    const post = await resolvePost(slug);
+    let post: PostRecord | null = null;
+    try {
+        post = await resolvePost(slug);
+    } catch (error) {
+        console.error('Failed to resolve post metadata', error);
+        return {};
+    }
+
     if (!post) {
         return {};
     }
@@ -107,27 +146,6 @@ export default async function PostDetail({
         notFound();
     }
 
-    console.log(
-        `VOXO_POST_DEBUG: URI=[${post.spotify_uri}] NAME=[${post.artist_name}] ID=[${post.spotify_artist_id}]`
-    );
-
-    const artistStats: SpotifyStatsResult =
-        post.spotify_uri || post.artist_name || post.spotify_artist_id
-            ? await getArtistStats(
-                  post.spotify_uri || '',
-                  post.artist_name || '',
-                  post.spotify_artist_id || ''
-              )
-            : null;
-
-    if (artistStats) {
-        const resultSummary =
-            'error' in artistStats ? `ERROR: ${artistStats.error}` : `SUCCESS: ${artistStats.name}`;
-        console.log(`VOXO_POST_DEBUG: Fetch Result -> ${resultSummary}`);
-    } else {
-        console.log('VOXO_POST_DEBUG: Fetch Result -> NULL (Skipped)');
-    }
-
     const extracted = extractEditorMetadata(post.content || '');
     const customExcerpt =
         extracted.excerpt ||
@@ -147,11 +165,12 @@ export default async function PostDetail({
             year: 'numeric',
         })
         .toUpperCase();
-    const siteSettings = await getSiteSettings();
-    const [relatedPosts, adjacentPosts] = await Promise.all([
-        getRelatedPosts(post.slug, 3),
-        getAdjacentPublishedPosts(post.slug),
+    const [artistStats, siteSettings, companionData] = await Promise.all([
+        resolveArtistStats(post),
+        getSiteSettings(),
+        resolvePostCompanions(post.slug),
     ]);
+    const { relatedPosts, adjacentPosts } = companionData;
 
     return (
         <main className="flex min-h-screen flex-col bg-background-dark select-none">

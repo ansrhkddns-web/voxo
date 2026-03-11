@@ -10,6 +10,9 @@ export interface ArtistImageCandidate {
 export const MAX_BODY_IMAGE_SELECTION = 2;
 
 const MANAGED_BODY_IMAGE_REGEX = /<figure[^>]*data-voxo-body-image="(\d+)"[\s\S]*?<\/figure>/gi;
+const MANAGED_VIDEO_EMBED_REGEX = /<div[^>]*class="[^"]*voxo-video-embed[^"]*"[^>]*data-voxo-video-embed="true"[^>]*>[\s\S]*?<\/div>/gi;
+const GENERIC_VIDEO_EMBED_REGEX = /<div[^>]*class="[^"]*voxo-video-embed[^"]*"[^>]*>[\s\S]*?<\/div>/i;
+const YOUTUBE_IFRAME_REGEX = /<iframe[^>]*src="https?:\/\/www\.youtube\.com\/embed\/[^"]+"[\s\S]*?<\/iframe>/i;
 
 function escapeHtml(value: string) {
     return value
@@ -49,6 +52,10 @@ function splitHtmlBlocks(content: string) {
 
 export function stripManagedBodyImages(content: string) {
     return content.replace(MANAGED_BODY_IMAGE_REGEX, '').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+export function stripManagedVideoEmbed(content: string) {
+    return content.replace(MANAGED_VIDEO_EMBED_REGEX, '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 export function buildManagedBodyImageBlock(candidate: ArtistImageCandidate, slot: number) {
@@ -99,9 +106,58 @@ export function extractManagedBodyImages(content: string) {
         .map((item) => item.candidate);
 }
 
-export function injectManagedBodyImages(content: string, selectedImages: ArtistImageCandidate[]) {
-    const cleanContent = stripManagedBodyImages(content);
-    if (selectedImages.length !== MAX_BODY_IMAGE_SELECTION) {
+function normalizeManagedVideoEmbed(embedHtml: string) {
+    const trimmed = embedHtml.trim();
+    if (!trimmed) {
+        return '';
+    }
+
+    if (/data-voxo-video-embed="true"/i.test(trimmed)) {
+        return trimmed;
+    }
+
+    if (GENERIC_VIDEO_EMBED_REGEX.test(trimmed)) {
+        return trimmed.replace(
+            /<div([^>]*)class="([^"]*voxo-video-embed[^"]*)"([^>]*)>/i,
+            '<div$1class="$2"$3 data-voxo-video-embed="true">'
+        );
+    }
+
+    const iframeMatch = trimmed.match(YOUTUBE_IFRAME_REGEX);
+    if (iframeMatch?.[0]) {
+        return `<div class="voxo-video-embed" data-voxo-video-embed="true">${iframeMatch[0]}</div>`;
+    }
+
+    return trimmed;
+}
+
+export function extractManagedVideoEmbed(content: string) {
+    const managedMatch = content.match(MANAGED_VIDEO_EMBED_REGEX);
+    if (managedMatch?.[0]) {
+        return managedMatch[0];
+    }
+
+    const wrapperMatch = content.match(GENERIC_VIDEO_EMBED_REGEX);
+    if (wrapperMatch?.[0]) {
+        return normalizeManagedVideoEmbed(wrapperMatch[0]);
+    }
+
+    const iframeMatch = content.match(YOUTUBE_IFRAME_REGEX);
+    if (iframeMatch?.[0]) {
+        return normalizeManagedVideoEmbed(iframeMatch[0]);
+    }
+
+    return '';
+}
+
+export function injectManagedArticleMedia(
+    content: string,
+    selectedImages: ArtistImageCandidate[],
+    videoEmbedHtml = ''
+) {
+    const cleanContent = stripManagedVideoEmbed(stripManagedBodyImages(content));
+    const normalizedVideoEmbed = normalizeManagedVideoEmbed(videoEmbedHtml);
+    if (selectedImages.length !== MAX_BODY_IMAGE_SELECTION && !normalizedVideoEmbed) {
         return cleanContent;
     }
 
@@ -111,30 +167,46 @@ export function injectManagedBodyImages(content: string, selectedImages: ArtistI
     );
 
     if (blocks.length === 0) {
-        return figures.join('\n');
+        return [...figures, normalizedVideoEmbed].filter(Boolean).join('\n');
     }
 
     const firstInsertPosition = Math.max(1, Math.ceil(blocks.length / 3));
     const secondInsertPosition = Math.max(firstInsertPosition + 1, Math.ceil((blocks.length * 2) / 3));
+    const videoInsertPosition =
+        normalizedVideoEmbed && blocks.length > 1
+            ? Math.max(secondInsertPosition + 1, blocks.length)
+            : 0;
     const result: string[] = [];
 
     blocks.forEach((block, index) => {
         const position = index + 1;
 
-        if (position === firstInsertPosition) {
+        if (selectedImages.length === MAX_BODY_IMAGE_SELECTION && position === firstInsertPosition) {
             result.push(figures[0]);
         }
 
-        if (position === secondInsertPosition) {
+        if (selectedImages.length === MAX_BODY_IMAGE_SELECTION && position === secondInsertPosition) {
             result.push(figures[1]);
+        }
+
+        if (normalizedVideoEmbed && position === videoInsertPosition) {
+            result.push(normalizedVideoEmbed);
         }
 
         result.push(block);
     });
 
-    if (secondInsertPosition > blocks.length) {
+    if (selectedImages.length === MAX_BODY_IMAGE_SELECTION && secondInsertPosition > blocks.length) {
         result.push(figures[1]);
     }
 
+    if (normalizedVideoEmbed && !result.includes(normalizedVideoEmbed)) {
+        result.push(normalizedVideoEmbed);
+    }
+
     return result.join('\n');
+}
+
+export function injectManagedBodyImages(content: string, selectedImages: ArtistImageCandidate[]) {
+    return injectManagedArticleMedia(content, selectedImages);
 }
