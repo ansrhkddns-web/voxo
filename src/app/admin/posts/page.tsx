@@ -1,121 +1,259 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import AdminSidebar from "@/components/admin/AdminSidebar";
-import { Search, Edit2, Trash2, Loader2, ExternalLink } from 'lucide-react';
-import { getPosts, deletePost } from '@/app/actions/postActions';
-import { cn } from "@/lib/utils";
-import toast, { Toaster } from 'react-hot-toast';
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import toast, { Toaster } from 'react-hot-toast';
+import { Copy, Edit2, ExternalLink, Loader2, Search, Trash2, X } from 'lucide-react';
+import AdminSidebar from '@/components/admin/AdminSidebar';
+import { getCategories } from '@/app/actions/categoryActions';
+import { deletePost, duplicatePost, getPosts } from '@/app/actions/postActions';
+import { getTags } from '@/app/actions/tagActions';
+import { cn } from '@/lib/utils';
 import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
-import type { PostRecord } from '@/types/content';
+import type { CategoryRecord, PostRecord, TagRecord } from '@/types/content';
 
-export default function AdminPosts() {
-    const { t } = useAdminLanguage();
+function AdminPostsContent() {
+    const { t, language } = useAdminLanguage();
+    const isKorean = language === 'ko';
+    const searchParams = useSearchParams();
     const [posts, setPosts] = useState<PostRecord[]>([]);
+    const [categories, setCategories] = useState<CategoryRecord[]>([]);
+    const [tags, setTags] = useState<TagRecord[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all');
+    const [categoryFilter, setCategoryFilter] = useState('');
+    const [tagFilter, setTagFilter] = useState('');
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
     useEffect(() => {
-        fetchPosts();
-    }, []);
+        setCategoryFilter(searchParams.get('category') ?? '');
+        setTagFilter(searchParams.get('tag') ?? '');
+        setSearchQuery(searchParams.get('q') ?? '');
+        const status = searchParams.get('status');
+        if (status === 'published' || status === 'draft') {
+            setFilter(status);
+        } else {
+            setFilter('all');
+        }
+    }, [searchParams]);
 
-    const fetchPosts = async () => {
+    const fetchPosts = useCallback(async () => {
         try {
-            const data = await getPosts();
-            setPosts(data);
+            const [postData, categoryData, tagData] = await Promise.all([
+                getPosts(),
+                getCategories(),
+                getTags(),
+            ]);
+            setPosts(postData);
+            setCategories(categoryData);
+            setTags(tagData);
         } catch {
-            toast.error('Failed to load posts');
+            toast.error(isKorean ? '게시글 목록을 불러오지 못했습니다.' : 'Failed to load posts.');
         } finally {
             setLoading(false);
         }
-    };
+    }, [isKorean]);
+
+    useEffect(() => {
+        void fetchPosts();
+    }, [fetchPosts]);
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this sequence?')) return;
+        if (!confirm(isKorean ? '정말 이 게시글을 삭제하시겠습니까?' : 'Delete this post?')) return;
         try {
+            setDeletingId(id);
             await deletePost(id);
-            fetchPosts();
-            toast.success('Sequence deleted');
+            await fetchPosts();
+            toast.success(isKorean ? '게시글을 삭제했습니다.' : 'Post deleted.');
         } catch {
-            toast.error('Delete failed');
+            toast.error(isKorean ? '게시글 삭제에 실패했습니다.' : 'Failed to delete post.');
+        } finally {
+            setDeletingId(null);
         }
     };
 
-    const filteredPosts = posts.filter(post => {
-        const matchesSearch = post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            post.slug.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesFilter = filter === 'all'
-            ? true
-            : filter === 'published'
-                ? post.is_published
-                : !post.is_published;
-        return matchesSearch && matchesFilter;
-    });
+    const handleDuplicate = async (id: string) => {
+        try {
+            setDuplicatingId(id);
+            const duplicatedPost = await duplicatePost(id);
+            await fetchPosts();
+            toast.success(
+                isKorean
+                    ? `복제 초안을 만들었습니다: ${duplicatedPost.title}`
+                    : `Draft copy created: ${duplicatedPost.title}`
+            );
+        } catch {
+            toast.error(isKorean ? '게시글 복제에 실패했습니다.' : 'Failed to duplicate post.');
+        } finally {
+            setDuplicatingId(null);
+        }
+    };
+
+    const formatDateLabel = (dateValue?: string | null) => {
+        if (!dateValue) return 'N/A';
+        return new Date(dateValue).toLocaleString(isKorean ? 'ko-KR' : 'en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    };
+
+    const filteredPosts = useMemo(() => {
+        return posts.filter((post) => {
+            const normalizedQuery = searchQuery.trim().toLowerCase();
+            const matchesSearch =
+                !normalizedQuery ||
+                post.title.toLowerCase().includes(normalizedQuery) ||
+                post.slug.toLowerCase().includes(normalizedQuery) ||
+                (post.artist_name || '').toLowerCase().includes(normalizedQuery);
+            const matchesStatus =
+                filter === 'all' ? true : filter === 'published' ? post.is_published : !post.is_published;
+            const matchesCategory = !categoryFilter || post.category_id === categoryFilter;
+            const matchesTag = !tagFilter || (post.tags ?? []).includes(tagFilter);
+            return matchesSearch && matchesStatus && matchesCategory && matchesTag;
+        });
+    }, [categoryFilter, filter, posts, searchQuery, tagFilter]);
+
+    const activeCategory = categories.find((item) => item.id === categoryFilter);
+    const activeTag = tags.find((item) => item.name === tagFilter);
 
     return (
         <div className="flex min-h-screen bg-black text-white font-body selection:bg-white selection:text-black">
             <Toaster position="top-center" />
             <AdminSidebar />
 
-            <main className="flex-1 p-12 overflow-y-auto">
-                <header className="flex flex-col md:flex-row justify-between items-end gap-6 mb-16 border-b border-white/5 pb-8">
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="w-4 h-px bg-accent-green"></span>
-                            <span className="text-[10px] uppercase tracking-[0.3em] text-gray-400 font-display">{t('repo', 'posts')}</span>
+            <main className="flex-1 overflow-y-auto p-6 sm:p-10 xl:p-12">
+                <header className="mb-10 border-b border-white/5 pb-8">
+                    <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+                        <div>
+                            <div className="mb-2 flex items-center gap-2">
+                                <span className="h-px w-4 bg-accent-green"></span>
+                                <span className="font-display text-[10px] uppercase tracking-[0.3em] text-gray-400">
+                                    {t('repo', 'posts')}
+                                </span>
+                            </div>
+                            <h1 className="font-display text-3xl font-light uppercase tracking-widest sm:text-4xl">
+                                {t('title', 'posts')}
+                            </h1>
+                            <p className="mt-3 max-w-2xl text-sm text-gray-500">
+                                {isKorean
+                                    ? '카테고리와 태그 기준으로 게시글을 바로 추려보고, 복제와 수정 작업을 빠르게 이어가세요.'
+                                    : 'Filter posts by category or tag and move quickly into review, duplication, and editing.'}
+                            </p>
                         </div>
-                        <h1 className="text-4xl font-display font-light tracking-widest uppercase">{t('title', 'posts')}</h1>
+
+                        <div className="grid gap-4 lg:grid-cols-[auto_minmax(0,320px)]">
+                            <div className="flex bg-gray-950/50 border border-white/10 p-1 rounded-none">
+                                <button
+                                    onClick={() => setFilter('all')}
+                                    className={cn('px-6 py-2 text-[9px] uppercase tracking-widest font-display transition-colors', filter === 'all' ? 'bg-white text-black' : 'text-gray-500 hover:text-white')}
+                                >
+                                    {t('all', 'posts')}
+                                </button>
+                                <button
+                                    onClick={() => setFilter('published')}
+                                    className={cn('px-6 py-2 text-[9px] uppercase tracking-widest font-display transition-colors', filter === 'published' ? 'bg-white text-black' : 'text-gray-500 hover:text-white')}
+                                >
+                                    {t('published', 'posts')}
+                                </button>
+                                <button
+                                    onClick={() => setFilter('draft')}
+                                    className={cn('px-6 py-2 text-[9px] uppercase tracking-widest font-display transition-colors', filter === 'draft' ? 'bg-white text-black' : 'text-gray-500 hover:text-white')}
+                                >
+                                    {t('drafts', 'posts')}
+                                </button>
+                            </div>
+
+                            <div className="relative w-full">
+                                <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600" size={16} />
+                                <input
+                                    placeholder={t('search', 'posts')}
+                                    value={searchQuery}
+                                    onChange={(event) => setSearchQuery(event.target.value)}
+                                    className="w-full border-b border-white/10 bg-transparent py-3 pl-0 pr-10 text-[10px] uppercase tracking-widest text-white placeholder:text-gray-700 focus:border-accent-green focus:outline-none transition-colors font-display"
+                                />
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
-                        <div className="flex bg-gray-950/50 border border-white/10 p-1 rounded-none">
-                            <button
-                                onClick={() => setFilter('all')}
-                                className={cn("px-6 py-2 text-[9px] uppercase tracking-widest font-display transition-colors", filter === 'all' ? "bg-white text-black" : "text-gray-500 hover:text-white")}
-                            >
-                                {t('all', 'posts')}
-                            </button>
-                            <button
-                                onClick={() => setFilter('published')}
-                                className={cn("px-6 py-2 text-[9px] uppercase tracking-widest font-display transition-colors", filter === 'published' ? "bg-white text-black" : "text-gray-500 hover:text-white")}
-                            >
-                                {t('published', 'posts')}
-                            </button>
-                            <button
-                                onClick={() => setFilter('draft')}
-                                className={cn("px-6 py-2 text-[9px] uppercase tracking-widest font-display transition-colors", filter === 'draft' ? "bg-white text-black" : "text-gray-500 hover:text-white")}
-                            >
-                                {t('drafts', 'posts')}
-                            </button>
-                        </div>
-                        <div className="relative w-full md:w-80">
-                            <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600" size={16} />
-                            <input
-                                placeholder={t('search', 'posts')}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-transparent border-b border-white/10 py-3 pl-0 pr-10 text-[10px] tracking-widest text-white placeholder:text-gray-700 focus:outline-none focus:border-accent-green transition-colors uppercase font-display"
-                            />
+                    <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,220px)_minmax(0,220px)_auto]">
+                        <select
+                            value={categoryFilter}
+                            onChange={(event) => setCategoryFilter(event.target.value)}
+                            className="border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-accent-green focus:outline-none"
+                        >
+                            <option value="">{isKorean ? '전체 카테고리' : 'All categories'}</option>
+                            {categories.map((category) => (
+                                <option key={category.id} value={category.id}>
+                                    {category.name}
+                                </option>
+                            ))}
+                        </select>
+
+                        <select
+                            value={tagFilter}
+                            onChange={(event) => setTagFilter(event.target.value)}
+                            className="border border-white/10 bg-black/40 px-4 py-3 text-sm text-white focus:border-accent-green focus:outline-none"
+                        >
+                            <option value="">{isKorean ? '전체 태그' : 'All tags'}</option>
+                            {tags.map((tag) => (
+                                <option key={tag.id} value={tag.name}>
+                                    {tag.name}
+                                </option>
+                            ))}
+                        </select>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            {activeCategory ? (
+                                <span className="inline-flex items-center gap-2 border border-white/10 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-gray-300">
+                                    <span>{isKorean ? '카테고리' : 'Category'}: {activeCategory.name}</span>
+                                    <button type="button" onClick={() => setCategoryFilter('')} className="text-gray-500 hover:text-white">
+                                        <X size={12} />
+                                    </button>
+                                </span>
+                            ) : null}
+                            {activeTag ? (
+                                <span className="inline-flex items-center gap-2 border border-white/10 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-gray-300">
+                                    <span>{isKorean ? '태그' : 'Tag'}: {activeTag.name}</span>
+                                    <button type="button" onClick={() => setTagFilter('')} className="text-gray-500 hover:text-white">
+                                        <X size={12} />
+                                    </button>
+                                </span>
+                            ) : null}
+                            {searchQuery ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setSearchQuery('')}
+                                    className="border border-white/10 px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-gray-400 hover:border-accent-green hover:text-accent-green"
+                                >
+                                    {isKorean ? '검색 초기화' : 'Clear search'}
+                                </button>
+                            ) : null}
                         </div>
                     </div>
                 </header>
 
-                {/* Directory Table */}
                 <div className="relative">
                     {loading ? (
-                        <div className="flex flex-col items-center justify-center h-96 gap-4 border border-white/5 bg-gray-950/20">
+                        <div className="flex h-96 flex-col items-center justify-center gap-4 border border-white/5 bg-gray-950/20">
                             <Loader2 className="animate-spin text-accent-green" size={24} strokeWidth={1} />
-                            <span className="text-[10px] uppercase tracking-[0.3em] text-gray-600 font-display animate-pulse">{t('querying', 'posts')}</span>
+                            <span className="font-display text-[10px] uppercase tracking-[0.3em] text-gray-600 animate-pulse">
+                                {t('querying', 'posts')}
+                            </span>
                         </div>
                     ) : (
-                        <div className="border border-white/5 bg-gray-950/20 overflow-hidden">
-                            <table className="w-full text-left border-collapse">
+                        <div className="overflow-hidden border border-white/5 bg-gray-950/20">
+                            <table className="w-full border-collapse text-left">
                                 <thead>
                                     <tr className="border-b border-white/5 text-[9px] uppercase tracking-[0.2em] font-display text-gray-600">
                                         <th className="px-8 py-6 font-medium">{t('colIdentify', 'posts')}</th>
                                         <th className="px-8 py-6 font-medium">{t('colCat', 'posts')}</th>
+                                        <th className="px-8 py-6 font-medium">{isKorean ? '태그' : 'Tags'}</th>
                                         <th className="px-8 py-6 font-medium">{t('colCreated', 'posts')}</th>
                                         <th className="px-8 py-6 font-medium">{t('colStatus', 'posts')}</th>
                                         <th className="px-8 py-6 font-medium text-right">{t('colOps', 'posts')}</th>
@@ -124,68 +262,113 @@ export default function AdminPosts() {
                                 <tbody className="divide-y divide-white/5 font-display">
                                     {filteredPosts.length === 0 ? (
                                         <tr>
-                                            <td colSpan={5} className="px-8 py-20 text-center">
-                                                <p className="text-[10px] uppercase tracking-[0.3em] text-gray-700 italic">{t('emptyState', 'posts')}</p>
+                                            <td colSpan={6} className="px-8 py-20 text-center">
+                                                <p className="text-[10px] uppercase tracking-[0.3em] text-gray-700 italic">
+                                                    {isKorean ? '조건에 맞는 게시글이 없습니다.' : t('emptyState', 'posts')}
+                                                </p>
                                             </td>
                                         </tr>
                                     ) : (
                                         filteredPosts.map((post) => (
-                                            <tr key={post.id} className="hover:bg-white/[0.02] transition-colors group">
+                                            <tr key={post.id} className="group transition-colors hover:bg-white/[0.02]">
                                                 <td className="px-8 py-6">
-                                                    <Link
-                                                        href={`/admin/editor?id=${post.id}`}
-                                                        className="block group/title"
-                                                    >
-                                                        <p className="text-white text-sm font-light tracking-wide uppercase group-hover/title:text-accent-green transition-colors truncate max-w-sm">{post.title}</p>
-                                                        <p className="text-gray-600 text-[8px] mt-1 tracking-widest">{post.id.toUpperCase()}</p>
+                                                    <Link href={`/admin/editor?id=${post.id}`} className="block group/title">
+                                                        <p className="max-w-sm truncate text-sm font-light uppercase tracking-wide text-white transition-colors group-hover/title:text-accent-green">
+                                                            {post.title}
+                                                        </p>
+                                                        <p className="mt-1 text-[8px] tracking-widest text-gray-600">
+                                                            /post/{post.slug}
+                                                        </p>
+                                                        <p className="mt-1 text-[8px] tracking-widest text-gray-700">{post.id.toUpperCase()}</p>
                                                     </Link>
                                                 </td>
-                                                <td className="px-8 py-6 font-display">
-                                                    <span className="text-gray-400 text-[9px] uppercase tracking-widest border border-white/5 px-3 py-1 bg-white/[0.02]">{post.categories?.name || t('generic', 'posts')}</span>
-                                                </td>
-                                                <td className="px-8 py-6 font-display">
-                                                    <span className="text-gray-500 text-[10px] uppercase tracking-widest">
-                                                        {new Date(post.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
+                                                <td className="px-8 py-6">
+                                                    <span className="border border-white/5 bg-white/[0.02] px-3 py-1 text-[9px] uppercase tracking-widest text-gray-400">
+                                                        {post.categories?.name || t('generic', 'posts')}
                                                     </span>
                                                 </td>
-                                                <td className="px-8 py-6 font-display">
+                                                <td className="px-8 py-6">
+                                                    <div className="flex max-w-[220px] flex-wrap gap-2">
+                                                        {(post.tags ?? []).length > 0 ? (
+                                                            (post.tags ?? []).slice(0, 3).map((tag) => (
+                                                                <button
+                                                                    key={tag}
+                                                                    type="button"
+                                                                    onClick={() => setTagFilter(tag)}
+                                                                    className="border border-white/10 px-2 py-1 text-[9px] uppercase tracking-[0.16em] text-gray-400 hover:border-accent-green hover:text-accent-green"
+                                                                >
+                                                                    {tag}
+                                                                </button>
+                                                            ))
+                                                        ) : (
+                                                            <span className="text-[9px] uppercase tracking-[0.16em] text-gray-700">
+                                                                {isKorean ? '태그 없음' : 'No tags'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-6">
+                                                    <div className="space-y-1">
+                                                        <span className="block text-[10px] uppercase tracking-widest text-gray-400">
+                                                            {post.is_published ? 'Published' : 'Created'} {formatDateLabel(post.published_at || post.created_at)}
+                                                        </span>
+                                                        <span className="block text-[8px] uppercase tracking-[0.2em] text-gray-600">
+                                                            Updated {formatDateLabel(post.updated_at || post.created_at)}
+                                                        </span>
+                                                        <span className="block text-[8px] uppercase tracking-[0.2em] text-gray-700">
+                                                            {post.is_published ? 'Stable permalink active' : 'Draft permalink reserved'}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-8 py-6">
                                                     <div className="flex items-center gap-2">
-                                                        <span className={cn("w-1.5 h-1.5 rounded-full", post.is_published ? "bg-accent-green" : "bg-gray-600 animate-pulse")} />
-                                                        <span className={cn(
-                                                            "text-[9px] uppercase tracking-widest",
-                                                            post.is_published ? "text-accent-green" : "text-gray-600"
-                                                        )}>
+                                                        <span className={cn('h-1.5 w-1.5 rounded-full', post.is_published ? 'bg-accent-green' : 'bg-gray-600 animate-pulse')} />
+                                                        <span className={cn('text-[9px] uppercase tracking-widest', post.is_published ? 'text-accent-green' : 'text-gray-600')}>
                                                             {post.is_published ? t('published', 'posts') : t('drafts', 'posts')}
                                                         </span>
                                                     </div>
                                                 </td>
                                                 <td className="px-8 py-6 text-right">
-                                                    <div className="flex items-center justify-end gap-2 relative z-50 font-display">
+                                                    <div className="relative z-50 flex items-center justify-end gap-2">
                                                         <a
                                                             href={`/post/${post.slug}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="text-white/40 hover:text-accent-green transition-colors p-3 hover:bg-white/5 cursor-pointer block"
-                                                            title="Shortcut: Preview"
+                                                            className="block cursor-pointer p-3 text-white/40 transition-colors hover:bg-white/5 hover:text-accent-green"
+                                                            title="Preview"
                                                         >
                                                             <ExternalLink size={14} />
                                                         </a>
                                                         <Link
                                                             href={`/admin/editor?id=${post.id}`}
-                                                            className="text-white/40 hover:text-white transition-colors p-3 hover:bg-white/5 cursor-pointer block"
-                                                            title="Shortcut: Recalibrate"
+                                                            className="block cursor-pointer p-3 text-white/40 transition-colors hover:bg-white/5 hover:text-white"
+                                                            title="Edit"
                                                         >
                                                             <Edit2 size={14} />
                                                         </Link>
                                                         <button
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                e.stopPropagation();
-                                                                handleDelete(post.id);
+                                                            onClick={(event) => {
+                                                                event.preventDefault();
+                                                                event.stopPropagation();
+                                                                void handleDuplicate(post.id);
                                                             }}
-                                                            className="text-white/40 hover:text-red-500 transition-colors p-3 hover:bg-white/5 cursor-pointer"
+                                                            disabled={duplicatingId === post.id}
+                                                            className="cursor-pointer p-3 text-white/40 transition-colors hover:bg-white/5 hover:text-sky-300 disabled:opacity-50"
+                                                            title="Duplicate"
                                                         >
-                                                            <Trash2 size={14} />
+                                                            {duplicatingId === post.id ? <Loader2 size={14} className="animate-spin" /> : <Copy size={14} />}
+                                                        </button>
+                                                        <button
+                                                            onClick={(event) => {
+                                                                event.preventDefault();
+                                                                event.stopPropagation();
+                                                                void handleDelete(post.id);
+                                                            }}
+                                                            disabled={deletingId === post.id}
+                                                            className="cursor-pointer p-3 text-white/40 transition-colors hover:bg-white/5 hover:text-red-500 disabled:opacity-50"
+                                                            title="Delete"
+                                                        >
+                                                            {deletingId === post.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                                                         </button>
                                                     </div>
                                                 </td>
@@ -199,8 +382,21 @@ export default function AdminPosts() {
                 </div>
             </main>
 
-            {/* Grainy Noise Overlay */}
-            <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+            <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
         </div>
+    );
+}
+
+export default function AdminPostsPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="flex min-h-screen items-center justify-center bg-black">
+                    <Loader2 className="animate-spin text-accent-green" size={32} strokeWidth={1} />
+                </div>
+            }
+        >
+            <AdminPostsContent />
+        </Suspense>
     );
 }

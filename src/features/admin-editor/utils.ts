@@ -59,7 +59,7 @@ function trimToSentence(value: string, maxLength: number) {
     const lastPunctuation = Math.max(
         sliced.lastIndexOf('.'),
         sliced.lastIndexOf('!'),
-        sliced.lastIndexOf('?')
+        sliced.lastIndexOf('?'),
     );
 
     if (lastPunctuation > 50) {
@@ -69,15 +69,19 @@ function trimToSentence(value: string, maxLength: number) {
     return `${sliced.trim()}...`;
 }
 
-export function generatePostSlug(title: string) {
-    const sanitized = title
+export function normalizePostSlugBase(title: string) {
+    return title
         .toLowerCase()
         .trim()
         .replace(/[^a-z0-9]/g, '-')
         .replace(/-+/g, '-')
         .replace(/^-+|-+$/g, '');
+}
 
+export function generatePostSlug(title: string) {
+    const sanitized = normalizePostSlugBase(title);
     const randomIndex = Math.floor(10000000 + Math.random() * 90000000);
+
     return sanitized ? `${sanitized}-${randomIndex}` : `${randomIndex}`;
 }
 
@@ -91,7 +95,7 @@ export function buildHeroExcerpt(params: {
     const candidates = [
         params.seoDescription,
         params.intro,
-        `${params.artistName}의 ${params.title} 핵심 포인트를 짧고 선명하게 정리한 리뷰.`,
+        `${params.artistName || '아티스트'}의 ${params.title}를 감정과 사운드 결 중심으로 정리한 리뷰입니다.`,
         params.content,
     ];
 
@@ -102,7 +106,10 @@ export function buildHeroExcerpt(params: {
         }
     }
 
-    return trimToSentence(`${params.title}의 핵심을 간결하게 정리한 리뷰입니다.`, 150);
+    return trimToSentence(
+        `${params.title}의 인상과 메시지를 차분하게 풀어낸 큐레이션 리뷰입니다.`,
+        150,
+    );
 }
 
 export function buildSeoDescription(params: {
@@ -116,7 +123,7 @@ export function buildSeoDescription(params: {
         params.excerpt.trim() ||
         params.intro.trim() ||
         trimToSentence(params.content || '', 160) ||
-        `${params.artistName || 'VOXO'}의 ${params.title} 리뷰와 핵심 포인트를 확인해 보세요.`;
+        `${params.artistName || 'VOXO'}의 ${params.title} 리뷰와 곡의 핵심 인상을 지금 바로 확인해보세요.`;
 
     return trimToSentence(base, 160);
 }
@@ -128,7 +135,7 @@ export function buildShareCopy(params: {
 }) {
     const summary =
         trimToSentence(params.excerpt, 120) ||
-        `${params.artistName || 'VOXO'}의 이야기를 짧게 정리했습니다.`;
+        `${params.artistName || 'VOXO'}의 이야기를 감성적으로 정리한 큐레이션입니다.`;
 
     return trimToSentence(`${params.title} - ${summary}`, 180);
 }
@@ -229,7 +236,7 @@ export function buildEditorChecklist(input: {
 
     return [
         { id: 'title', label: '제목', completed: input.title.trim().length >= 8 },
-        { id: 'excerpt', label: '핵심 요약', completed: input.excerpt.trim().length >= 20 },
+        { id: 'excerpt', label: '히어로 요약', completed: input.excerpt.trim().length >= 20 },
         { id: 'intro', label: '도입 문구', completed: input.intro.trim().length >= 10 },
         { id: 'seo', label: 'SEO 설명문', completed: input.seoDescription.trim().length >= 40 },
         { id: 'share', label: '공유 문구', completed: input.shareCopy.trim().length >= 20 },

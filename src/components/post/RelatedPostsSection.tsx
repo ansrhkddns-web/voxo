@@ -42,7 +42,7 @@ export default function RelatedPostsSection({
                             {(post.content?.replace(/<[^>]*>/g, '').trim().slice(0, 120) || '') + '...'}
                         </p>
                         <p className="mt-6 font-display text-[9px] uppercase tracking-[0.25em] text-gray-600">
-                            {timeAgo(post.published_at || post.created_at, 'English')}
+                            {timeAgo(post.published_at || post.created_at, 'Korean')}
                         </p>
                     </Link>
                 ))}

@@ -28,3 +28,21 @@ export function timeAgo(dateString: string | null | undefined, language: string 
     return '';
   }
 }
+
+export function stripHtmlTags(value: string | null | undefined) {
+  if (!value) return '';
+
+  return value
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function estimateReadTimeMinutes(value: string | null | undefined, wordsPerMinute = 220) {
+  const plainText = stripHtmlTags(value);
+  if (!plainText) return 1;
+
+  const wordCount = plainText.split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(wordCount / wordsPerMinute));
+}

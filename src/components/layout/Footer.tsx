@@ -18,13 +18,18 @@ export default async function Footer() {
                 </Link>
 
                 <div className="flex gap-8">
-                    {['About', 'Contact', 'Privacy', 'Terms'].map((item) => (
+                    {[
+                        { label: 'About', href: '#' },
+                        { label: 'Contact', href: `mailto:${settings.contactEmail}` },
+                        { label: 'Privacy', href: '#' },
+                        { label: 'Terms', href: '#' },
+                    ].map((item) => (
                         <a
-                            key={item}
-                            href={item === 'Contact' ? `mailto:${settings.contactEmail}` : '#'}
+                            key={item.label}
+                            href={item.href}
                             className="font-display text-[9px] font-medium uppercase tracking-[0.15em] text-gray-500 transition-colors hover:text-white"
                         >
-                            {item}
+                            {item.label}
                         </a>
                     ))}
                 </div>

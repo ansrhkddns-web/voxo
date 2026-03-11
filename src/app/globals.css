@@ -100,14 +100,24 @@ body {
 
 .prose h2 {
   @apply text-3xl md:text-4xl font-display font-light uppercase mb-6 mt-12 text-[#e5e5e5] tracking-[0.05em];
+  scroll-margin-top: 120px;
 }
 
 .prose p {
   @apply leading-[2.2] tracking-[0.02em] mb-10 text-[#e5e5e5] text-lg md:text-[21px] font-serif;
 }
 
+.prose > p:first-of-type {
+  @apply text-[22px] md:text-[25px] leading-[2.1] text-[#f0f0f0];
+}
+
+.prose > p:first-of-type::first-letter {
+  @apply float-left mr-3 mt-2 font-display text-5xl md:text-7xl leading-none text-accent-green;
+}
+
 .prose h3 {
   @apply text-2xl font-serif italic mb-4 mt-6 text-accent-green;
+  scroll-margin-top: 120px;
 }
 
 .prose ul {
@@ -120,6 +130,18 @@ body {
 
 .prose blockquote {
   @apply border-l-2 border-accent-green/50 pl-6 italic text-gray-400 my-8 py-2;
+}
+
+.prose figure {
+  @apply my-12 overflow-hidden border border-white/10 bg-black/30 p-4;
+}
+
+.prose figcaption {
+  @apply mt-4 text-center text-sm tracking-wide text-gray-500;
+}
+
+.prose iframe {
+  @apply min-h-[320px] overflow-hidden border border-white/10 bg-black;
 }
 
 .prose hr {

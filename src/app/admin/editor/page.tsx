@@ -5,7 +5,13 @@ import { Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 import { getCategories } from '@/app/actions/categoryActions';
-import { createPost, getPostById, updatePost } from '@/app/actions/postActions';
+import {
+    createPost,
+    getPostById,
+    getPostRevisionHistory,
+    updatePost,
+    type PostRevisionEntry,
+} from '@/app/actions/postActions';
 import { searchArtistImageCandidates } from '@/app/actions/artistImageActions';
 import { searchSpotifyTrackCandidates } from '@/app/actions/spotifyActions';
 import { getTags } from '@/app/actions/tagActions';
@@ -53,6 +59,7 @@ function EditorContent() {
     const { t, language } = useAdminLanguage();
 
     const [title, setTitle] = useState('');
+    const [postSlug, setPostSlug] = useState('');
     const [content, setContent] = useState('');
     const [category, setCategory] = useState('');
     const [spotifyUri, setSpotifyUri] = useState('');
@@ -85,6 +92,7 @@ function EditorContent() {
     const [spotifyCandidates, setSpotifyCandidates] = useState<SpotifyTrackCandidate[]>([]);
     const [isSearchingSpotifyCandidates, setIsSearchingSpotifyCandidates] = useState(false);
     const [showLocalDraftNotice, setShowLocalDraftNotice] = useState(false);
+    const [revisions, setRevisions] = useState<PostRevisionEntry[]>([]);
     const autoImageSearchKeyRef = useRef('');
 
     useEffect(() => {
@@ -95,11 +103,15 @@ function EditorContent() {
 
             if (!postId) {
                 setLoading(false);
+                setRevisions([]);
                 return;
             }
 
             try {
-                const post = await getPostById(postId);
+                const [post, revisionHistory] = await Promise.all([
+                    getPostById(postId),
+                    getPostRevisionHistory(postId),
+                ]);
                 const parsedContent = extractEditorMetadata(post.content ?? '');
                 const recommendedExcerpt = buildHeroExcerpt({
                     title: post.title,
@@ -110,6 +122,7 @@ function EditorContent() {
                 });
 
                 setTitle(post.title);
+                setPostSlug(post.slug || '');
                 setExcerpt(parsedContent.excerpt || recommendedExcerpt);
                 setIntro(parsedContent.intro);
                 setSeoDescription(parsedContent.seoDescription);
@@ -124,6 +137,7 @@ function EditorContent() {
                 setTags(post.tags || []);
                 setCoverUrl(post.cover_image || '');
                 setArtistImageSearchAlbum(parsedContent.albumTitle || '');
+                setRevisions(revisionHistory);
             } catch {
                 toast.error(language === 'ko' ? '글 데이터를 불러오지 못했습니다.' : 'Failed to load article');
             } finally {
@@ -155,6 +169,7 @@ function EditorContent() {
             if (!postId) {
                 setShowLocalDraftNotice(true);
                 setTitle((prev) => prev || parsed.title);
+                setPostSlug((prev) => prev || '');
                 setExcerpt(
                     (prev) =>
                         prev ||
@@ -535,6 +550,41 @@ function EditorContent() {
         );
     };
 
+    const handleRestoreRevision = (revision: PostRevisionEntry) => {
+        const parsedContent = extractEditorMetadata(revision.content ?? '');
+        const nextBodyContent = sanitizeLegacyGeneratedContent(parsedContent.bodyContent);
+
+        setTitle(revision.title);
+        setExcerpt(
+            parsedContent.excerpt ||
+                buildHeroExcerpt({
+                    title: revision.title,
+                    artistName: revision.artist_name || '',
+                    intro: parsedContent.intro,
+                    seoDescription: parsedContent.seoDescription,
+                    content: nextBodyContent,
+                })
+        );
+        setIntro(parsedContent.intro);
+        setSeoDescription(parsedContent.seoDescription);
+        setShareCopy(parsedContent.shareCopy);
+        setContent(nextBodyContent);
+        setSelectedBodyImages(extractManagedBodyImages(nextBodyContent));
+        setEditorSyncKey((prev) => prev + 1);
+        setCategory(revision.category_id || '');
+        setSpotifyUri(revision.spotify_uri || '');
+        setRating(revision.rating?.toString() || '8.0');
+        setArtistName(revision.artist_name || '');
+        setTags(revision.tags || []);
+        setCoverUrl(revision.cover_image || '');
+        setArtistImageSearchAlbum(parsedContent.albumTitle || '');
+        toast.success(
+            language === 'ko'
+                ? '이전 저장본을 편집기에 불러왔습니다.'
+                : 'Revision restored into the editor.'
+        );
+    };
+
     const handlePublish = async (isDraft = false) => {
         if (!title || !content || !category) {
             toast.error(language === 'ko' ? '필수 항목을 확인해 주세요.' : 'Required fields missing');
@@ -585,11 +635,13 @@ function EditorContent() {
                 artist_name: artistName,
                 tags,
                 is_published: !isDraft,
-                slug: generatePostSlug(title),
+                slug: postSlug || generatePostSlug(title),
             };
 
             if (postId) {
-                await updatePost(postId, postData);
+                const updatedPost = await updatePost(postId, postData);
+                setPostSlug(updatedPost.slug || postSlug);
+                setRevisions(await getPostRevisionHistory(postId));
                 toast.success(
                     isDraft
                         ? language === 'ko'
@@ -600,7 +652,8 @@ function EditorContent() {
                             : 'Article published'
                 );
             } else {
-                await createPost(postData);
+                const createdPost = await createPost(postData);
+                setPostSlug(createdPost.slug || postSlug);
                 toast.success(
                     isDraft
                         ? language === 'ko'
@@ -797,6 +850,7 @@ function EditorContent() {
                             filteredTags={filteredTags}
                             checklist={checklist}
                             isTagDropdownOpen={isTagDropdownOpen}
+                            revisions={revisions}
                             reviewRatingLabel={t('reviewRating', 'editor')}
                             artistNameLabel={t('artistName', 'editor')}
                             artistPlaceholder={t('artistPlaceholder', 'editor')}
@@ -830,6 +884,7 @@ function EditorContent() {
                             onRemoveTag={(tagName) => {
                                 setTags((prev) => prev.filter((item) => item !== tagName));
                             }}
+                            onRestoreRevision={handleRestoreRevision}
                         />
                     </div>
                 </div>

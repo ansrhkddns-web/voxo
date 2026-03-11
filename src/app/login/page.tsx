@@ -29,7 +29,9 @@ export default function LoginPage() {
                 body: JSON.stringify({ email, password }),
             });
 
-            const adminResult = await adminResponse.json().catch(() => null) as { success?: boolean; message?: string } | null;
+            const adminResult = (await adminResponse.json().catch(() => null)) as
+                | { success?: boolean; message?: string }
+                | null;
 
             if (adminResponse.ok && adminResult?.success) {
                 toast.success(adminResult.message || '기본 관리자 계정으로 로그인했습니다.');
@@ -64,36 +66,46 @@ export default function LoginPage() {
 
             <div
                 className="pointer-events-none absolute inset-0 z-0 scale-105 bg-cover bg-center opacity-40 mix-blend-overlay dark:opacity-20"
-                style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=2070&auto=format&fit=crop")' }}
+                style={{
+                    backgroundImage:
+                        'url("https://images.unsplash.com/photo-1493225255756-d9584f8606e9?q=80&w=2070&auto=format&fit=crop")',
+                }}
             />
             <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-transparent via-black/80 to-black" />
 
-            <main className="relative z-10 w-full max-w-md p-8 fade-in-up">
+            <main className="fade-in-up relative z-10 w-full max-w-md p-8">
                 <div className="mb-16 flex flex-col items-center">
                     <div className="mb-6 opacity-90 transition-opacity duration-300 hover:opacity-100">
-                        <svg className="h-12 w-12 text-black dark:text-white" fill="none" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <svg
+                            className="h-12 w-12 text-black dark:text-white"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
                             <rect fill="currentColor" height="7" width="2" x="7" y="10"></rect>
                             <rect fill="currentColor" height="10" width="2" x="11" y="7"></rect>
                             <rect fill="currentColor" height="5" width="2" x="15" y="12"></rect>
                         </svg>
                     </div>
-                    <h1 className="mb-3 text-center font-display text-4xl font-bold uppercase tracking-[0.3em]">Voxo</h1>
+                    <h1 className="mb-3 text-center font-display text-4xl font-bold uppercase tracking-[0.3em]">
+                        Voxo
+                    </h1>
                     <p className="font-display text-[10px] font-medium uppercase tracking-[0.2em] text-gray-500 dark:text-gray-400 md:text-xs">
                         Editorial Administration
                     </p>
                 </div>
 
                 <div className="mb-8 border border-white/10 bg-black/40 p-5 text-white backdrop-blur-sm">
-                    <p className="font-display text-[10px] uppercase tracking-[0.3em] text-accent-green">Default Admin Access</p>
+                    <p className="font-display text-[10px] uppercase tracking-[0.3em] text-accent-green">
+                        Default Admin Access
+                    </p>
                     <div className="mt-4 space-y-2 text-sm">
                         <p>
-                            <span className="text-gray-400">ID</span>
-                            {' '}
+                            <span className="text-gray-400">ID</span>{' '}
                             <span className="font-mono">{defaultAdmin.email}</span>
                         </p>
                         <p>
-                            <span className="text-gray-400">PW</span>
-                            {' '}
+                            <span className="text-gray-400">PW</span>{' '}
                             <span className="font-mono">{defaultAdmin.password}</span>
                         </p>
                     </div>
@@ -101,7 +113,7 @@ export default function LoginPage() {
                         지금은 바로 접속할 수 있도록 기본 관리자 계정을 함께 제공하고 있습니다. 실제 운영 배포 전에는 별도 관리자 계정으로 바꾸는 것을 권장합니다.
                     </p>
                     <p className="mt-2 text-[11px] leading-relaxed text-gray-500">
-                        관리자 설정에서 로그인 정보를 바꿨다면, 위 기본값 대신 변경한 이메일과 비밀번호로 로그인하면 됩니다.
+                        관리자 설정에서 로그인 정보를 바꿨다면, 기본값 대신 변경한 이메일과 비밀번호로 로그인하면 됩니다.
                     </p>
                 </div>
 
@@ -153,7 +165,7 @@ export default function LoginPage() {
                             disabled={loading}
                         >
                             <span className="flex items-center gap-2">
-                                {loading ? 'Unlocking...' : 'Sign In'}
+                                {loading ? '확인 중...' : '로그인'}
                                 <ArrowRight className="h-4 w-4 transform transition-transform duration-300 group-hover:translate-x-1" />
                             </span>
                         </button>
@@ -167,7 +179,7 @@ export default function LoginPage() {
                 </p>
             </footer>
 
-            <div className="fixed inset-0 z-50 pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]"></div>
+            <div className="pointer-events-none fixed inset-0 z-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]"></div>
         </div>
     );
 }

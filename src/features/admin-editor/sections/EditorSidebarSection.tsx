@@ -8,6 +8,8 @@ import {
     UserRound,
     XCircle,
 } from 'lucide-react';
+import { PostRevisionHistoryCard } from '@/features/admin-editor/components/PostRevisionHistoryCard';
+import type { PostRevisionEntry } from '@/app/actions/postActions';
 import type { CategoryRecord, TagRecord } from '@/types/content';
 import type { SpotifyTrackCandidate } from '@/types/spotify';
 
@@ -36,6 +38,7 @@ interface EditorSidebarSectionProps {
     filteredTags: TagRecord[];
     checklist: EditorChecklistItem[];
     isTagDropdownOpen: boolean;
+    revisions: PostRevisionEntry[];
     reviewRatingLabel: string;
     artistNameLabel: string;
     artistPlaceholder: string;
@@ -61,6 +64,7 @@ interface EditorSidebarSectionProps {
     onToggleTags: () => void;
     onToggleTag: (tagName: string) => void;
     onRemoveTag: (tagName: string) => void;
+    onRestoreRevision: (revision: PostRevisionEntry) => void;
 }
 
 function PanelTitle({ title, subtitle }: { title: string; subtitle: string }) {
@@ -93,6 +97,7 @@ export function EditorSidebarSection({
     filteredTags,
     checklist,
     isTagDropdownOpen,
+    revisions,
     reviewRatingLabel,
     artistNameLabel,
     artistPlaceholder,
@@ -118,6 +123,7 @@ export function EditorSidebarSection({
     onToggleTags,
     onToggleTag,
     onRemoveTag,
+    onRestoreRevision,
 }: EditorSidebarSectionProps) {
     const isKorean = language === 'ko';
 
@@ -420,6 +426,12 @@ export function EditorSidebarSection({
                     ))}
                 </div>
             </section>
+
+            <PostRevisionHistoryCard
+                revisions={revisions}
+                language={language}
+                onRestore={onRestoreRevision}
+            />
         </aside>
     );
 }

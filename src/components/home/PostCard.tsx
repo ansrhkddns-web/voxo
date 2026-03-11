@@ -13,9 +13,21 @@ interface PostCardProps {
     excerpt: string;
     slug: string;
     rating?: number;
+    artistName?: string;
+    statLabel?: string;
 }
 
-export default function PostCard({ title, category, image, readTime, excerpt, slug, rating }: PostCardProps) {
+export default function PostCard({
+    title,
+    category,
+    image,
+    readTime,
+    excerpt,
+    slug,
+    rating,
+    artistName,
+    statLabel,
+}: PostCardProps) {
     return (
         <Link href={`/post/${slug}`} className="group cursor-pointer block">
             <article>
@@ -43,14 +55,26 @@ export default function PostCard({ title, category, image, readTime, excerpt, sl
                 <div className="flex flex-col gap-4 mt-6">
                     <div className="flex items-center gap-4">
                         <span className="w-6 h-px bg-white/20 group-hover:bg-accent-green/50 transition-colors duration-1000" />
-                        <span className="text-[8px] tracking-[0.4em] text-gray-500 uppercase font-display group-hover:text-gray-400 transition-colors duration-1000">{readTime}</span>
+                        <span className="text-[8px] tracking-[0.35em] text-gray-500 uppercase font-display group-hover:text-gray-400 transition-colors duration-1000">{readTime}</span>
                     </div>
+                    {artistName ? (
+                        <p className="text-[10px] uppercase tracking-[0.28em] text-accent-green/80 font-display">
+                            {artistName}
+                        </p>
+                    ) : null}
                     <h3 className="font-display text-2xl md:text-3xl font-light tracking-[0.05em] text-white group-hover:text-accent-green transition-colors duration-[1500ms] uppercase line-clamp-2 leading-snug">
                         {title}
                     </h3>
                     <p className="text-xs font-light text-gray-400 leading-loose tracking-wide line-clamp-2 font-serif italic opacity-70 group-hover:opacity-100 transition-opacity duration-1000">
                         {excerpt}
                     </p>
+                    {statLabel ? (
+                        <div className="pt-2">
+                            <span className="inline-flex items-center border border-white/10 px-3 py-2 text-[9px] uppercase tracking-[0.18em] text-gray-500 transition-colors duration-700 group-hover:border-accent-green/30 group-hover:text-gray-300">
+                                {statLabel}
+                            </span>
+                        </div>
+                    ) : null}
                 </div>
             </article>
         </Link >
