@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, type ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 type Language = 'en' | 'ko';
 
@@ -22,7 +22,7 @@ interface LanguageContextType {
 
 const defaultContext: LanguageContextType = {
     language: 'en',
-    setLanguage: () => { },
+    setLanguage: () => {},
     t: (key: string) => key,
 };
 
@@ -58,8 +58,8 @@ const GLOBAL_TRANSLATIONS: Record<Language, Record<TranslationNamespaces, Record
             replaceImage: 'Replace Image',
             headlinePlaceholder: 'THE HEADLINE OF TOMORROW...',
             reviewRating: 'Review Rating (0.0 - 10.0)',
-            artistName: 'Artist / Track Name',
-            artistPlaceholder: 'IDENTITY_STRING',
+            artistName: 'Artist Name',
+            artistPlaceholder: 'Lana Del Rey',
             metaClass: 'Category',
             selectArchive: 'SELECT CATEGORY',
             tags: 'Tags',
@@ -188,10 +188,10 @@ const GLOBAL_TRANSLATIONS: Record<Language, Record<TranslationNamespaces, Record
             publish: '발행하기',
             injectVisual: '커버 이미지 업로드',
             replaceImage: '이미지 변경',
-            headlinePlaceholder: '기사 제목을 입력하세요...',
+            headlinePlaceholder: '기사 제목을 입력해 주세요...',
             reviewRating: '평점 (0.0 - 10.0)',
-            artistName: '아티스트 / 곡명',
-            artistPlaceholder: '아티스트명을 입력하세요',
+            artistName: '아티스트 이름',
+            artistPlaceholder: '아티스트 이름을 입력해 주세요.',
             metaClass: '카테고리',
             selectArchive: '카테고리 선택',
             tags: '태그',
@@ -207,13 +207,13 @@ const GLOBAL_TRANSLATIONS: Record<Language, Record<TranslationNamespaces, Record
             search: '게시글 검색...',
             statArchives: '전체 게시글',
             statPublished: '발행 완료',
-            statCategories: '활성 카테고리',
+            statCategories: '카테고리 수',
             statReadTime: '평균 읽기 시간',
             statDrafts: '임시 저장',
             statViews: '총 조회수',
             trendNewThisWeek: '이번 주 신규',
             trendPublishedRatio: '발행 비율',
-            trendDraftCount: '임시 저장',
+            trendDraftCount: '임시 저장 수',
             trendTotalViews: '누적 조회',
             dirTitle: '게시글 목록',
             syncing: '데이터를 불러오는 중...',
@@ -233,7 +233,7 @@ const GLOBAL_TRANSLATIONS: Record<Language, Record<TranslationNamespaces, Record
             activityPublished: '발행됨',
             activityDraft: '임시 저장됨',
             activityCreated: '생성됨',
-            activityFallback: '아직 최근 활동이 없습니다. 첫 게시글을 작성해 보세요.',
+            activityFallback: '아직 최근 활동이 없습니다. 첫 게시글을 만들어 보세요.',
             activityPrompt: '다음 업데이트 대기 중...',
             resultsLabel: '건',
         },
@@ -251,7 +251,7 @@ const GLOBAL_TRANSLATIONS: Record<Language, Record<TranslationNamespaces, Record
             repo: '콘텐츠 저장소',
             title: '전체 게시글',
             all: '전체',
-            published: '발행됨',
+            published: '발행',
             drafts: '임시 저장',
             search: '게시글 검색...',
             querying: '게시글을 불러오는 중...',
@@ -281,9 +281,9 @@ const GLOBAL_TRANSLATIONS: Record<Language, Record<TranslationNamespaces, Record
             execBroadcast: '뉴스레터 보내기',
             composeBtn: '내용 작성',
             subjectLine: '제목',
-            subjectPlaceholder: '메일 제목을 입력하세요',
+            subjectPlaceholder: '메일 제목을 입력해 주세요.',
             content: '본문',
-            contentPlaceholder: '발송할 내용을 입력하세요...',
+            contentPlaceholder: '발송할 내용을 입력해 주세요...',
             safetyTitle: '안내',
             safetyText: '발송을 시작하면 활성 구독자 전체에게 메일이 전송됩니다. 보내기 전에 제목과 본문을 다시 확인해 주세요.',
             errMissing: '제목과 본문을 모두 입력해 주세요.',
@@ -298,31 +298,29 @@ export const AdminLanguageContext = createContext<LanguageContextType>(defaultCo
 export const useAdminLanguage = () => useContext(AdminLanguageContext);
 
 export function AdminLanguageProvider({ children }: { children: ReactNode }) {
-    const [language, setLanguageState] = useState<Language>(() => {
-        if (typeof window === 'undefined') {
-            return 'en';
-        }
+    const [language, setLanguageState] = useState<Language>('en');
+    const [isHydrated, setIsHydrated] = useState(false);
 
+    useEffect(() => {
         try {
             const savedSettingsStr = localStorage.getItem('voxoAdminSettings');
-            if (!savedSettingsStr) {
-                return 'en';
+            if (savedSettingsStr) {
+                const savedSettings = JSON.parse(savedSettingsStr) as { language?: Language };
+                setLanguageState(savedSettings.language === 'ko' ? 'ko' : 'en');
             }
-
-            const savedSettings = JSON.parse(savedSettingsStr) as { language?: Language };
-            return savedSettings.language === 'ko' ? 'ko' : 'en';
         } catch (error) {
             console.error('Failed to parse language settings', error);
-            return 'en';
+        } finally {
+            setIsHydrated(true);
         }
-    });
+    }, []);
 
     const setLanguage = (lang: Language) => {
         setLanguageState(lang);
 
         try {
             const savedSettingsStr = localStorage.getItem('voxoAdminSettings');
-            const settings = savedSettingsStr ? JSON.parse(savedSettingsStr) as Record<string, unknown> : {};
+            const settings = savedSettingsStr ? (JSON.parse(savedSettingsStr) as Record<string, unknown>) : {};
             settings.language = lang;
             localStorage.setItem('voxoAdminSettings', JSON.stringify(settings));
         } catch (error) {
@@ -330,15 +328,17 @@ export function AdminLanguageProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const resolvedLanguage = isHydrated ? language : 'en';
+
     const t = (key: string, namespace: TranslationNamespaces = 'common'): string => {
-        const currentDict = GLOBAL_TRANSLATIONS[language]?.[namespace];
+        const currentDict = GLOBAL_TRANSLATIONS[resolvedLanguage]?.[namespace];
         const fallbackDict = GLOBAL_TRANSLATIONS.en[namespace];
 
         return currentDict?.[key] || fallbackDict?.[key] || key;
     };
 
     return (
-        <AdminLanguageContext.Provider value={{ language, setLanguage, t }}>
+        <AdminLanguageContext.Provider value={{ language: resolvedLanguage, setLanguage, t }}>
             {children}
         </AdminLanguageContext.Provider>
     );

@@ -1,9 +1,11 @@
 import { createClient } from '@/lib/supabase/server';
 import {
+    ADMIN_SESSION_COOKIE,
     createAdminSessionToken,
     getFallbackAdminCredentials,
     hashAdminPassword,
 } from '@/lib/admin-auth';
+import { cookies } from 'next/headers';
 
 const ADMIN_EMAIL_KEY = 'admin_login_email';
 const ADMIN_PASSWORD_HASH_KEY = 'admin_password_hash';
@@ -71,4 +73,15 @@ export async function getAdminSessionTokenForCurrentConfig() {
 export async function getAdminLoginEmail() {
     const config = await getAdminAuthConfig();
     return config.email;
+}
+
+export async function hasValidDefaultAdminSession() {
+    const cookieStore = await cookies();
+    const adminToken = cookieStore.get(ADMIN_SESSION_COOKIE)?.value;
+    if (!adminToken) {
+        return false;
+    }
+
+    const expectedToken = await getAdminSessionTokenForCurrentConfig();
+    return adminToken === expectedToken;
 }

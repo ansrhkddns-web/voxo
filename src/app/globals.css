@@ -66,8 +66,13 @@ body {
 
 /* Custom Selection */
 ::selection {
-  background-color: var(--subtle-gray);
-  color: var(--primary);
+  background-color: #d9d9d9;
+  color: #050505;
+}
+
+::-moz-selection {
+  background-color: #d9d9d9;
+  color: #050505;
 }
 
 /* Scrollbar */

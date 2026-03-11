@@ -18,6 +18,34 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'bveidfigaobmpkfyhcmu.supabase.co',
       },
+      {
+        protocol: 'https',
+        hostname: 'i.scdn.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'image-cdn-ak.spotifycdn.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
+      },
+      {
+        protocol: 'https',
+        hostname: 'upload.wikipedia.org',
+      },
+      {
+        protocol: 'https',
+        hostname: 'e-cdns-images.dzcdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdns-images.dzcdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn-images.dzcdn.net',
+      },
     ],
   },
 };

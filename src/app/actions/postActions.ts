@@ -1,6 +1,8 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { hasValidDefaultAdminSession } from '@/lib/admin-auth-server';
 import { revalidatePath } from 'next/cache';
 import type { PostInput, PostRecord, SearchPostResult } from '@/types/content';
 
@@ -8,6 +10,37 @@ interface SearchPostRow {
     title: string;
     slug: string;
     categories: Array<{ name: string }> | { name: string } | null;
+}
+
+function normalizeRelatedCategories(
+    categories: Array<{ name: string }> | { name: string } | null
+) {
+    return Array.isArray(categories) ? (categories[0] ?? null) : categories;
+}
+
+async function getPostWriteClient() {
+    const supabase = await createClient();
+    const [{ data: { user } }, hasDefaultAdminSession] = await Promise.all([
+        supabase.auth.getUser(),
+        hasValidDefaultAdminSession(),
+    ]);
+
+    if (user) {
+        return { client: supabase, userId: user.id ?? null, usedServiceRole: false };
+    }
+
+    if (hasDefaultAdminSession) {
+        const adminClient = createAdminClient();
+        if (adminClient) {
+            return { client: adminClient, userId: null, usedServiceRole: true };
+        }
+
+        throw new Error(
+            '기본 관리자 로그인으로는 Supabase 쓰기 권한이 부족합니다. .env.local에 SUPABASE_SERVICE_ROLE_KEY를 추가해 주세요.'
+        );
+    }
+
+    return { client: supabase, userId: null, usedServiceRole: false };
 }
 
 export async function getPosts(): Promise<PostRecord[]> {
@@ -34,14 +67,13 @@ export async function getPostById(id: string): Promise<PostRecord> {
 }
 
 export async function createPost(formData: PostInput): Promise<PostRecord> {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { client, userId } = await getPostWriteClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await client
         .from('posts')
         .insert([{
             ...formData,
-            author_id: user?.id
+            author_id: userId
         }])
         .select()
         .single();
@@ -53,9 +85,9 @@ export async function createPost(formData: PostInput): Promise<PostRecord> {
 }
 
 export async function updatePost(id: string, formData: PostInput): Promise<PostRecord> {
-    const supabase = await createClient();
+    const { client } = await getPostWriteClient();
 
-    const { data, error } = await supabase
+    const { data, error } = await client
         .from('posts')
         .update(formData)
         .eq('id', id)
@@ -69,8 +101,8 @@ export async function updatePost(id: string, formData: PostInput): Promise<PostR
 }
 
 export async function deletePost(id: string) {
-    const supabase = await createClient();
-    const { error } = await supabase
+    const { client } = await getPostWriteClient();
+    const { error } = await client
         .from('posts')
         .delete()
         .eq('id', id);
@@ -108,8 +140,80 @@ export async function searchPosts(query: string): Promise<SearchPostResult[]> {
     return ((data ?? []) as SearchPostRow[]).map((post) => ({
         title: post.title,
         slug: post.slug,
-        categories: Array.isArray(post.categories) ? (post.categories[0] ?? null) : post.categories,
+        categories: normalizeRelatedCategories(post.categories),
     }));
+}
+
+export async function getRelatedPosts(slug: string, limit = 3): Promise<PostRecord[]> {
+    const currentPost = await getPostBySlug(slug);
+    if (!currentPost) {
+        return [];
+    }
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('posts')
+        .select('*, categories(name)')
+        .eq('is_published', true)
+        .neq('slug', currentPost.slug)
+        .order('published_at', { ascending: false })
+        .limit(18);
+
+    if (error) {
+        throw error;
+    }
+
+    const candidates = (data ?? []) as PostRecord[];
+    const currentTags = new Set(currentPost.tags ?? []);
+    const currentCategory = currentPost.category_id;
+
+    return candidates
+        .map((post) => {
+            const sharedTags = (post.tags ?? []).filter((tag) => currentTags.has(tag)).length;
+            const sameCategory = post.category_id && currentCategory && post.category_id === currentCategory ? 2 : 0;
+            const viewScore = Math.min((post.view_count ?? 0) / 100, 3);
+            return {
+                post,
+                score: sharedTags * 3 + sameCategory + viewScore,
+            };
+        })
+        .sort((a, b) => b.score - a.score)
+        .slice(0, limit)
+        .map((item) => item.post);
+}
+
+export async function getAdjacentPublishedPosts(slug: string): Promise<{
+    previous: PostRecord | null;
+    next: PostRecord | null;
+}> {
+    const currentPost = await getPostBySlug(slug);
+    if (!currentPost) {
+        return { previous: null, next: null };
+    }
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('posts')
+        .select('*, categories(name)')
+        .eq('is_published', true)
+        .order('published_at', { ascending: false })
+        .limit(50);
+
+    if (error) {
+        throw error;
+    }
+
+    const posts = (data ?? []) as PostRecord[];
+    const currentIndex = posts.findIndex((post) => post.slug === currentPost.slug);
+
+    if (currentIndex === -1) {
+        return { previous: null, next: null };
+    }
+
+    return {
+        previous: posts[currentIndex + 1] ?? null,
+        next: posts[currentIndex - 1] ?? null,
+    };
 }
 
 export async function incrementViewCount(id: string) {

@@ -34,7 +34,11 @@ function buildNewsletterHtml(subject: string, content: string) {
     const htmlBody = content
         .split('\n')
         .map((line) => line.trim())
-        .map((line) => (line ? `<p style="margin:0 0 16px;line-height:1.7;">${line}</p>` : '<div style="height:12px"></div>'))
+        .map((line) =>
+            line
+                ? `<p style="margin:0 0 16px;line-height:1.7;">${line}</p>`
+                : '<div style="height:12px"></div>'
+        )
         .join('');
 
     return `
@@ -95,7 +99,9 @@ async function readNewsletterHistory() {
 
         return parsed.map((item) => ({
             ...item,
-            deliveryType: (item.deliveryType === 'test' ? 'test' : 'broadcast') as 'test' | 'broadcast',
+            deliveryType: (item.deliveryType === 'test' ? 'test' : 'broadcast') as
+                | 'test'
+                | 'broadcast',
         }));
     } catch (error) {
         console.error('Failed to parse newsletter history', error);
@@ -156,10 +162,16 @@ async function sendWithResend(to: string[], subject: string, content: string) {
     });
 
     if (!response.ok) {
-        const errorPayload = (await response.json().catch(() => null)) as ResendErrorResponse | null;
+        const errorPayload = (await response.json().catch(() => null)) as
+            | ResendErrorResponse
+            | null;
+
         return {
             success: false,
-            message: errorPayload?.message || errorPayload?.error || '메일 발송 서비스 응답이 올바르지 않습니다.',
+            message:
+                errorPayload?.message ||
+                errorPayload?.error ||
+                '메일 발송 서비스 응답이 올바르지 않습니다.',
         };
     }
 
@@ -168,9 +180,7 @@ async function sendWithResend(to: string[], subject: string, content: string) {
 
 export async function subscribeNewsletter(email: string) {
     const supabase = await createClient();
-    const { error } = await supabase
-        .from('subscribers')
-        .insert([{ email, status: 'active' }]);
+    const { error } = await supabase.from('subscribers').insert([{ email, status: 'active' }]);
 
     if (error) {
         if (error.code === '23505') {
@@ -199,10 +209,7 @@ export async function getSubscribers() {
 
 export async function deleteSubscriber(id: string) {
     const supabase = await createClient();
-    const { error } = await supabase
-        .from('subscribers')
-        .delete()
-        .eq('id', id);
+    const { error } = await supabase.from('subscribers').delete().eq('id', id);
 
     if (error) {
         throw error;

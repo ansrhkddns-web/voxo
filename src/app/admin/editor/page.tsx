@@ -1,32 +1,55 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import AdminSidebar from "@/components/admin/AdminSidebar";
-import {
-    Save,
-    Send,
-    CirclePlus,
-    ArrowLeft,
-    Music,
-    Loader2
-} from 'lucide-react';
-import Link from 'next/link';
-import Image from 'next/image';
-import toast, { Toaster } from 'react-hot-toast';
-import MarkdownEditor from "@/components/admin/MarkdownEditor";
-import { getCategories } from '@/app/actions/categoryActions';
-import { getTags } from '@/app/actions/tagActions';
-import { createPost, getPostById, updatePost } from '@/app/actions/postActions';
-import { uploadImage } from '@/app/actions/uploadActions';
+import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
+import { getCategories } from '@/app/actions/categoryActions';
+import { createPost, getPostById, updatePost } from '@/app/actions/postActions';
+import { searchArtistImageCandidates } from '@/app/actions/artistImageActions';
+import { searchSpotifyTrackCandidates } from '@/app/actions/spotifyActions';
+import { getTags } from '@/app/actions/tagActions';
+import { uploadImage } from '@/app/actions/uploadActions';
+import AdminSidebar from '@/components/admin/AdminSidebar';
+import {
+    buildAIDraftHandoffKey,
+    type AIDraftHandoff,
+    type AIDraftImageSuggestion,
+    type AIDraftLinkSuggestion,
+} from '@/features/admin-editor/ai-handoff';
+import {
+    extractManagedBodyImages,
+    injectManagedBodyImages,
+    MAX_BODY_IMAGE_SELECTION,
+    type ArtistImageCandidate,
+} from '@/features/admin-editor/artist-image';
+import { AIDraftAssistCard } from '@/features/admin-editor/components/AIDraftAssistCard';
+import { EditorHeader } from '@/features/admin-editor/components/EditorHeader';
+import { LocalDraftNotice } from '@/features/admin-editor/components/LocalDraftNotice';
+import { EditorMainSection } from '@/features/admin-editor/sections/EditorMainSection';
+import { EditorSidebarSection } from '@/features/admin-editor/sections/EditorSidebarSection';
+import {
+    buildHeroExcerpt,
+    buildEditorChecklist,
+    buildEditorContent,
+    buildSeoDescription,
+    buildShareCopy,
+    extractEditorMetadata,
+    filterEditorTags,
+    generatePostSlug,
+    getSpotifyTypeLabel,
+    normalizeEditorTagName,
+} from '@/features/admin-editor/utils';
 import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
 import type { CategoryRecord, PostInput, TagRecord } from '@/types/content';
+import type { SpotifyTrackCandidate } from '@/types/spotify';
 
 function EditorContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const postId = searchParams.get('id');
+    const draftId = searchParams.get('draft');
+    const { t, language } = useAdminLanguage();
 
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
@@ -40,367 +63,781 @@ function EditorContent() {
     const [availableTags, setAvailableTags] = useState<TagRecord[]>([]);
     const [isPublishing, setIsPublishing] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
-    const [loading, setLoading] = useState(!!postId);
+    const [isInlineImageUploading, setIsInlineImageUploading] = useState(false);
+    const [loading, setLoading] = useState(Boolean(postId));
     const [excerpt, setExcerpt] = useState('');
     const [intro, setIntro] = useState('');
+    const [seoDescription, setSeoDescription] = useState('');
+    const [shareCopy, setShareCopy] = useState('');
     const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
-
-    const { t } = useAdminLanguage();
+    const [tagSearch, setTagSearch] = useState('');
+    const [customTag, setCustomTag] = useState('');
+    const [aiHandoff, setAiHandoff] = useState<AIDraftHandoff | null>(null);
+    const [editorSyncKey, setEditorSyncKey] = useState(0);
+    const [artistImageSearchArtist, setArtistImageSearchArtist] = useState('');
+    const [artistImageSearchTrack, setArtistImageSearchTrack] = useState('');
+    const [artistImageSearchAlbum, setArtistImageSearchAlbum] = useState('');
+    const [artistImageCandidates, setArtistImageCandidates] = useState<ArtistImageCandidate[]>([]);
+    const [selectedBodyImages, setSelectedBodyImages] = useState<ArtistImageCandidate[]>([]);
+    const [isSearchingArtistImages, setIsSearchingArtistImages] = useState(false);
+    const [spotifyCandidates, setSpotifyCandidates] = useState<SpotifyTrackCandidate[]>([]);
+    const [isSearchingSpotifyCandidates, setIsSearchingSpotifyCandidates] = useState(false);
+    const [showLocalDraftNotice, setShowLocalDraftNotice] = useState(false);
+    const autoImageSearchKeyRef = useRef('');
 
     useEffect(() => {
-        const fetch = async () => {
-            const data = await getCategories();
-            setCategories(data);
-            const tgData = await getTags();
-            setAvailableTags(tgData);
+        const fetchEditorData = async () => {
+            const [categoryData, tagData] = await Promise.all([getCategories(), getTags()]);
+            setCategories(categoryData);
+            setAvailableTags(tagData);
 
-            if (postId) {
-                try {
-                    const post = await getPostById(postId);
-                    const postContent = post.content ?? '';
-                    setTitle(post.title);
+            if (!postId) {
+                setLoading(false);
+                return;
+            }
 
-                    const metaMatch = postContent.match(/<div id="voxo-metadata" data-excerpt="(.*?)" data-intro="(.*?)"><\/div>/);
-                    if (metaMatch) {
-                        setExcerpt(metaMatch[1].replace(/&quot;/g, '"'));
-                        setIntro(metaMatch[2].replace(/&quot;/g, '"'));
-                        setContent(postContent.replace(/<div id="voxo-metadata".*?<\/div>/, ''));
-                    } else {
-                        setContent(postContent);
-                    }
+            try {
+                const post = await getPostById(postId);
+                const parsedContent = extractEditorMetadata(post.content ?? '');
+                const recommendedExcerpt = buildHeroExcerpt({
+                    title: post.title,
+                    artistName: post.artist_name || '',
+                    intro: parsedContent.intro,
+                    seoDescription: parsedContent.seoDescription,
+                    content: parsedContent.bodyContent,
+                });
 
-                    setCategory(post.category_id || '');
-                    setSpotifyUri(post.spotify_uri || '');
-                    setRating(post.rating?.toString() || '8.0');
-                    setArtistName(post.artist_name || '');
-                    setTags(post.tags || []);
-                    setCoverUrl(post.cover_image || '');
-                } catch {
-                    toast.error('Failed to load archive sequence');
-                } finally {
-                    setLoading(false);
-                }
+                setTitle(post.title);
+                setExcerpt(parsedContent.excerpt || recommendedExcerpt);
+                setIntro(parsedContent.intro);
+                setSeoDescription(parsedContent.seoDescription);
+                setShareCopy(parsedContent.shareCopy);
+                setContent(sanitizeLegacyGeneratedContent(parsedContent.bodyContent));
+                setSelectedBodyImages(extractManagedBodyImages(parsedContent.bodyContent));
+                setEditorSyncKey((prev) => prev + 1);
+                setCategory(post.category_id || '');
+                setSpotifyUri(post.spotify_uri || '');
+                setRating(post.rating?.toString() || '8.0');
+                setArtistName(post.artist_name || '');
+                setTags(post.tags || []);
+                setCoverUrl(post.cover_image || '');
+                setArtistImageSearchAlbum(parsedContent.albumTitle || '');
+            } catch {
+                toast.error(language === 'ko' ? '글 데이터를 불러오지 못했습니다.' : 'Failed to load article');
+            } finally {
+                setLoading(false);
             }
         };
-        fetch();
-    }, [postId]);
 
-    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        void fetchEditorData();
+    }, [language, postId]);
+
+    useEffect(() => {
+        const handoffStorageKey = postId || draftId;
+        if (!handoffStorageKey || typeof window === 'undefined') {
+            return;
+        }
+
+        const savedHandoff = window.localStorage.getItem(buildAIDraftHandoffKey(handoffStorageKey));
+        if (!savedHandoff) {
+            return;
+        }
+
+        try {
+            const parsed = JSON.parse(savedHandoff) as AIDraftHandoff;
+            const handoffBody = extractEditorMetadata(parsed.bodyHtml || '');
+            setAiHandoff(parsed);
+            setSeoDescription((prev) => prev || parsed.seoDescription);
+            setShareCopy((prev) => prev || parsed.shareCopy);
+
+            if (!postId) {
+                setShowLocalDraftNotice(true);
+                setTitle((prev) => prev || parsed.title);
+                setExcerpt(
+                    (prev) =>
+                        prev ||
+                        parsed.excerpt ||
+                        buildHeroExcerpt({
+                            title: parsed.title,
+                            artistName: parsed.artistName,
+                            intro: parsed.intro,
+                            seoDescription: parsed.seoDescription,
+                            content: handoffBody.bodyContent || parsed.bodyHtml || '',
+                        })
+                );
+                setContent(
+                    (prev) =>
+                        prev ||
+                        sanitizeLegacyGeneratedContent(handoffBody.bodyContent || parsed.bodyHtml || '')
+                );
+                setSelectedBodyImages(
+                    extractManagedBodyImages(handoffBody.bodyContent || parsed.bodyHtml || '')
+                );
+                setEditorSyncKey((prev) => prev + 1);
+                setCategory((prev) => prev || parsed.categoryId);
+                setSpotifyUri((prev) => prev || parsed.spotifyUri || '');
+                setArtistName((prev) => prev || parsed.artistName);
+                setTags((prev) => (prev.length > 0 ? prev : parsed.tags));
+                setCoverUrl((prev) => prev || parsed.coverImage || '');
+                setIntro((prev) => prev || parsed.intro);
+                setArtistImageSearchAlbum((prev) => prev || parsed.albumTitle || handoffBody.albumTitle || '');
+            }
+        } catch (error) {
+            console.error('Failed to parse AI draft handoff', error);
+        }
+    }, [draftId, postId]);
+
+    useEffect(() => {
+        setArtistImageSearchArtist((prev) => prev || artistName);
+    }, [artistName]);
+
+    useEffect(() => {
+        if (!aiHandoff) {
+            return;
+        }
+
+        setArtistImageSearchArtist((prev) => prev || aiHandoff.artistName);
+        setArtistImageSearchTrack((prev) => prev || aiHandoff.songTitle);
+        setArtistImageSearchAlbum((prev) => prev || aiHandoff.albumTitle || '');
+    }, [aiHandoff]);
+
+    useEffect(() => {
+        const nextContent = sanitizeLegacyGeneratedContent(
+            injectManagedBodyImages(content, selectedBodyImages)
+        );
+
+        if (nextContent !== content) {
+            setContent(nextContent);
+            setEditorSyncKey((prev) => prev + 1);
+        }
+    }, [content, selectedBodyImages]);
+
+    useEffect(() => {
+        const artist = artistImageSearchArtist.trim();
+        if (!artist || artistImageCandidates.length > 0) {
+            return;
+        }
+
+        if (!aiHandoff && !draftId && !postId) {
+            return;
+        }
+
+        const searchKey = [artist, artistImageSearchTrack.trim(), artistImageSearchAlbum.trim()].join('|');
+        if (!searchKey || autoImageSearchKeyRef.current === searchKey) {
+            return;
+        }
+
+        autoImageSearchKeyRef.current = searchKey;
+
+        const loadCandidates = async () => {
+            setIsSearchingArtistImages(true);
+            try {
+                const candidates = await searchArtistImageCandidates({
+                    artistName: artist,
+                    trackTitle: artistImageSearchTrack,
+                    albumTitle: artistImageSearchAlbum,
+                    excludeImageUrls: Array.from(
+                        new Set([
+                            ...selectedBodyImages.map((image) => image.imageUrl),
+                            coverUrl,
+                        ].filter(Boolean))
+                    ),
+                });
+
+                setArtistImageCandidates(candidates);
+            } catch (error) {
+                console.error('Failed to auto-load artist image candidates', error);
+            } finally {
+                setIsSearchingArtistImages(false);
+            }
+        };
+
+        void loadCandidates();
+    }, [
+        aiHandoff,
+        artistImageCandidates.length,
+        artistImageSearchAlbum,
+        artistImageSearchArtist,
+        artistImageSearchTrack,
+        coverUrl,
+        draftId,
+        postId,
+        selectedBodyImages,
+    ]);
+
+    const escapeHtml = (value: string) =>
+        value
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+
+    void escapeHtml;
+
+    const sanitizeLegacyGeneratedContent = (value: string) =>
+        value
+            .replace(/<p>\s*https?:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)[^<]*<\/p>/gi, '')
+            .replace(/<p>\s*!\[[\s\S]*?\((?:IMAGE_URL|SECOND_IMAGE_URL)[^)]+\)\s*<\/p>/gi, '')
+            .replace(/<p>[\s\S]*?(?:IMAGE_URL|SECOND_IMAGE_URL)[\s\S]*?<\/p>/gi, '')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+
+    const clearDraftSnapshot = () => {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const handoffStorageKey = postId || draftId;
+        if (!handoffStorageKey) {
+            return;
+        }
+
+        window.localStorage.removeItem(buildAIDraftHandoffKey(handoffStorageKey));
+    };
+
+    const uploadEditorImage = async (file: File) => {
+        try {
+            return await uploadImage(file);
+        } catch {
+            toast.error(language === 'ko' ? '이미지 업로드에 실패했습니다.' : 'Upload failed');
+            return '';
+        }
+    };
+
+    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) {
+            return;
+        }
 
         setIsUploading(true);
         try {
-            const url = await uploadImage(file);
+            const url = await uploadEditorImage(file);
+            if (!url) {
+                return;
+            }
+
             setCoverUrl(url);
-            toast.success('Cover image uploaded');
-        } catch {
-            toast.error('Upload failed');
+            toast.success(language === 'ko' ? '커버 이미지를 업로드했습니다.' : 'Cover image uploaded');
         } finally {
             setIsUploading(false);
         }
     };
 
-    const handlePublish = async (isDraft: boolean = false) => {
+    const handleInlineImageUpload = async (file: File) => {
+        setIsInlineImageUploading(true);
+        try {
+            const url = await uploadEditorImage(file);
+            if (url) {
+                toast.success(language === 'ko' ? '본문 이미지를 삽입했습니다.' : 'Inline image inserted');
+            }
+            return url;
+        } finally {
+            setIsInlineImageUploading(false);
+        }
+    };
+
+    const appendHtmlSnippet = (htmlSnippet: string) => {
+        setContent((prev) => `${prev}${prev.trim() ? '\n' : ''}${htmlSnippet}`);
+        setEditorSyncKey((prev) => prev + 1);
+    };
+
+    const handleInsertLinkSuggestion = (suggestion: AIDraftLinkSuggestion) => {
+        appendHtmlSnippet(
+            `<p><strong>${suggestion.label}</strong>: <a href="${suggestion.url}" target="_blank" rel="noopener noreferrer">${suggestion.description}</a></p>`
+        );
+        toast.success(language === 'ko' ? '추천 링크를 본문에 넣었습니다.' : 'Link inserted');
+    };
+
+    const handleInsertImageSuggestion = (suggestion: AIDraftImageSuggestion) => {
+        appendHtmlSnippet(
+            `<blockquote><p><strong>${suggestion.label}</strong></p><p>${suggestion.caption}</p><p>ALT: ${suggestion.altText}</p><p>PROMPT: ${suggestion.prompt}</p></blockquote>`
+        );
+        toast.success(language === 'ko' ? '이미지 메모를 본문에 넣었습니다.' : 'Image note inserted');
+    };
+
+    const handleCreateCustomTag = () => {
+        const normalizedTag = normalizeEditorTagName(customTag);
+        if (!normalizedTag) {
+            return;
+        }
+
+        if (!tags.includes(normalizedTag)) {
+            setTags((prev) => [...prev, normalizedTag]);
+        }
+
+        setCustomTag('');
+        setTagSearch('');
+        setIsTagDropdownOpen(true);
+    };
+
+    const handleSearchArtistImages = async () => {
+        if (!artistImageSearchArtist.trim()) {
+            toast.error(language === 'ko' ? '아티스트 이름을 먼저 입력해 주세요.' : 'Enter an artist name first');
+            return;
+        }
+
+        setIsSearchingArtistImages(true);
+        try {
+            const candidates = await searchArtistImageCandidates({
+                artistName: artistImageSearchArtist,
+                trackTitle: artistImageSearchTrack,
+                albumTitle: artistImageSearchAlbum,
+                excludeImageUrls: Array.from(
+                    new Set([
+                        ...selectedBodyImages.map((image) => image.imageUrl),
+                        coverUrl,
+                    ].filter(Boolean))
+                ),
+            });
+
+            setArtistImageCandidates(candidates);
+
+            if (candidates.length === 0) {
+                toast.error(
+                    language === 'ko'
+                        ? '이미지 후보를 찾지 못했습니다. 아티스트 이름이나 앨범명을 조금 다르게 입력해 보세요.'
+                        : 'No image candidates found'
+                );
+                return;
+            }
+
+            toast.success(
+                language === 'ko'
+                    ? `${candidates.length}개의 이미지 후보를 찾았습니다.`
+                    : `${candidates.length} image candidates found`
+            );
+        } catch {
+            toast.error(language === 'ko' ? '이미지 검색 중 오류가 발생했습니다.' : 'Image search failed');
+        } finally {
+            setIsSearchingArtistImages(false);
+        }
+    };
+
+    const handleSelectArtistImage = (candidate: ArtistImageCandidate) => {
+        setCoverUrl(candidate.imageUrl);
+        toast.success(
+            language === 'ko'
+                ? '선택한 이미지를 기사 대표 이미지로 적용했습니다.'
+                : 'Selected image applied'
+        );
+    };
+
+    const handleInsertArtistImageToBody = (candidate: ArtistImageCandidate) => {
+        handleToggleBodyImageSelection(candidate);
+
+        
+        toast.success(
+            language === 'ko' ? '선택한 이미지를 본문에 삽입했습니다.' : 'Image inserted into body'
+        );
+    };
+
+    void handleInsertArtistImageToBody;
+
+    const handleToggleBodyImageSelection = (candidate: ArtistImageCandidate) => {
+        const existingIndex = selectedBodyImages.findIndex(
+            (image) => image.imageUrl === candidate.imageUrl
+        );
+
+        if (existingIndex >= 0) {
+            setSelectedBodyImages((prev) =>
+                prev.filter((image) => image.imageUrl !== candidate.imageUrl)
+            );
+            toast.success(
+                language === 'ko'
+                    ? '본문 이미지 선택에서 해제했습니다.'
+                    : 'Removed from body image selection'
+            );
+            return;
+        }
+
+        if (selectedBodyImages.length >= MAX_BODY_IMAGE_SELECTION) {
+            toast.error(
+                language === 'ko'
+                    ? '본문 이미지는 2개만 고정할 수 있습니다. 먼저 하나를 해제해 주세요.'
+                    : 'Only two body images can be selected. Remove one first.'
+            );
+            return;
+        }
+
+        const nextSelection = [...selectedBodyImages, candidate];
+        setSelectedBodyImages(nextSelection);
+        toast.success(
+            language === 'ko'
+                ? `본문 이미지 ${nextSelection.length}/2 선택 완료`
+                : `Body image ${nextSelection.length}/2 selected`
+        );
+    };
+
+    const handleSearchSpotifyCandidates = async () => {
+        if (!artistName.trim() || !artistImageSearchTrack.trim()) {
+            toast.error(
+                language === 'ko'
+                    ? '아티스트명과 트랙명을 먼저 확인해 주세요.'
+                    : 'Check the artist and track title first.'
+            );
+            return;
+        }
+
+        setIsSearchingSpotifyCandidates(true);
+        try {
+            const candidates = await searchSpotifyTrackCandidates({
+                artistName,
+                trackTitle: artistImageSearchTrack,
+                albumTitle: artistImageSearchAlbum,
+            });
+
+            setSpotifyCandidates(candidates);
+
+            if (candidates.length === 0) {
+                toast.error(
+                    language === 'ko'
+                        ? 'Spotify 후보를 찾지 못했습니다. 트랙명이나 앨범명을 조금 다르게 입력해 보세요.'
+                        : 'No Spotify candidates found.'
+                );
+                return;
+            }
+
+            toast.success(
+                language === 'ko'
+                    ? `${candidates.length}개의 Spotify 후보를 찾았습니다.`
+                    : `${candidates.length} Spotify candidates found.`
+            );
+        } catch {
+            toast.error(
+                language === 'ko'
+                    ? 'Spotify 후보 검색 중 오류가 발생했습니다.'
+                    : 'Spotify candidate search failed.'
+            );
+        } finally {
+            setIsSearchingSpotifyCandidates(false);
+        }
+    };
+
+    const handleApplySpotifyCandidate = (candidate: SpotifyTrackCandidate) => {
+        setSpotifyUri(candidate.externalUrl);
+        setArtistImageSearchAlbum((prev) => prev || candidate.albumTitle);
+        toast.success(
+            language === 'ko'
+                ? '선택한 Spotify 트랙을 적용했습니다.'
+                : 'Selected Spotify track applied.'
+        );
+    };
+
+    const handlePublish = async (isDraft = false) => {
         if (!title || !content || !category) {
-            toast.error('Required fields missing');
+            toast.error(language === 'ko' ? '필수 항목을 확인해 주세요.' : 'Required fields missing');
             return;
         }
 
         setIsPublishing(true);
         try {
-            const generateSlug = (text: string) => {
-                const sanitized = text
-                    .toLowerCase()
-                    .trim()
-                    .replace(/[^a-z0-9]/g, '-') // Replace EVERYTHING except a-z and 0-9 with hyphens
-                    .replace(/-+/g, '-') // Collapse multiple hyphens
-                    .replace(/^-+|-+$/g, ''); // Trim leading/trailing hyphens
-
-                // Always append an 8-digit random suffix for unique indexing
-                const randomIndex = Math.floor(10000000 + Math.random() * 90000000);
-                const finalSlug = sanitized ? `${sanitized}-${randomIndex}` : `${randomIndex}`;
-                console.log("VOXO_SYSTEM: Generating refined slug ->", finalSlug);
-                return finalSlug;
-            };
-
-            const slug = generateSlug(title);
-            let finalContent = content;
-            if (excerpt || intro) {
-                const safeExcerpt = excerpt.replace(/"/g, '&quot;');
-                const safeIntro = intro.replace(/"/g, '&quot;');
-                finalContent = `<div id="voxo-metadata" data-excerpt="${safeExcerpt}" data-intro="${safeIntro}"></div>` + content;
-            }
+            const computedExcerpt =
+                excerpt.trim() ||
+                buildHeroExcerpt({
+                    title,
+                    artistName,
+                    intro,
+                    seoDescription,
+                    content,
+                });
+            const computedSeoDescription =
+                seoDescription.trim() ||
+                buildSeoDescription({
+                    title,
+                    artistName,
+                    excerpt: computedExcerpt,
+                    intro,
+                    content,
+                });
+            const computedShareCopy =
+                shareCopy.trim() ||
+                buildShareCopy({
+                    title,
+                    artistName,
+                    excerpt: computedExcerpt,
+                });
 
             const postData: PostInput = {
                 title,
-                content: finalContent,
+                content: buildEditorContent(content, {
+                    excerpt: computedExcerpt,
+                    intro,
+                    seoDescription: computedSeoDescription,
+                    shareCopy: computedShareCopy,
+                    albumTitle: artistImageSearchAlbum,
+                }),
                 category_id: category,
                 spotify_uri: spotifyUri,
                 cover_image: coverUrl,
                 rating: parseFloat(rating),
                 artist_name: artistName,
-                tags: tags,
+                tags,
                 is_published: !isDraft,
-                slug
+                slug: generatePostSlug(title),
             };
 
             if (postId) {
                 await updatePost(postId, postData);
-                toast.success(isDraft ? 'Archive updated' : 'Unit recalibrated successfully');
+                toast.success(
+                    isDraft
+                        ? language === 'ko'
+                            ? '글을 업데이트했습니다.'
+                            : 'Article updated'
+                        : language === 'ko'
+                            ? '글을 발행했습니다.'
+                            : 'Article published'
+                );
             } else {
                 await createPost(postData);
-                toast.success(isDraft ? 'Draft sequence saved' : 'Unit published successfully');
+                toast.success(
+                    isDraft
+                        ? language === 'ko'
+                            ? '임시 저장을 완료했습니다.'
+                            : 'Draft saved'
+                        : language === 'ko'
+                            ? '글을 발행했습니다.'
+                            : 'Article published'
+                );
             }
+
+            clearDraftSnapshot();
             router.push('/admin');
         } catch {
-            toast.error('Sync failed');
+            toast.error(language === 'ko' ? '저장 중 오류가 발생했습니다.' : 'Sync failed');
         } finally {
             setIsPublishing(false);
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex min-h-screen bg-black items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="animate-spin text-accent-green" size={32} strokeWidth={1} />
-                    <p className="text-[10px] uppercase tracking-[0.4em] text-gray-500 font-display">{t('decrypting', 'editor')}</p>
-                </div>
-            </div>
-        );
-    }
+    const filteredTags = useMemo(
+        () => filterEditorTags(availableTags, tagSearch),
+        [availableTags, tagSearch]
+    );
 
-    return (
+    const checklist = useMemo(
+        () =>
+            buildEditorChecklist({
+                title,
+                excerpt,
+                intro,
+                seoDescription,
+                shareCopy,
+                content,
+                category,
+                coverUrl,
+                artistName,
+                tags,
+                spotifyUri,
+            }),
+        [
+            title,
+            excerpt,
+            intro,
+            seoDescription,
+            shareCopy,
+            content,
+            category,
+            coverUrl,
+            artistName,
+            tags,
+            spotifyUri,
+        ]
+    );
+
+    return loading ? (
+        <div className="flex min-h-screen items-center justify-center bg-black">
+            <div className="flex flex-col items-center gap-4">
+                <Loader2 className="animate-spin text-accent-green" size={32} strokeWidth={1} />
+                <p className="font-display text-[10px] uppercase tracking-[0.4em] text-gray-500">
+                    {t('decrypting', 'editor')}
+                </p>
+            </div>
+        </div>
+    ) : (
         <div className="flex min-h-screen bg-black text-white selection:bg-accent-green/30">
             <Toaster position="top-center" />
             <AdminSidebar />
 
-            <main className="flex-1 flex flex-col h-screen overflow-hidden">
-                <header className="h-20 border-b border-white/5 bg-black/80 backdrop-blur-xl flex items-center justify-between px-10 sticky top-0 z-50">
-                    <div className="flex items-center gap-6">
-                        <Link href="/admin" className="text-gray-500 hover:text-white transition-colors">
-                            <ArrowLeft size={18} strokeWidth={1} />
-                        </Link>
-                        <div className="h-4 w-[1px] bg-white/10" />
-                        <span className="text-[10px] uppercase tracking-[0.4em] text-gray-400 font-display">{t('title', 'editor')}</span>
-                    </div>
+            <main className="flex h-screen flex-1 flex-col overflow-hidden">
+                <EditorHeader
+                    title={t('title', 'editor')}
+                    saveDraftLabel={t('saveDraft', 'editor')}
+                    publishLabel={t('publish', 'editor')}
+                    publishingLabel={t('transmit', 'editor')}
+                    isPublishing={isPublishing}
+                    onSaveDraft={() => void handlePublish(true)}
+                    onPublish={() => void handlePublish(false)}
+                />
 
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => handlePublish(true)}
-                            className="text-[10px] uppercase tracking-[0.2em] font-display text-gray-500 hover:text-white px-6 py-2 border border-white/5 hover:border-white/20 transition-all flex items-center gap-2"
-                        >
-                            <Save size={14} />
-                            {t('saveDraft', 'editor')}
-                        </button>
-                        <button
-                            onClick={() => handlePublish(false)}
-                            disabled={isPublishing}
-                            className="text-[10px] uppercase tracking-[0.2em] font-display bg-white text-black px-8 py-2.5 hover:bg-accent-green transition-all flex items-center gap-2 font-bold"
-                        >
-                            {isPublishing ? <Loader2 className="animate-spin" size={14} /> : <Send size={14} />}
-                            {isPublishing ? t('transmit', 'editor') : t('publish', 'editor')}
-                        </button>
-                    </div>
-                </header>
+                <div className="custom-scrollbar flex-1 overflow-y-auto p-5 sm:p-8 lg:p-10">
+                    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 lg:gap-12 xl:grid-cols-[minmax(0,1fr)_360px]">
+                        <div className="space-y-8">
+                            {draftId && showLocalDraftNotice ? (
+                                <LocalDraftNotice onDismiss={() => setShowLocalDraftNotice(false)} />
+                            ) : null}
 
-                <div className="flex-1 overflow-y-auto p-12 custom-scrollbar">
-                    <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-20">
-                        <div className="space-y-12">
-                            <textarea
-                                placeholder={t('headlinePlaceholder', 'editor')}
-                                className="w-full bg-transparent text-4xl md:text-6xl font-display font-light uppercase tracking-tighter text-white placeholder:text-gray-900 focus:outline-none resize-none overflow-hidden py-2 leading-[0.9] border-none focus:ring-0"
-                                rows={1}
-                                value={title}
-                                onChange={(e) => {
-                                    setTitle(e.target.value);
-                                    e.target.style.height = 'auto';
-                                    e.target.style.height = e.target.scrollHeight + 'px';
+                            {aiHandoff ? (
+                                <AIDraftAssistCard
+                                    handoff={aiHandoff}
+                                    onApplyTags={() => {
+                                        setTags((prev) => Array.from(new Set([...prev, ...aiHandoff.tags])));
+                                        toast.success(
+                                            language === 'ko'
+                                                ? 'AI 추천 태그를 다시 적용했습니다.'
+                                                : 'AI tags applied'
+                                        );
+                                    }}
+                                    onApplySpotify={() => {
+                                        if (!aiHandoff.spotifyUri) {
+                                            return;
+                                        }
+
+                                        setSpotifyUri(aiHandoff.spotifyUri);
+                                        toast.success(
+                                            language === 'ko'
+                                                ? 'AI가 찾은 Spotify 정보를 적용했습니다.'
+                                                : 'Spotify info applied'
+                                        );
+                                    }}
+                                    onApplyCover={() => {
+                                        if (!aiHandoff.coverImage) {
+                                            return;
+                                        }
+
+                                        setCoverUrl(aiHandoff.coverImage);
+                                        toast.success(
+                                            language === 'ko'
+                                                ? 'AI가 찾은 커버 이미지를 적용했습니다.'
+                                                : 'Cover image applied'
+                                        );
+                                    }}
+                                    onInsertLinkSuggestion={handleInsertLinkSuggestion}
+                                    onInsertImageSuggestion={handleInsertImageSuggestion}
+                                />
+                            ) : null}
+
+                            <EditorMainSection
+                                language={language}
+                                title={title}
+                                excerpt={excerpt}
+                                intro={intro}
+                                seoDescription={seoDescription}
+                                shareCopy={shareCopy}
+                                coverUrl={coverUrl}
+                                spotifyUri={spotifyUri}
+                                editorSyncKey={editorSyncKey}
+                                isUploading={isUploading}
+                                isInlineImageUploading={isInlineImageUploading}
+                                content={content}
+                                headlinePlaceholder={t('headlinePlaceholder', 'editor')}
+                                uploadLabel={t('injectVisual', 'editor')}
+                                replaceImageLabel={t('replaceImage', 'editor')}
+                                artistImageSearchArtist={artistImageSearchArtist}
+                                artistImageSearchTrack={artistImageSearchTrack}
+                                artistImageSearchAlbum={artistImageSearchAlbum}
+                                artistImageCandidates={artistImageCandidates}
+                                selectedBodyImages={selectedBodyImages}
+                                isSearchingArtistImages={isSearchingArtistImages}
+                                recommendedExcerpt={buildHeroExcerpt({
+                                    title,
+                                    artistName,
+                                    intro,
+                                    seoDescription,
+                                    content,
+                                })}
+                                onTitleChange={(value, element) => {
+                                    setTitle(value);
+                                    element.style.height = 'auto';
+                                    element.style.height = `${element.scrollHeight}px`;
                                 }}
+                                onExcerptChange={setExcerpt}
+                                onIntroChange={setIntro}
+                                onSeoDescriptionChange={setSeoDescription}
+                                onShareCopyChange={setShareCopy}
+                                onContentChange={setContent}
+                                onImageUpload={handleImageUpload}
+                                onInlineImageUpload={handleInlineImageUpload}
+                                onArtistImageSearchArtistChange={setArtistImageSearchArtist}
+                                onArtistImageSearchTrackChange={setArtistImageSearchTrack}
+                                onArtistImageSearchAlbumChange={setArtistImageSearchAlbum}
+                                onSearchArtistImages={() => void handleSearchArtistImages()}
+                                onSelectArtistImage={handleSelectArtistImage}
+                                onToggleArtistBodyImageSelection={handleToggleBodyImageSelection}
                             />
-
-                            <div className="pt-2">
-                                <label className="text-[10px] uppercase tracking-[0.3em] text-accent-green block mb-4 font-display">Hero Excerpt</label>
-                                <textarea
-                                    placeholder="Exploratory resonance and architectural analysis..."
-                                    className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-gray-300 text-sm h-24 resize-none font-serif italic focus:outline-none focus:border-accent-green transition-all"
-                                    value={excerpt}
-                                    onChange={(e) => setExcerpt(e.target.value)}
-                                />
-                            </div>
-
-                            {/* Cover Image Upload Area */}
-                            <label className="relative aspect-[21/9] w-full bg-gray-950 border border-white/5 flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-accent-green/30 transition-all overflow-hidden group">
-                                {coverUrl ? (
-                                    <div className="relative w-full h-full">
-                                        <Image
-                                            src={coverUrl}
-                                            alt="Cover"
-                                            fill
-                                            sizes="(max-width: 1024px) 100vw, 1200px"
-                                            className="object-cover transition-transform duration-700 group-hover:scale-105"
-                                        />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                            <span className="text-[10px] uppercase tracking-widest bg-black/80 px-4 py-2 border border-white/10">{t('replaceImage', 'editor')}</span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="text-center space-y-4">
-                                        <div className="relative inline-block">
-                                            {isUploading ? <Loader2 className="animate-spin text-accent-green" size={24} /> : <CirclePlus size={24} className="text-gray-700 group-hover:text-accent-green transition-colors" strokeWidth={1} />}
-                                        </div>
-                                        <p className="text-[10px] uppercase tracking-[0.3em] text-gray-600 font-display">{t('injectVisual', 'editor')}</p>
-                                    </div>
-                                )}
-                                <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
-                            </label>
-
-                            <div className="pt-2">
-                                <label className="text-[10px] uppercase tracking-[0.3em] text-accent-green block mb-4 font-display">Content Intro Hook</label>
-                                <textarea
-                                    placeholder="Examining the resonance within..."
-                                    className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-gray-300 text-sm h-16 resize-none font-serif italic focus:outline-none focus:border-accent-green transition-all"
-                                    value={intro}
-                                    onChange={(e) => setIntro(e.target.value)}
-                                />
-                            </div>
-
-                            <div className="border-t border-white/5 pt-12">
-                                <MarkdownEditor
-                                    content={content}
-                                    onChange={setContent}
-                                />
-                            </div>
                         </div>
 
-                        <aside className="space-y-12">
-                            <div className="space-y-10 border-l border-white/5 pl-10">
-                                <div>
-                                    <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">{t('reviewRating', 'editor')}</label>
-                                    <input
-                                        type="number"
-                                        step="0.1"
-                                        min="0"
-                                        max="10"
-                                        placeholder="8.0"
-                                        className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-white text-3xl font-display tracking-widest focus:outline-none focus:border-accent-green transition-all"
-                                        value={rating}
-                                        onChange={(e) => setRating(e.target.value)}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">{t('artistName', 'editor')}</label>
-                                    <input
-                                        placeholder={t('artistPlaceholder', 'editor')}
-                                        className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-white text-[10px] tracking-widest focus:outline-none focus:border-accent-green transition-all"
-                                        value={artistName}
-                                        onChange={(e) => setArtistName(e.target.value)}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">{t('metaClass', 'editor')}</label>
-                                    <select
-                                        className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-white text-[10px] uppercase tracking-widest focus:outline-none focus:border-accent-green transition-all appearance-none cursor-pointer"
-                                        value={category}
-                                        onChange={(e) => setCategory(e.target.value)}
-                                    >
-                                        <option value="" className="bg-black">{t('selectArchive', 'editor')}</option>
-                                        {categories.map(cat => (
-                                            <option key={cat.id} value={cat.id} className="bg-black">{cat.name.toUpperCase()}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">{t('tags', 'editor')}</label>
-                                    <div className="relative">
-                                        <div
-                                            className="w-full bg-transparent border-b border-white/10 rounded-none py-3 px-0 text-white min-h-[45px] flex flex-wrap gap-2 cursor-pointer focus:outline-none focus:border-accent-green transition-all"
-                                            onClick={() => setIsTagDropdownOpen(!isTagDropdownOpen)}
-                                        >
-                                            {tags.length === 0 && <span className="text-[10px] tracking-widest text-gray-500 uppercase font-display select-none">{t('tagsPlaceholder', 'editor')}</span>}
-                                            {tags.map(tag => (
-                                                <span
-                                                    key={tag}
-                                                    className="bg-accent-green/10 border border-accent-green/30 text-accent-green text-[9px] uppercase tracking-widest px-2 py-1 flex items-center gap-1"
-                                                >
-                                                    {tag}
-                                                    <button
-                                                        type="button"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setTags(tags.filter(t => t !== tag));
-                                                        }}
-                                                        className="hover:text-white transition-colors"
-                                                    >
-                                                        &times;
-                                                    </button>
-                                                </span>
-                                            ))}
-                                        </div>
-                                        {isTagDropdownOpen && (
-                                            <div className="absolute top-full left-0 w-full bg-gray-950 border border-white/10 mt-1 max-h-48 overflow-y-auto z-10 shadow-2xl">
-                                                {availableTags.length === 0 ? (
-                                                    <div className="p-4 text-[9px] uppercase tracking-widest text-gray-500 font-display">No tags configured</div>
-                                                ) : (
-                                                    availableTags.map(tag => (
-                                                        <div
-                                                            key={tag.id}
-                                                            onClick={() => {
-                                                                if (!tags.includes(tag.name)) {
-                                                                    setTags([...tags, tag.name]);
-                                                                } else {
-                                                                    setTags(tags.filter(t => t !== tag.name));
-                                                                }
-                                                            }}
-                                                            className={`p-3 text-[10px] uppercase tracking-widest font-display cursor-pointer hover:bg-white/5 transition-colors flex items-center justify-between ${tags.includes(tag.name) ? 'text-accent-green bg-accent-green/5' : 'text-gray-400'
-                                                                }`}
-                                                        >
-                                                            <span>{tag.name}</span>
-                                                            {tags.includes(tag.name) && <span className="w-1.5 h-1.5 bg-accent-green rounded-full"></span>}
-                                                        </div>
-                                                    ))
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="text-[9px] uppercase tracking-[0.3em] text-gray-600 block mb-6 font-display">{t('audioInt', 'editor')}</label>
-                                    <div className="relative">
-                                        <Music className="absolute left-0 top-1/2 -translate-y-1/2 text-gray-700" size={14} strokeWidth={1} />
-                                        <input
-                                            placeholder={t('audioPlaceholder', 'editor')}
-                                            className="w-full bg-transparent border-b border-white/10 rounded-none py-3 pl-8 pr-0 text-white text-[10px] tracking-widest focus:outline-none focus:border-accent-green transition-all font-mono"
-                                            value={spotifyUri}
-                                            onChange={(e) => setSpotifyUri(e.target.value)}
-                                        />
-                                    </div>
-                                    <p className="text-[8px] text-gray-700 mt-4 uppercase tracking-widest leading-relaxed">{t('audioSupport', 'editor')}</p>
-                                </div>
-                            </div>
-                        </aside>
+                        <EditorSidebarSection
+                            language={language}
+                            rating={rating}
+                            artistName={artistName}
+                            trackTitle={artistImageSearchTrack}
+                            albumTitle={artistImageSearchAlbum}
+                            category={category}
+                            spotifyUri={spotifyUri}
+                            spotifyCandidates={spotifyCandidates}
+                            isSearchingSpotifyCandidates={isSearchingSpotifyCandidates}
+                            tags={tags}
+                            tagSearch={tagSearch}
+                            customTag={customTag}
+                            spotifyTypeLabel={getSpotifyTypeLabel(spotifyUri)}
+                            categories={categories}
+                            availableTags={availableTags}
+                            filteredTags={filteredTags}
+                            checklist={checklist}
+                            isTagDropdownOpen={isTagDropdownOpen}
+                            reviewRatingLabel={t('reviewRating', 'editor')}
+                            artistNameLabel={t('artistName', 'editor')}
+                            artistPlaceholder={t('artistPlaceholder', 'editor')}
+                            categoryLabel={t('metaClass', 'editor')}
+                            selectCategoryLabel={t('selectArchive', 'editor')}
+                            tagsLabel={t('tags', 'editor')}
+                            tagsPlaceholder={t('tagsPlaceholder', 'editor')}
+                            audioLabel={t('audioInt', 'editor')}
+                            audioPlaceholder={t('audioPlaceholder', 'editor')}
+                            audioSupport={t('audioSupport', 'editor')}
+                            noTagsLabel={language === 'ko' ? '등록된 태그가 없습니다' : 'No tags configured'}
+                            onRatingChange={setRating}
+                            onArtistNameChange={setArtistName}
+                            onTrackTitleChange={setArtistImageSearchTrack}
+                            onAlbumTitleChange={setArtistImageSearchAlbum}
+                            onCategoryChange={setCategory}
+                            onSpotifyUriChange={setSpotifyUri}
+                            onSearchSpotifyCandidates={() => void handleSearchSpotifyCandidates()}
+                            onApplySpotifyCandidate={handleApplySpotifyCandidate}
+                            onTagSearchChange={setTagSearch}
+                            onCustomTagChange={setCustomTag}
+                            onCreateCustomTag={handleCreateCustomTag}
+                            onToggleTags={() => setIsTagDropdownOpen((prev) => !prev)}
+                            onToggleTag={(tagName) => {
+                                setTags((prev) =>
+                                    prev.includes(tagName)
+                                        ? prev.filter((item) => item !== tagName)
+                                        : [...prev, tagName]
+                                );
+                            }}
+                            onRemoveTag={(tagName) => {
+                                setTags((prev) => prev.filter((item) => item !== tagName));
+                            }}
+                        />
                     </div>
                 </div>
             </main>
 
-            {/* Grainy Noise Overlay */}
-            <div className="fixed inset-0 pointer-events-none opacity-[0.02] z-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+            <div className="pointer-events-none fixed inset-0 z-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02]" />
         </div>
     );
 }
 
 export default function EditorPage() {
     return (
-        <Suspense fallback={
-            <div className="flex min-h-screen bg-black items-center justify-center">
-                <Loader2 className="animate-spin text-accent-green" size={32} strokeWidth={1} />
-            </div>
-        }>
+        <Suspense
+            fallback={
+                <div className="flex min-h-screen items-center justify-center bg-black">
+                    <Loader2 className="animate-spin text-accent-green" size={32} strokeWidth={1} />
+                </div>
+            }
+        >
             <EditorContent />
         </Suspense>
     );
