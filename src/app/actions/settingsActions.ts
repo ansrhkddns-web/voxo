@@ -1,8 +1,9 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { hashAdminPassword } from '@/lib/admin-auth';
+import { CACHE_TAGS } from '@/lib/cache-tags';
 
 interface SettingRow {
     setting_key: string;
@@ -189,6 +190,7 @@ export async function updateSetting(key: string, value: string) {
         revalidatePath('/login');
         revalidatePath('/admin');
         revalidatePath('/admin/settings');
+        revalidateTag(CACHE_TAGS.siteSettings, 'max');
 
         return { success: true };
     } catch (error) {

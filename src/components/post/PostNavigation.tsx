@@ -1,11 +1,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
-import type { PostRecord } from '@/types/content';
+import type { PublicPostSummary } from '@/types/content';
 
 interface PostNavigationProps {
-    previous: PostRecord | null;
-    next: PostRecord | null;
+    previous: PublicPostSummary | null;
+    next: PublicPostSummary | null;
 }
 
 function NavigationCard({
@@ -13,7 +13,7 @@ function NavigationCard({
     post,
 }: {
     direction: 'previous' | 'next';
-    post: PostRecord | null;
+    post: PublicPostSummary | null;
 }) {
     const isPrevious = direction === 'previous';
 

@@ -179,7 +179,10 @@ export default function LoginPage() {
                 </p>
             </footer>
 
-            <div className="pointer-events-none fixed inset-0 z-50 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03]"></div>
+            <div
+                className="pointer-events-none fixed inset-0 z-50 opacity-[0.03]"
+                style={{ backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')" }}
+            ></div>
         </div>
     );
 }

@@ -3,14 +3,34 @@
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { hasValidDefaultAdminSession } from '@/lib/admin-auth-server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { generatePostSlug } from '@/features/admin-editor/utils';
-import type { PostInput, PostRecord, SearchPostResult } from '@/types/content';
+import { CACHE_TAGS } from '@/lib/cache-tags';
+import { createPublicClient } from '@/lib/supabase/public';
+import type { AdminPostSummary, PostInput, PostRecord, SearchPostResult } from '@/types/content';
 
 interface SearchPostRow {
     title: string;
     slug: string;
     categories: Array<{ name: string }> | { name: string } | null;
+}
+
+interface AdminPostSummaryRow {
+    id: string;
+    title: string;
+    slug: string;
+    category_id: string | null;
+    cover_image: string | null;
+    rating: number | null;
+    artist_name: string | null;
+    tags: string[] | null;
+    is_published: boolean;
+    author_id?: string | null;
+    created_at: string;
+    updated_at?: string;
+    published_at?: string | null;
+    view_count?: number | null;
+    categories: Array<{ name: string; slug?: string }> | { name: string; slug?: string } | null;
 }
 
 interface SupabaseColumnError {
@@ -46,11 +66,24 @@ type PersistedPostPayload = Omit<PostInput, 'content' | 'category_id' | 'spotify
 };
 
 const POST_REVISION_LIMIT = 12;
+const ADMIN_POST_SUMMARY_SELECT =
+    'id, title, slug, category_id, cover_image, rating, artist_name, tags, is_published, author_id, created_at, updated_at, published_at, view_count, categories(name, slug)';
 
 function normalizeRelatedCategories(
-    categories: Array<{ name: string }> | { name: string } | null
+    categories:
+        | Array<{ name: string; slug?: string }>
+        | { name: string; slug?: string }
+        | null
 ) {
     return Array.isArray(categories) ? (categories[0] ?? null) : categories;
+}
+
+function normalizeAdminPostSummaries(rows: AdminPostSummaryRow[]) {
+    return rows.map((post) => ({
+        ...post,
+        categories: normalizeRelatedCategories(post.categories),
+        tags: post.tags ?? [],
+    }));
 }
 
 function getPostRevisionSettingKey(postId: string) {
@@ -65,21 +98,18 @@ async function getPostWriteClient() {
     ]);
 
     if (user) {
-        return { client: supabase, userId: user.id ?? null, usedServiceRole: false };
+        return { client: supabase, userId: user.id ?? null, usedServiceRole: false, missingServiceRole: false };
     }
 
     if (hasDefaultAdminSession) {
         const adminClient = createAdminClient();
         if (adminClient) {
-            return { client: adminClient, userId: null, usedServiceRole: true };
+            return { client: adminClient, userId: null, usedServiceRole: true, missingServiceRole: false };
         }
-
-        throw new Error(
-            '기본 관리자 로그인으로는 Supabase 쓰기 권한이 부족합니다. .env.local에 SUPABASE_SERVICE_ROLE_KEY를 추가해 주세요.'
-        );
+        return { client: supabase, userId: null, usedServiceRole: false, missingServiceRole: true };
     }
 
-    return { client: supabase, userId: null, usedServiceRole: false };
+    return { client: supabase, userId: null, usedServiceRole: false, missingServiceRole: false };
 }
 
 async function getPublishedPostsOrdered(limit: number) {
@@ -160,7 +190,34 @@ async function buildUniquePostSlug(
     return `${initialSlug}-${Date.now()}`;
 }
 
+function isPostWritePermissionError(error: unknown) {
+    const columnError = error as SupabaseColumnError | null;
+    const message = columnError?.message?.toLowerCase() || '';
+
+    return (
+        columnError?.code === '42501' ||
+        message.includes('row-level security') ||
+        message.includes('permission denied') ||
+        message.includes('not allowed')
+    );
+}
+
+function toPostWriteError(error: unknown, missingServiceRole = false) {
+    if (missingServiceRole && isPostWritePermissionError(error)) {
+        return new Error(
+            '기본 관리자 로그인만으로는 글 저장 권한이 부족합니다. `.env.local`에 `SUPABASE_SERVICE_ROLE_KEY`를 추가한 뒤 다시 발행해 주세요.'
+        );
+    }
+
+    if (error instanceof Error) {
+        return error;
+    }
+
+    return new Error('글 저장 중 오류가 발생했습니다.');
+}
+
 async function revalidatePostSurfaces(post: PostRecord, previousSlug?: string | null) {
+    revalidateTag(CACHE_TAGS.posts, 'max');
     revalidatePath('/admin');
     revalidatePath('/admin/posts');
     revalidatePath('/');
@@ -283,8 +340,46 @@ export async function getPosts(): Promise<PostRecord[]> {
     return (createdQuery.data ?? []) as PostRecord[];
 }
 
-export async function getPostById(id: string): Promise<PostRecord> {
+export async function getAdminPostSummaries(): Promise<AdminPostSummary[]> {
     const supabase = await createClient();
+    const publishedQuery = await supabase
+        .from('posts')
+        .select(ADMIN_POST_SUMMARY_SELECT)
+        .order('published_at', { ascending: false })
+        .order('created_at', { ascending: false });
+
+    if (!publishedQuery.error) {
+        return normalizeAdminPostSummaries(
+            (publishedQuery.data ?? []) as unknown as AdminPostSummaryRow[]
+        );
+    }
+
+    if (!isMissingColumnError(publishedQuery.error, 'published_at')) {
+        throw publishedQuery.error;
+    }
+
+    const createdQuery = await supabase
+        .from('posts')
+        .select(ADMIN_POST_SUMMARY_SELECT.replace(', published_at', ''))
+        .order('created_at', { ascending: false });
+
+    if (createdQuery.error) {
+        throw createdQuery.error;
+    }
+
+    return normalizeAdminPostSummaries(
+        (createdQuery.data ?? []) as unknown as AdminPostSummaryRow[]
+    ).map((post) => ({
+        ...post,
+        published_at: post.published_at ?? null,
+    }));
+}
+
+export async function getPostById(
+    id: string,
+    client?: Awaited<ReturnType<typeof getPostWriteClient>>['client']
+): Promise<PostRecord> {
+    const supabase = client ?? await createClient();
     const { data, error } = await supabase
         .from('posts')
         .select('*, categories(name)')
@@ -300,8 +395,10 @@ export async function getPostRevisionHistory(postId: string): Promise<PostRevisi
 }
 
 export async function createPost(formData: PostInput): Promise<PostRecord> {
-    const { client, userId } = await getPostWriteClient();
-    const slug = await buildUniquePostSlug(client, formData.title, formData.slug);
+    const { client, userId, missingServiceRole } = await getPostWriteClient();
+    const slug = await buildUniquePostSlug(client, formData.title, formData.slug).catch((error) => {
+        throw toPostWriteError(error, missingServiceRole);
+    });
     const payload = buildPersistedPostPayload(formData, {
         slug,
         authorId: userId,
@@ -319,7 +416,7 @@ export async function createPost(formData: PostInput): Promise<PostRecord> {
     }
 
     if (!isMissingColumnError(insertWithPublishedAt.error, 'published_at')) {
-        throw insertWithPublishedAt.error;
+        throw toPostWriteError(insertWithPublishedAt.error, missingServiceRole);
     }
 
     const { published_at: _publishedAt, ...fallbackPayload } = payload;
@@ -332,7 +429,7 @@ export async function createPost(formData: PostInput): Promise<PostRecord> {
         .single();
 
     if (insertWithoutPublishedAt.error) {
-        throw insertWithoutPublishedAt.error;
+        throw toPostWriteError(insertWithoutPublishedAt.error, missingServiceRole);
     }
 
     await revalidatePostSurfaces(insertWithoutPublishedAt.data as PostRecord);
@@ -340,10 +437,16 @@ export async function createPost(formData: PostInput): Promise<PostRecord> {
 }
 
 export async function updatePost(id: string, formData: PostInput): Promise<PostRecord> {
-    const { client } = await getPostWriteClient();
-    const existingPost = await getPostById(id);
+    const { client, missingServiceRole } = await getPostWriteClient();
+    const existingPost = await getPostById(id, client).catch((error) => {
+        throw toPostWriteError(error, missingServiceRole);
+    });
     await appendPostRevisionSnapshot(client, existingPost);
-    const slug = existingPost.slug || await buildUniquePostSlug(client, formData.title, formData.slug, id);
+    const slug =
+        existingPost.slug ||
+        await buildUniquePostSlug(client, formData.title, formData.slug, id).catch((error) => {
+            throw toPostWriteError(error, missingServiceRole);
+        });
     const payload = buildPersistedPostPayload(formData, {
         slug,
         existingPost,
@@ -362,7 +465,7 @@ export async function updatePost(id: string, formData: PostInput): Promise<PostR
     }
 
     if (!isMissingColumnError(updateWithPublishedAt.error, 'published_at')) {
-        throw updateWithPublishedAt.error;
+        throw toPostWriteError(updateWithPublishedAt.error, missingServiceRole);
     }
 
     const { published_at: _publishedAt, ...fallbackPayload } = payload;
@@ -376,7 +479,7 @@ export async function updatePost(id: string, formData: PostInput): Promise<PostR
         .single();
 
     if (updateWithoutPublishedAt.error) {
-        throw updateWithoutPublishedAt.error;
+        throw toPostWriteError(updateWithoutPublishedAt.error, missingServiceRole);
     }
 
     await revalidatePostSurfaces(updateWithoutPublishedAt.data as PostRecord, existingPost.slug);
@@ -392,6 +495,7 @@ export async function deletePost(id: string) {
         .eq('id', id);
 
     if (error) throw error;
+    revalidateTag(CACHE_TAGS.posts, 'max');
     revalidatePath('/admin');
     revalidatePath('/admin/posts');
     revalidatePath('/');
@@ -472,7 +576,7 @@ export async function getPostBySlug(slug: string): Promise<PostRecord | null> {
 }
 
 export async function searchPosts(query: string): Promise<SearchPostResult[]> {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data, error } = await supabase
         .from('posts')
         .select('title, slug, categories(name)')

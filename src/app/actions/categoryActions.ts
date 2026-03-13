@@ -1,7 +1,8 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { CACHE_TAGS } from '@/lib/cache-tags';
 import type { CategoryRecord } from '@/types/content';
 
 interface CategoryUsageRow extends CategoryRecord {
@@ -78,6 +79,7 @@ export async function createCategory(name: string, slug: string) {
         .single();
 
     if (error) throw error;
+    revalidateTag(CACHE_TAGS.posts, 'max');
     revalidatePath('/admin/categories');
     return data;
 }
@@ -100,6 +102,7 @@ export async function deleteCategory(id: string) {
         .eq('id', id);
 
     if (error) throw error;
+    revalidateTag(CACHE_TAGS.posts, 'max');
     revalidatePath('/admin/categories');
 }
 
@@ -131,6 +134,7 @@ export async function updateCategory(id: string, name: string, slug: string) {
         .single();
 
     if (error) throw error;
+    revalidateTag(CACHE_TAGS.posts, 'max');
     revalidatePath('/admin/categories');
     return data;
 }

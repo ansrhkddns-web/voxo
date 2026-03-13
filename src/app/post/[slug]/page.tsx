@@ -1,5 +1,6 @@
-import React from 'react';
-export const dynamic = 'force-dynamic';
+import React, { Suspense } from 'react';
+
+export const revalidate = 300;
 
 import type { Metadata } from 'next';
 import Image from 'next/image';
@@ -7,7 +8,7 @@ import { Eye } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import Footer from '@/components/layout/Footer';
 import Navbar from '@/components/layout/Navbar';
-import ArtistStats from '@/components/post/ArtistStats';
+import ArtistStatsPanel, { ArtistStatsSkeleton } from '@/components/post/ArtistStatsPanel';
 import PostNavigation from '@/components/post/PostNavigation';
 import PostShareActions from '@/components/post/PostShareActions';
 import PostTableOfContents from '@/components/post/PostTableOfContents';
@@ -16,16 +17,10 @@ import ReadingProgressBar from '@/components/post/ReadingProgressBar';
 import RelatedPostsSection from '@/components/post/RelatedPostsSection';
 import BottomSpotifyPlayback from '@/components/post/BottomSpotifyPlayback';
 import ViewCounter from '@/components/post/ViewCounter';
-import {
-    getAdjacentPublishedPosts,
-    getPostBySlug,
-    getRelatedPosts,
-} from '@/app/actions/postActions';
-import { getArtistStats } from '@/app/actions/spotifyActions';
 import { extractEditorMetadata } from '@/features/admin-editor/utils';
+import { getPublicPostBySlug, getPublicPostCompanions } from '@/lib/public-data';
 import { estimateReadTimeMinutes } from '@/lib/utils';
 import type { PostRecord } from '@/types/content';
-import type { SpotifyStatsResult } from '@/types/spotify';
 
 function stripEmbeddedSpotifyPlayers(content: string) {
     return content
@@ -50,56 +45,24 @@ function stripEmbeddedSpotifyPlayers(content: string) {
 async function resolvePost(slug: string) {
     const decodedSlug = decodeURIComponent(slug);
 
-    let post: PostRecord | null = await getPostBySlug(decodedSlug);
+    let post: PostRecord | null = await getPublicPostBySlug(decodedSlug);
     if (!post && slug !== decodedSlug) {
-        post = await getPostBySlug(slug);
-    }
-
-    if (!post) {
-        const { createClient } = await import('@/lib/supabase/server');
-        const supabase = await createClient();
-        const { data } = await supabase
-            .from('posts')
-            .select('*, categories(name)')
-            .eq('slug', decodedSlug)
-            .eq('is_published', true)
-            .maybeSingle();
-        post = data as PostRecord | null;
+        post = await getPublicPostBySlug(slug);
     }
 
     return post;
 }
 
-async function resolveArtistStats(post: PostRecord): Promise<SpotifyStatsResult> {
-    if (!post.spotify_uri && !post.artist_name && !post.spotify_artist_id) {
-        return null;
-    }
-
-    try {
-        return await getArtistStats(
-            post.spotify_uri || '',
-            post.artist_name || '',
-            post.spotify_artist_id || '',
-        );
-    } catch (error) {
-        console.error('Failed to load Spotify artist stats', error);
-        return null;
-    }
-}
-
 async function resolvePostCompanions(slug: string) {
-    const [relatedResult, adjacentResult] = await Promise.allSettled([
-        getRelatedPosts(slug, 3),
-        getAdjacentPublishedPosts(slug),
-    ]);
-
-    return {
-        relatedPosts: relatedResult.status === 'fulfilled' ? relatedResult.value : [],
-        adjacentPosts:
-            adjacentResult.status === 'fulfilled'
-                ? adjacentResult.value
-                : { previous: null, next: null },
-    };
+    try {
+        return await getPublicPostCompanions(slug, 3);
+    } catch (error) {
+        console.error('Failed to load public post companions', error);
+        return {
+            relatedPosts: [],
+            adjacentPosts: { previous: null, next: null },
+        };
+    }
 }
 
 export async function generateMetadata({
@@ -130,7 +93,7 @@ export async function generateMetadata({
     const description =
         metadata.seoDescription ||
         metadata.excerpt ||
-        `${post.artist_name || 'VOXO'}의 리뷰와 곡 해설을 지금 바로 확인해보세요.`;
+        `${post.artist_name || 'VOXO'}의 음악과 움직임을 깊이 있게 읽어내는 에디토리얼 스토리입니다.`;
     const ogImage = post.cover_image || undefined;
 
     return {
@@ -167,29 +130,32 @@ export default async function PostDetail({
         notFound();
     }
 
+    const companionPromise = resolvePostCompanions(post.slug);
+
     const extracted = extractEditorMetadata(post.content || '');
     const customExcerpt =
         extracted.excerpt ||
-        `${post.artist_name || '이 아티스트'}의 사운드와 감정선을 차분하게 풀어낸 큐레이션 리뷰입니다.`;
+        `${post.artist_name || '이 아티스트'}가 남긴 신호를 VOXO의 시선으로 정리한 에디토리얼 리뷰입니다.`;
     const customIntro =
         extracted.intro ||
-        (post.artist_name ? `${post.artist_name}의 울림을 조금 더 가까이 들여다봅니다.` : '');
+        (post.artist_name
+            ? `${post.artist_name}의 음악을 둘러싼 장면과 맥락을 먼저 짚어봅니다.`
+            : '');
     const shareCopy = extracted.shareCopy || customExcerpt;
     const rawContent = extracted.bodyContent || post.content || '';
     const cleanContent = post.spotify_uri ? stripEmbeddedSpotifyPlayers(rawContent) : rawContent;
     const readTimeMinutes = estimateReadTimeMinutes(cleanContent);
 
-    const formattedDate = new Date(post.created_at)
-        .toLocaleDateString('ko-KR', {
+    const formattedDate = new Date(post.published_at || post.created_at).toLocaleDateString(
+        'ko-KR',
+        {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
-        });
+        },
+    );
 
-    const [artistStats, companionData] = await Promise.all([
-        resolveArtistStats(post),
-        resolvePostCompanions(post.slug),
-    ]);
+    const companionData = await companionPromise;
     const { relatedPosts, adjacentPosts } = companionData;
 
     return (
@@ -229,7 +195,7 @@ export default async function PostDetail({
                             <span className="text-[8px] text-gray-600">조회수</span>
                             <span className="flex items-center gap-2">
                                 <Eye size={10} className="text-accent-green/50" />
-                                {post.view_count?.toLocaleString() || 0}회
+                                {(post.view_count || 0).toLocaleString()}회
                             </span>
                         </div>
                         <div className="hidden h-8 w-px bg-white/10 md:block"></div>
@@ -273,20 +239,32 @@ export default async function PostDetail({
                     <div className="mb-10 grid gap-3 border border-white/10 bg-white/[0.02] p-5 md:hidden">
                         <div className="grid grid-cols-2 gap-3">
                             <div className="border border-white/5 bg-black/30 p-4">
-                                <p className="text-[8px] uppercase tracking-[0.22em] text-gray-500">카테고리</p>
+                                <p className="text-[8px] uppercase tracking-[0.22em] text-gray-500">
+                                    카테고리
+                                </p>
                                 <p className="mt-2 text-sm text-white">{post.categories?.name || 'Review'}</p>
                             </div>
                             <div className="border border-white/5 bg-black/30 p-4">
-                                <p className="text-[8px] uppercase tracking-[0.22em] text-gray-500">읽기 시간</p>
+                                <p className="text-[8px] uppercase tracking-[0.22em] text-gray-500">
+                                    읽기 시간
+                                </p>
                                 <p className="mt-2 text-sm text-white">{readTimeMinutes}분</p>
                             </div>
                             <div className="border border-white/5 bg-black/30 p-4">
-                                <p className="text-[8px] uppercase tracking-[0.22em] text-gray-500">조회수</p>
-                                <p className="mt-2 text-sm text-white">{post.view_count?.toLocaleString() || 0}회</p>
+                                <p className="text-[8px] uppercase tracking-[0.22em] text-gray-500">
+                                    조회수
+                                </p>
+                                <p className="mt-2 text-sm text-white">
+                                    {(post.view_count || 0).toLocaleString()}회
+                                </p>
                             </div>
                             <div className="border border-white/5 bg-black/30 p-4">
-                                <p className="text-[8px] uppercase tracking-[0.22em] text-gray-500">평점</p>
-                                <p className="mt-2 text-sm text-white">{post.rating ? post.rating.toFixed(1) : 'N/A'}</p>
+                                <p className="text-[8px] uppercase tracking-[0.22em] text-gray-500">
+                                    평점
+                                </p>
+                                <p className="mt-2 text-sm text-white">
+                                    {post.rating ? post.rating.toFixed(1) : 'N/A'}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -332,7 +310,7 @@ export default async function PostDetail({
                     </div>
 
                     <PostNavigation previous={adjacentPosts.previous} next={adjacentPosts.next} />
-                    <RelatedPostsSection title="이 글과 함께 보면 좋은 글" posts={relatedPosts} />
+                    <RelatedPostsSection title="함께 읽으면 좋은 글" posts={relatedPosts} />
                 </div>
 
                 <aside className="space-y-24 lg:col-span-4">
@@ -344,7 +322,9 @@ export default async function PostDetail({
                         </div>
                     ) : null}
 
-                    <ArtistStats data={artistStats} />
+                    <Suspense fallback={<ArtistStatsSkeleton />}>
+                        <ArtistStatsPanel post={post} />
+                    </Suspense>
 
                     <div className="space-y-8">
                         <div className="flex items-center gap-2">

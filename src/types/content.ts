@@ -1,5 +1,6 @@
 export interface CategoryRelation {
   name: string;
+  slug?: string;
 }
 
 export interface CategoryRecord {
@@ -37,6 +38,24 @@ export interface PostRecord {
   categories?: CategoryRelation | null;
 }
 
+export interface AdminPostSummary {
+  id: string;
+  title: string;
+  slug: string;
+  category_id: string | null;
+  cover_image: string | null;
+  rating: number | null;
+  artist_name: string | null;
+  tags: string[];
+  is_published: boolean;
+  author_id?: string | null;
+  created_at: string;
+  updated_at?: string;
+  published_at?: string | null;
+  view_count?: number | null;
+  categories?: CategoryRelation | null;
+}
+
 export interface PostInput {
   title: string;
   content: string;
@@ -54,4 +73,25 @@ export interface SearchPostResult {
   title: string;
   slug: string;
   categories: CategoryRelation | null;
+}
+
+export interface PublicPostSummary {
+  id: string;
+  title: string;
+  slug: string;
+  category_id: string | null;
+  cover_image: string | null;
+  rating: number | null;
+  artist_name: string | null;
+  tags: string[];
+  created_at: string;
+  published_at?: string | null;
+  view_count?: number | null;
+  categories?: CategoryRelation | null;
+  excerpt: string;
+  readTimeMinutes: number;
+}
+
+export interface PublicSearchPostSummary extends PublicPostSummary {
+  searchableText: string;
 }

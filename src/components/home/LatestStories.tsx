@@ -1,41 +1,45 @@
-'use client';
-
-import React from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import PostCard from './PostCard';
-import { estimateReadTimeMinutes, stripHtmlTags, timeAgo } from '@/lib/utils';
-import type { PostRecord, TagRecord } from '@/types/content';
+import { timeAgo } from '@/lib/utils';
+import type { PublicPostSummary, TagRecord } from '@/types/content';
+
+type LatestStoriesSortMode = 'latest' | 'popular' | 'rated';
 
 interface LatestStoriesProps {
-    posts: PostRecord[];
+    posts: PublicPostSummary[];
     tags: TagRecord[];
+    activeTag?: string;
+    sortMode?: LatestStoriesSortMode;
 }
 
-export default function LatestStories({ posts, tags }: LatestStoriesProps) {
-    const router = useRouter();
-    const pathname = usePathname();
-    const searchParams = useSearchParams();
-    const [sortMode, setSortMode] = React.useState<'latest' | 'popular' | 'rated'>('latest');
-    const queryTag = searchParams.get('tag');
-    const activeTag = queryTag && tags.some((tag) => tag.name === queryTag) ? queryTag : 'all';
+function buildStoriesHref(tag: string, sortMode: LatestStoriesSortMode) {
+    const params = new URLSearchParams();
 
-    const updateTagFilter = (nextTag: string) => {
-        const nextParams = new URLSearchParams(searchParams.toString());
+    if (tag && tag !== 'all') {
+        params.set('tag', tag);
+    }
 
-        if (nextTag === 'all') {
-            nextParams.delete('tag');
-        } else {
-            nextParams.set('tag', nextTag);
-        }
+    if (sortMode !== 'latest') {
+        params.set('sort', sortMode);
+    }
 
-        const nextQuery = nextParams.toString();
-        router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
-    };
+    const query = params.toString();
+    return query ? `/?${query}` : '/';
+}
+
+export default function LatestStories({
+    posts,
+    tags,
+    activeTag = 'all',
+    sortMode = 'latest',
+}: LatestStoriesProps) {
+    const normalizedActiveTag =
+        activeTag !== 'all' && tags.some((tag) => tag.name === activeTag) ? activeTag : 'all';
 
     const filteredPosts =
-        activeTag === 'all'
+        normalizedActiveTag === 'all'
             ? posts
-            : posts.filter((post) => post.tags && post.tags.includes(activeTag));
+            : posts.filter((post) => post.tags.includes(normalizedActiveTag));
 
     const sortedPosts = [...filteredPosts].sort((left, right) => {
         if (sortMode === 'popular') {
@@ -66,49 +70,51 @@ export default function LatestStories({ posts, tags }: LatestStoriesProps) {
                         Latest Stories
                     </h2>
                     <p className="text-sm text-gray-500">
-                        {activeTag === 'all'
-                            ? `전체 섹션에서 지금 볼 만한 큐레이션 글 ${activeTagCount}개를 모아두었습니다.`
-                            : `${activeTag} 태그가 적용된 글만 모았습니다. 현재 ${activeTagCount}개의 글을 보고 있습니다.`}
+                        {normalizedActiveTag === 'all'
+                            ? `VOXO가 지금 주목하는 최신 스토리 ${activeTagCount}개를 모았습니다.`
+                            : `${normalizedActiveTag} 태그로 묶인 글 ${activeTagCount}개를 보고 있습니다.`}
                     </p>
                 </div>
 
                 <div className="mt-4 flex flex-col gap-4 md:mt-0 md:items-end">
                     <div className="flex flex-wrap gap-6 font-display">
-                        <button
-                            onClick={() => updateTagFilter('all')}
+                        <Link
+                            href={buildStoriesHref('all', sortMode)}
+                            scroll={false}
                             className={`pb-1 text-[10px] uppercase tracking-[0.15em] transition-colors ${
-                                activeTag === 'all'
+                                normalizedActiveTag === 'all'
                                     ? 'border-b border-accent-green text-white'
                                     : 'text-gray-600 hover:text-white'
                             }`}
                         >
                             전체
-                        </button>
+                        </Link>
                         {tags.map((tag) => (
-                            <button
+                            <Link
                                 key={tag.id}
-                                onClick={() => updateTagFilter(tag.name)}
+                                href={buildStoriesHref(tag.name, sortMode)}
+                                scroll={false}
                                 className={`pb-1 text-[10px] uppercase tracking-[0.15em] transition-colors ${
-                                    activeTag === tag.name
+                                    normalizedActiveTag === tag.name
                                         ? 'border-b border-accent-green text-white'
                                         : 'text-gray-600 hover:text-white'
                                 }`}
                             >
                                 {tag.name}
-                            </button>
+                            </Link>
                         ))}
                     </div>
 
                     <div className="flex flex-wrap gap-2">
                         {[
-                            { key: 'latest', label: '최신 글' },
-                            { key: 'popular', label: '많이 읽은 글' },
-                            { key: 'rated', label: '평점 높은 글' },
+                            { key: 'latest', label: '최신순' },
+                            { key: 'popular', label: '조회순' },
+                            { key: 'rated', label: '평점순' },
                         ].map((option) => (
-                            <button
+                            <Link
                                 key={option.key}
-                                type="button"
-                                onClick={() => setSortMode(option.key as 'latest' | 'popular' | 'rated')}
+                                href={buildStoriesHref(normalizedActiveTag, option.key as LatestStoriesSortMode)}
+                                scroll={false}
                                 className={`px-3 py-2 text-[9px] uppercase tracking-[0.18em] transition-colors ${
                                     sortMode === option.key
                                         ? 'bg-white text-black'
@@ -116,7 +122,7 @@ export default function LatestStories({ posts, tags }: LatestStoriesProps) {
                                 }`}
                             >
                                 {option.label}
-                            </button>
+                            </Link>
                         ))}
                     </div>
                 </div>
@@ -133,8 +139,11 @@ export default function LatestStories({ posts, tags }: LatestStoriesProps) {
                                 post.cover_image ||
                                 'https://images.unsplash.com/photo-1514525253361-bee8718a300a?q=80&w=1974&auto=format&fit=crop'
                             }
-                            readTime={`${estimateReadTimeMinutes(post.content)}분 읽기 / ${timeAgo(post.published_at || post.created_at, 'Korean')}`}
-                            excerpt={`${stripHtmlTags(post.content || '').slice(0, 100)}...`}
+                            readTime={`${post.readTimeMinutes}분 읽기 / ${timeAgo(
+                                post.published_at || post.created_at,
+                                'Korean',
+                            )}`}
+                            excerpt={post.excerpt}
                             slug={post.slug}
                             rating={post.rating ?? undefined}
                             artistName={post.artist_name || undefined}
@@ -144,7 +153,7 @@ export default function LatestStories({ posts, tags }: LatestStoriesProps) {
                 ) : (
                     <div className="col-span-full border border-white/5 bg-gray-950/20 py-20 text-center">
                         <p className="text-[10px] uppercase tracking-[0.4em] text-gray-700">
-                            아직 이 조건에 맞는 글이 없습니다.
+                            선택한 조건에 맞는 글이 아직 없습니다.
                         </p>
                     </div>
                 )}

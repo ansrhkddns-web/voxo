@@ -1,11 +1,23 @@
 import React from 'react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { CirclePlus, Loader2, Sparkles } from 'lucide-react';
-import MarkdownEditor from '@/components/admin/MarkdownEditor';
 import type { ArtistImageCandidate } from '@/features/admin-editor/artist-image';
-import { ArtistImageSearchPanel } from '@/features/admin-editor/components/ArtistImageSearchPanel';
+const MarkdownEditor = dynamic(() => import('@/components/admin/MarkdownEditor'), {
+    ssr: false,
+    loading: () => <EditorComposerSkeleton />,
+});
+const ArtistImageSearchPanel = dynamic(
+    () =>
+        import('@/features/admin-editor/components/ArtistImageSearchPanel').then(
+            (module) => module.ArtistImageSearchPanel
+        ),
+    {
+        loading: () => <EditorSupportPanelSkeleton />,
+    }
+);
 
-interface EditorMainSectionProps {
+export interface EditorMainSectionProps {
     language: 'en' | 'ko';
     title: string;
     excerpt: string;
@@ -42,6 +54,32 @@ interface EditorMainSectionProps {
     headlinePlaceholder: string;
     uploadLabel: string;
     replaceImageLabel: string;
+}
+
+function EditorSupportPanelSkeleton() {
+    return (
+        <div className="space-y-4 rounded-sm border border-white/10 bg-black/20 p-5">
+            <div className="h-4 w-32 animate-pulse rounded-full bg-white/10" />
+            <div className="grid gap-3 md:grid-cols-3">
+                <div className="h-11 animate-pulse rounded-sm bg-black/40" />
+                <div className="h-11 animate-pulse rounded-sm bg-black/40" />
+                <div className="h-11 animate-pulse rounded-sm bg-black/40" />
+            </div>
+            <div className="h-28 animate-pulse rounded-sm bg-black/35" />
+        </div>
+    );
+}
+
+function EditorComposerSkeleton() {
+    return (
+        <div className="overflow-hidden border border-white/10 bg-[#050505] shadow-2xl">
+            <div className="space-y-3 border-b border-white/10 bg-white/5 p-4">
+                <div className="h-4 w-24 animate-pulse rounded-full bg-white/10" />
+                <div className="h-3 w-80 animate-pulse rounded-full bg-white/5" />
+            </div>
+            <div className="h-[420px] animate-pulse bg-black/40" />
+        </div>
+    );
 }
 
 function SectionHeader({ title, description }: { title: string; description: string }) {

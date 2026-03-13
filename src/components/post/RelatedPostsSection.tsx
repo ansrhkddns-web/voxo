@@ -1,11 +1,11 @@
 import React from 'react';
 import Link from 'next/link';
-import type { PostRecord } from '@/types/content';
+import type { PublicPostSummary } from '@/types/content';
 import { timeAgo } from '@/lib/utils';
 
 interface RelatedPostsSectionProps {
     title: string;
-    posts: PostRecord[];
+    posts: PublicPostSummary[];
 }
 
 export default function RelatedPostsSection({
@@ -39,7 +39,7 @@ export default function RelatedPostsSection({
                             {post.title}
                         </h4>
                         <p className="mt-4 line-clamp-3 font-serif text-sm italic leading-loose text-gray-400">
-                            {(post.content?.replace(/<[^>]*>/g, '').trim().slice(0, 120) || '') + '...'}
+                            {post.excerpt}
                         </p>
                         <p className="mt-6 font-display text-[9px] uppercase tracking-[0.25em] text-gray-600">
                             {timeAgo(post.published_at || post.created_at, 'Korean')}

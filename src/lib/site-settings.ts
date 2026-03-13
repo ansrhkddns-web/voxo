@@ -1,5 +1,6 @@
-import { cache } from 'react';
-import { createClient } from '@/lib/supabase/server';
+import { unstable_cache } from 'next/cache';
+import { CACHE_TAGS } from '@/lib/cache-tags';
+import { createPublicClient } from '@/lib/supabase/public';
 
 type SiteSettingKey =
     | 'site_name'
@@ -30,41 +31,49 @@ const DEFAULTS = {
     maintenanceNoticeUrl: '',
 };
 
-export const getSiteSettings = cache(async () => {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-        .from('site_settings')
-        .select('setting_key, setting_value')
-        .in('setting_key', [
-            'site_name',
-            'site_description',
-            'contact_email',
-            'global_spotify_playlist',
-            'maintenance_mode',
-            'maintenance_title',
-            'maintenance_message',
-            'maintenance_eta',
-            'maintenance_notice_url',
-        ]);
+const loadSiteSettings = unstable_cache(
+    async () => {
+        const supabase = createPublicClient();
+        const { data, error } = await supabase
+            .from('site_settings')
+            .select('setting_key, setting_value')
+            .in('setting_key', [
+                'site_name',
+                'site_description',
+                'contact_email',
+                'global_spotify_playlist',
+                'maintenance_mode',
+                'maintenance_title',
+                'maintenance_message',
+                'maintenance_eta',
+                'maintenance_notice_url',
+            ]);
 
-    if (error) {
-        console.error('Failed to load site settings', error);
-        return DEFAULTS;
-    }
+        if (error) {
+            console.error('Failed to load site settings', error);
+            return DEFAULTS;
+        }
 
-    const settingsMap = new Map(
-        ((data ?? []) as SiteSettingRow[]).map((item) => [item.setting_key, item.setting_value ?? '']),
-    );
+        const settingsMap = new Map(
+            ((data ?? []) as SiteSettingRow[]).map((item) => [item.setting_key, item.setting_value ?? '']),
+        );
 
-    return {
-        siteName: settingsMap.get('site_name') || DEFAULTS.siteName,
-        siteDescription: settingsMap.get('site_description') || DEFAULTS.siteDescription,
-        contactEmail: settingsMap.get('contact_email') || DEFAULTS.contactEmail,
-        globalPlaylist: settingsMap.get('global_spotify_playlist') || DEFAULTS.globalPlaylist,
-        maintenanceMode: settingsMap.get('maintenance_mode') === 'true',
-        maintenanceTitle: settingsMap.get('maintenance_title') || DEFAULTS.maintenanceTitle,
-        maintenanceMessage: settingsMap.get('maintenance_message') || DEFAULTS.maintenanceMessage,
-        maintenanceEta: settingsMap.get('maintenance_eta') || DEFAULTS.maintenanceEta,
-        maintenanceNoticeUrl: settingsMap.get('maintenance_notice_url') || DEFAULTS.maintenanceNoticeUrl,
-    };
-});
+        return {
+            siteName: settingsMap.get('site_name') || DEFAULTS.siteName,
+            siteDescription: settingsMap.get('site_description') || DEFAULTS.siteDescription,
+            contactEmail: settingsMap.get('contact_email') || DEFAULTS.contactEmail,
+            globalPlaylist: settingsMap.get('global_spotify_playlist') || DEFAULTS.globalPlaylist,
+            maintenanceMode: settingsMap.get('maintenance_mode') === 'true',
+            maintenanceTitle: settingsMap.get('maintenance_title') || DEFAULTS.maintenanceTitle,
+            maintenanceMessage: settingsMap.get('maintenance_message') || DEFAULTS.maintenanceMessage,
+            maintenanceEta: settingsMap.get('maintenance_eta') || DEFAULTS.maintenanceEta,
+            maintenanceNoticeUrl: settingsMap.get('maintenance_notice_url') || DEFAULTS.maintenanceNoticeUrl,
+        };
+    },
+    ['site-settings'],
+    { revalidate: 300, tags: [CACHE_TAGS.siteSettings] },
+);
+
+export async function getSiteSettings() {
+    return loadSiteSettings();
+}

@@ -1,6 +1,6 @@
 import type { NewsletterHistoryEntry } from '@/app/actions/newsletterActions';
 import type { SettingsAuditEntry } from '@/app/actions/settingsActions';
-import type { PostRecord } from '@/types/content';
+import type { AdminPostSummary } from '@/types/content';
 
 export type DashboardLanguage = 'en' | 'ko';
 
@@ -18,7 +18,7 @@ export interface DashboardSiteSettingRecord {
 }
 
 export interface DashboardDataBundle {
-    posts: PostRecord[];
+    posts: AdminPostSummary[];
     subscribers: DashboardSubscriberRecord[];
     settings: DashboardSiteSettingRecord[];
     auditLog: SettingsAuditEntry[];

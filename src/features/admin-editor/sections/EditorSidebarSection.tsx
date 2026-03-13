@@ -1,4 +1,5 @@
 import React from 'react';
+import dynamic from 'next/dynamic';
 import {
     CheckCircle2,
     Disc3,
@@ -8,10 +9,19 @@ import {
     UserRound,
     XCircle,
 } from 'lucide-react';
-import { PostRevisionHistoryCard } from '@/features/admin-editor/components/PostRevisionHistoryCard';
 import type { PostRevisionEntry } from '@/app/actions/postActions';
 import type { CategoryRecord, TagRecord } from '@/types/content';
 import type { SpotifyTrackCandidate } from '@/types/spotify';
+
+const PostRevisionHistoryCard = dynamic(
+    () =>
+        import('@/features/admin-editor/components/PostRevisionHistoryCard').then(
+            (module) => module.PostRevisionHistoryCard
+        ),
+    {
+        loading: () => <SidebarHistorySkeleton />,
+    }
+);
 
 interface EditorChecklistItem {
     id: string;
@@ -19,7 +29,7 @@ interface EditorChecklistItem {
     completed: boolean;
 }
 
-interface EditorSidebarSectionProps {
+export interface EditorSidebarSectionProps {
     language: 'en' | 'ko';
     rating: string;
     artistName: string;
@@ -65,6 +75,18 @@ interface EditorSidebarSectionProps {
     onToggleTag: (tagName: string) => void;
     onRemoveTag: (tagName: string) => void;
     onRestoreRevision: (revision: PostRevisionEntry) => void;
+}
+
+function SidebarHistorySkeleton() {
+    return (
+        <section className="space-y-4 border border-white/10 bg-white/[0.02] p-6">
+            <div className="h-4 w-40 animate-pulse rounded-full bg-white/10" />
+            <div className="space-y-3">
+                <div className="h-20 animate-pulse rounded-sm bg-black/30" />
+                <div className="h-20 animate-pulse rounded-sm bg-black/30" />
+            </div>
+        </section>
+    );
 }
 
 function PanelTitle({ title, subtitle }: { title: string; subtitle: string }) {

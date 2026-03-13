@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { getSiteSettings } from '@/lib/site-settings';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 export default async function MaintenancePage() {
     const settings = await getSiteSettings();
@@ -9,7 +9,10 @@ export default async function MaintenancePage() {
     return (
         <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-6 text-white">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(125,211,163,0.18),transparent_45%),radial-gradient(circle_at_bottom,rgba(255,255,255,0.08),transparent_35%)]"></div>
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.04]"></div>
+            <div
+                className="absolute inset-0 opacity-[0.04]"
+                style={{ backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')" }}
+            ></div>
 
             <section className="relative z-10 w-full max-w-3xl border border-white/10 bg-white/[0.03] p-8 backdrop-blur-sm md:p-12">
                 <p className="font-display text-[10px] uppercase tracking-[0.4em] text-accent-green">

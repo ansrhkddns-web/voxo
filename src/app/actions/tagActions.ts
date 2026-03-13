@@ -1,7 +1,9 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { CACHE_TAGS } from '@/lib/cache-tags';
+import { createPublicClient } from '@/lib/supabase/public';
 import type { TagRecord } from '@/types/content';
 
 interface TagUsageRow extends TagRecord {
@@ -31,7 +33,7 @@ export async function getTags() {
 }
 
 export async function getMenuTags() {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data, error } = await supabase
         .from('tags')
         .select('*')
@@ -97,6 +99,7 @@ export async function createTag(name: string, slug: string, showInMenu: boolean 
         .single();
 
     if (error) throw error;
+    revalidateTag(CACHE_TAGS.tags, 'max');
     revalidatePath('/admin/tags');
     revalidatePath('/');
     return data;
@@ -135,6 +138,7 @@ export async function updateTag(id: string, name: string, slug: string, showInMe
         .single();
 
     if (error) throw error;
+    revalidateTag(CACHE_TAGS.tags, 'max');
     revalidatePath('/admin/tags');
     revalidatePath('/');
     return data;
@@ -152,6 +156,7 @@ export async function bulkSetTagMenuVisibility(ids: string[], showInMenu: boolea
         .in('id', ids);
 
     if (error) throw error;
+    revalidateTag(CACHE_TAGS.tags, 'max');
     revalidatePath('/admin/tags');
     revalidatePath('/');
     return { updatedCount: ids.length };
@@ -206,6 +211,7 @@ export async function bulkDeleteUnusedTags(ids: string[]) {
 
     revalidatePath('/admin/tags');
     revalidatePath('/');
+    revalidateTag(CACHE_TAGS.tags, 'max');
     return { deletedCount: deletableIds.length, blockedNames };
 }
 
@@ -239,6 +245,7 @@ export async function deleteTag(id: string) {
         .eq('id', id);
 
     if (error) throw error;
+    revalidateTag(CACHE_TAGS.tags, 'max');
     revalidatePath('/admin/tags');
     revalidatePath('/');
 }

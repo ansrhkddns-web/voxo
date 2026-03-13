@@ -1,5 +1,3 @@
-'use client';
-
 import React from 'react';
 import { BarChart2, TrendingUp } from 'lucide-react';
 
@@ -28,8 +26,6 @@ function formatNumber(num: number) {
 
 export default function ArtistStats({ data }: ArtistStatsProps) {
     if (!data || (data.error && !data.name && !data.followers && !data.monthly_listeners)) {
-        console.log('VOXO_SPOTIFY: Signal Lost ->', data?.error);
-
         return (
             <div className="group relative overflow-hidden border border-white/5 bg-gray-950/20 font-display">
                 <div className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-red-500/30 to-transparent" />
@@ -44,7 +40,7 @@ export default function ArtistStats({ data }: ArtistStatsProps) {
 
                     <h3 className="relative z-10 mb-8 flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] text-white">
                         <span className="h-px w-4 bg-red-500/50" />
-                        Spotify 연결 제한
+                        Spotify 통계 안내
                     </h3>
 
                     <div className="relative z-10 flex flex-grow flex-col justify-center space-y-6">
@@ -53,7 +49,7 @@ export default function ArtistStats({ data }: ArtistStatsProps) {
                                 Error 403: Origin Blocked
                             </p>
                             <p className="text-[10px] font-light leading-relaxed tracking-widest text-gray-500">
-                                Spotify 개발자 설정 제한으로 아티스트 데이터를 아직 불러오지 못했습니다.
+                                Spotify 개발자 설정 문제로 통계를 불러오지 못했습니다.
                             </p>
                         </div>
 
@@ -61,10 +57,11 @@ export default function ArtistStats({ data }: ArtistStatsProps) {
 
                         <div>
                             <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.2em] text-gray-600">
-                                확인할 항목
+                                확인 방법
                             </p>
                             <p className="text-[10px] uppercase tracking-widest text-gray-400">
-                                Spotify Developer Dashboard에서 웹 권한과 Redirect URI 설정을 다시 확인해 주세요.
+                                Spotify Developer Dashboard에서 Redirect URI와 앱 설정을 다시
+                                확인해 주세요.
                             </p>
                         </div>
                     </div>
@@ -79,35 +76,39 @@ export default function ArtistStats({ data }: ArtistStatsProps) {
             <div className="p-6">
                 <h3 className="mb-8 flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] text-white">
                     <span className="h-px w-4 bg-accent-green" />
-                    아티스트 인텔리전스
+                    아티스트 통계
                 </h3>
 
                 <div className="space-y-6">
                     <div className={`grid ${(data.followers || 0) > 0 ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
                         {(data.followers || 0) > 0 ? (
                             <div>
-                                <p className="mb-3 text-[10px] uppercase tracking-[0.3em] text-gray-400">팔로워 규모</p>
+                                <p className="mb-3 text-[10px] uppercase tracking-[0.3em] text-gray-400">
+                                    팔로워
+                                </p>
                                 <div className="flex items-baseline gap-2">
                                     <span className="text-3xl font-light tracking-tighter text-white">
                                         {formatNumber(data.followers || 0)}
                                     </span>
                                     <span className="flex items-center text-[10px] uppercase tracking-widest text-accent-green">
                                         <TrendingUp size={12} className="mr-1" />
-                                        팔로워
+                                        Followers
                                     </span>
                                 </div>
                             </div>
                         ) : null}
 
                         <div>
-                            <p className="mb-3 text-[10px] uppercase tracking-[0.3em] text-gray-400">월간 도달</p>
+                            <p className="mb-3 text-[10px] uppercase tracking-[0.3em] text-gray-400">
+                                월간 리스너
+                            </p>
                             <div className="flex items-baseline gap-2">
                                 <span className="text-3xl font-light tracking-tighter text-white">
                                     {formatNumber(data.monthly_listeners || 0)}
                                 </span>
                                 <span className="flex items-center text-[10px] uppercase tracking-widest text-accent-green">
                                     <BarChart2 size={12} className="mr-1" />
-                                    리스너
+                                    Monthly
                                 </span>
                             </div>
                         </div>
@@ -118,7 +119,9 @@ export default function ArtistStats({ data }: ArtistStatsProps) {
                             <div className="h-px w-full bg-white/5" />
 
                             <div>
-                                <p className="mb-4 text-[10px] uppercase tracking-[0.3em] text-gray-400">대표 트랙</p>
+                                <p className="mb-4 text-[10px] uppercase tracking-[0.3em] text-gray-400">
+                                    인기 트랙
+                                </p>
                                 <ul className="space-y-4">
                                     {data.topTracks.map((track, index) => (
                                         <li key={track.id} className="group flex items-center justify-between">
@@ -141,7 +144,9 @@ export default function ArtistStats({ data }: ArtistStatsProps) {
                     <div className="h-px w-full bg-white/5" />
 
                     <div>
-                        <p className="mb-4 text-[10px] uppercase tracking-[0.3em] text-gray-400">장르</p>
+                        <p className="mb-4 text-[10px] uppercase tracking-[0.3em] text-gray-400">
+                            장르
+                        </p>
                         <div className="flex flex-wrap gap-2">
                             {data.genres?.length ? (
                                 data.genres.map((genre) => (
@@ -154,7 +159,7 @@ export default function ArtistStats({ data }: ArtistStatsProps) {
                                 ))
                             ) : (
                                 <span className="text-[10px] tracking-[0.18em] text-gray-500">
-                                    장르 정보가 아직 연결되지 않았습니다.
+                                    장르 정보는 현재 제공되지 않습니다.
                                 </span>
                             )}
                         </div>

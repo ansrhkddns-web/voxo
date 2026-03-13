@@ -8,12 +8,12 @@ import {
     Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { PostRecord } from '@/types/content';
+import type { AdminPostSummary } from '@/types/content';
 import type { DashboardLanguage } from '../types';
 import { formatDashboardNumber } from '../utils';
 
 interface DashboardPostsTableProps {
-    posts: PostRecord[];
+    posts: AdminPostSummary[];
     loading: boolean;
     locale: string;
     language: DashboardLanguage;

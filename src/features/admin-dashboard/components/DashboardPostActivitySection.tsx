@@ -1,12 +1,12 @@
 import React from 'react';
 import { Loader2, Terminal } from 'lucide-react';
-import type { PostRecord } from '@/types/content';
+import type { AdminPostSummary } from '@/types/content';
 import type { DashboardLanguage } from '../types';
 import { formatDashboardDate } from '../utils';
 import { DashboardSection } from './DashboardSection';
 
 interface DashboardPostActivitySectionProps {
-    posts: PostRecord[];
+    posts: AdminPostSummary[];
     loading: boolean;
     locale: string;
     language: DashboardLanguage;

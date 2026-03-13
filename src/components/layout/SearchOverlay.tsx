@@ -234,7 +234,10 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                     </div>
 
                     {/* Grainy Noise Overlay */}
-                    <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-[101] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+                    <div
+                        className="fixed inset-0 pointer-events-none z-[101] opacity-[0.03]"
+                        style={{ backgroundImage: "url('https://grainy-gradients.vercel.app/noise.svg')" }}
+                    ></div>
                 </motion.div>
             )}
         </AnimatePresence>

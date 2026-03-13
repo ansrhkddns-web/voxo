@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowUp, Clock3 } from 'lucide-react';
 
 interface ReadingProgressBarProps {
@@ -14,12 +14,19 @@ export default function ReadingProgressBar({
 }: ReadingProgressBarProps) {
     const [progress, setProgress] = useState(0);
     const [showTopButton, setShowTopButton] = useState(false);
+    const frameRef = useRef<number | null>(null);
+    const previousProgressRef = useRef(0);
+    const previousShowTopRef = useRef(false);
 
     useEffect(() => {
-        const handleScroll = () => {
+        const syncProgress = () => {
             const article = document.querySelector(articleSelector);
             if (!article) {
-                setProgress(0);
+                if (previousProgressRef.current !== 0) {
+                    previousProgressRef.current = 0;
+                    setProgress(0);
+                }
+                frameRef.current = null;
                 return;
             }
 
@@ -28,26 +35,48 @@ export default function ReadingProgressBar({
             const articleHeight = article.clientHeight;
             const viewportHeight = window.innerHeight;
             const totalScrollable = Math.max(articleHeight - viewportHeight, 1);
-            const current = Math.min(
+            const nextProgress = Math.min(
                 Math.max((window.scrollY - articleTop) / totalScrollable, 0),
-                1
+                1,
             );
+            const roundedProgress = Math.round(nextProgress * 100) / 100;
+            const nextShowTop = window.scrollY > articleTop + 300;
 
-            setProgress(current);
-            setShowTopButton(window.scrollY > articleTop + 300);
+            if (previousProgressRef.current !== roundedProgress) {
+                previousProgressRef.current = roundedProgress;
+                setProgress(roundedProgress);
+            }
+
+            if (previousShowTopRef.current !== nextShowTop) {
+                previousShowTopRef.current = nextShowTop;
+                setShowTopButton(nextShowTop);
+            }
+
+            frameRef.current = null;
         };
 
-        handleScroll();
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        window.addEventListener('resize', handleScroll);
+        const requestSync = () => {
+            if (frameRef.current !== null) {
+                return;
+            }
+
+            frameRef.current = window.requestAnimationFrame(syncProgress);
+        };
+
+        requestSync();
+        window.addEventListener('scroll', requestSync, { passive: true });
+        window.addEventListener('resize', requestSync);
 
         return () => {
-            window.removeEventListener('scroll', handleScroll);
-            window.removeEventListener('resize', handleScroll);
+            window.removeEventListener('scroll', requestSync);
+            window.removeEventListener('resize', requestSync);
+            if (frameRef.current !== null) {
+                window.cancelAnimationFrame(frameRef.current);
+            }
         };
     }, [articleSelector]);
 
-    const progressLabel = useMemo(() => `${Math.round(progress * 100)}%`, [progress]);
+    const progressLabel = `${Math.round(progress * 100)}%`;
 
     return (
         <>

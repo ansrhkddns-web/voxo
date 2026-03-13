@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Menu, Search, User } from 'lucide-react';
 
 const NAV_LINKS = [
@@ -17,12 +17,13 @@ const NAV_LINKS = [
 
 export default function Navbar() {
     const pathname = usePathname();
-    const router = useRouter();
     const searchParams = useSearchParams();
     const currentSearchQuery = searchParams.get('q') ?? '';
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const scrollFrameRef = useRef<number | null>(null);
+    const lastScrolledRef = useRef(false);
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -43,13 +44,32 @@ export default function Navbar() {
     }, []);
 
     useEffect(() => {
-        const handleScroll = () => {
-            setIsScrolled(window.scrollY > 24);
+        const syncScrollState = () => {
+            const nextScrolled = window.scrollY > 24;
+            if (lastScrolledRef.current !== nextScrolled) {
+                lastScrolledRef.current = nextScrolled;
+                setIsScrolled(nextScrolled);
+            }
+            scrollFrameRef.current = null;
         };
 
-        handleScroll();
+        const handleScroll = () => {
+            if (scrollFrameRef.current !== null) {
+                return;
+            }
+
+            scrollFrameRef.current = window.requestAnimationFrame(syncScrollState);
+        };
+
+        syncScrollState();
         window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            if (scrollFrameRef.current !== null) {
+                window.cancelAnimationFrame(scrollFrameRef.current);
+            }
+        };
     }, []);
 
     const isLinkActive = (href: string) => {
@@ -58,19 +78,6 @@ export default function Navbar() {
         }
 
         return pathname === href;
-    };
-
-    const submitSearch = (query: string) => {
-        const trimmedQuery = query.trim();
-        const href = trimmedQuery ? `/search?q=${encodeURIComponent(trimmedQuery)}` : '/search';
-        setIsMobileMenuOpen(false);
-        router.push(href);
-    };
-
-    const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        submitSearch(String(formData.get('q') ?? ''));
     };
 
     return (
@@ -172,22 +179,22 @@ export default function Navbar() {
                 </div>
 
                 <div className="flex items-center gap-4 md:gap-6">
-                    <form key={`desktop-search-${currentSearchQuery}`} onSubmit={handleSearchSubmit} className="hidden items-center gap-3 md:flex">
+                    <form action="/search" className="hidden items-center gap-3 md:flex">
                         <button
                             type="submit"
                             className="flex items-center gap-2 text-white transition-colors duration-700 hover:text-accent-green"
-                            title="검색 열기 (Cmd+K)"
+                            title="검색 (Cmd+K)"
                         >
                             <Search size={18} strokeWidth={1} />
                         </button>
                         <label className="flex items-center rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-white transition-colors focus-within:border-accent-green/60">
-                            <span className="sr-only">Search posts</span>
+                            <span className="sr-only">글 검색</span>
                             <input
                                 ref={searchInputRef}
                                 type="search"
                                 name="q"
                                 defaultValue={currentSearchQuery}
-                                placeholder="Search articles..."
+                                placeholder="아티스트, 곡 제목 검색"
                                 className="w-40 bg-transparent text-sm text-white placeholder:text-gray-500 focus:outline-none lg:w-56"
                             />
                         </label>
@@ -204,18 +211,21 @@ export default function Navbar() {
             {isMobileMenuOpen ? (
                 <div className="border-t border-white/5 bg-[#050505]/95 px-6 py-6 md:hidden">
                     <div className="mb-6 border-b border-white/5 pb-4">
-                        <p className="font-display text-[9px] uppercase tracking-[0.3em] text-gray-500">섹션 둘러보기</p>
+                        <p className="font-display text-[9px] uppercase tracking-[0.3em] text-gray-500">
+                            검색
+                        </p>
                         <p className="mt-2 text-sm text-gray-400">
-                            리뷰, 피처, 아카이브를 빠르게 오가며 원하는 글을 찾아보세요.
+                            뉴스, 리뷰, 피처, 아카이브를 한 번에 둘러보고 원하는 글을 바로
+                            찾아보세요.
                         </p>
                     </div>
-                    <form key={`mobile-search-${currentSearchQuery}`} onSubmit={handleSearchSubmit} className="mb-6 flex items-center gap-3 border border-white/10 bg-white/[0.04] px-4 py-3">
+                    <form action="/search" className="mb-6 flex items-center gap-3 border border-white/10 bg-white/[0.04] px-4 py-3">
                         <Search size={16} strokeWidth={1} className="text-gray-500" />
                         <input
                             type="search"
                             name="q"
                             defaultValue={currentSearchQuery}
-                            placeholder="Search articles..."
+                            placeholder="아티스트, 곡 제목 검색"
                             className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-gray-500 focus:outline-none"
                         />
                     </form>
@@ -235,7 +245,6 @@ export default function Navbar() {
                     </div>
                 </div>
             ) : null}
-
         </nav>
     );
 }
