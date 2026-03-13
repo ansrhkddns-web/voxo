@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Menu, Search, User } from 'lucide-react';
-import SearchOverlay from './SearchOverlay';
 
 const NAV_LINKS = [
     { href: '/news', label: 'News' },
@@ -18,19 +17,24 @@ const NAV_LINKS = [
 
 export default function Navbar() {
     const pathname = usePathname();
-    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const currentSearchQuery = searchParams.get('q') ?? '';
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
+    const searchInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
                 event.preventDefault();
-                setIsSearchOpen(true);
+                searchInputRef.current?.focus();
+                searchInputRef.current?.select();
             }
 
             if (event.key === 'Escape') {
                 setIsMobileMenuOpen(false);
+                searchInputRef.current?.blur();
             }
         };
 
@@ -54,6 +58,19 @@ export default function Navbar() {
         }
 
         return pathname === href;
+    };
+
+    const submitSearch = (query: string) => {
+        const trimmedQuery = query.trim();
+        const href = trimmedQuery ? `/search?q=${encodeURIComponent(trimmedQuery)}` : '/search';
+        setIsMobileMenuOpen(false);
+        router.push(href);
+    };
+
+    const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        submitSearch(String(formData.get('q') ?? ''));
     };
 
     return (
@@ -154,17 +171,30 @@ export default function Navbar() {
                     </Link>
                 </div>
 
-                <div className="flex items-center gap-8">
-                    <button
-                        onClick={() => setIsSearchOpen(true)}
-                        className="flex items-center gap-2 text-white transition-colors duration-700 hover:text-accent-green"
-                        title="검색 열기 (Cmd+K)"
-                    >
-                        <Search size={18} strokeWidth={1} />
-                        <span className="hidden rounded bg-white/10 px-1.5 py-0.5 font-mono text-[8px] tracking-tighter text-gray-400 md:inline-block">
+                <div className="flex items-center gap-4 md:gap-6">
+                    <form key={`desktop-search-${currentSearchQuery}`} onSubmit={handleSearchSubmit} className="hidden items-center gap-3 md:flex">
+                        <button
+                            type="submit"
+                            className="flex items-center gap-2 text-white transition-colors duration-700 hover:text-accent-green"
+                            title="검색 열기 (Cmd+K)"
+                        >
+                            <Search size={18} strokeWidth={1} />
+                        </button>
+                        <label className="flex items-center rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-white transition-colors focus-within:border-accent-green/60">
+                            <span className="sr-only">Search posts</span>
+                            <input
+                                ref={searchInputRef}
+                                type="search"
+                                name="q"
+                                defaultValue={currentSearchQuery}
+                                placeholder="Search articles..."
+                                className="w-40 bg-transparent text-sm text-white placeholder:text-gray-500 focus:outline-none lg:w-56"
+                            />
+                        </label>
+                        <span className="hidden rounded bg-white/10 px-1.5 py-0.5 font-mono text-[8px] tracking-tighter text-gray-400 lg:inline-block">
                             CMD+K
                         </span>
-                    </button>
+                    </form>
                     <Link href="/login" className="flex items-center gap-2 text-white transition-colors duration-700 hover:text-accent-green">
                         <User size={18} strokeWidth={1} />
                     </Link>
@@ -179,6 +209,16 @@ export default function Navbar() {
                             리뷰, 피처, 아카이브를 빠르게 오가며 원하는 글을 찾아보세요.
                         </p>
                     </div>
+                    <form key={`mobile-search-${currentSearchQuery}`} onSubmit={handleSearchSubmit} className="mb-6 flex items-center gap-3 border border-white/10 bg-white/[0.04] px-4 py-3">
+                        <Search size={16} strokeWidth={1} className="text-gray-500" />
+                        <input
+                            type="search"
+                            name="q"
+                            defaultValue={currentSearchQuery}
+                            placeholder="Search articles..."
+                            className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder:text-gray-500 focus:outline-none"
+                        />
+                    </form>
                     <div className="flex flex-col gap-4">
                         {NAV_LINKS.map((link) => (
                             <Link
@@ -196,7 +236,6 @@ export default function Navbar() {
                 </div>
             ) : null}
 
-            <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
         </nav>
     );
 }

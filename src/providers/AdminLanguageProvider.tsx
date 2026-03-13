@@ -31,6 +31,7 @@ const GLOBAL_TRANSLATIONS: Record<Language, Record<TranslationNamespaces, Record
         sidebar: {
             newPost: 'NEW POST',
             aiDesk: 'AI AUTO DESK',
+            aiPrompts: 'AI PROMPTS',
             dashboard: 'DASHBOARD',
             categories: 'CATEGORIES',
             allPosts: 'ALL POSTS',
@@ -163,6 +164,7 @@ const GLOBAL_TRANSLATIONS: Record<Language, Record<TranslationNamespaces, Record
         sidebar: {
             newPost: '새 글 작성',
             aiDesk: 'AI 자동 작성',
+            aiPrompts: 'AI 프롬프트',
             dashboard: '대시보드',
             categories: '카테고리',
             allPosts: '전체 글',

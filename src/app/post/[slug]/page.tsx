@@ -14,7 +14,7 @@ import PostTableOfContents from '@/components/post/PostTableOfContents';
 import RatingMeter from '@/components/post/RatingMeter';
 import ReadingProgressBar from '@/components/post/ReadingProgressBar';
 import RelatedPostsSection from '@/components/post/RelatedPostsSection';
-import SpotifyEmbed from '@/components/post/SpotifyEmbed';
+import BottomSpotifyPlayback from '@/components/post/BottomSpotifyPlayback';
 import ViewCounter from '@/components/post/ViewCounter';
 import {
     getAdjacentPublishedPosts,
@@ -30,17 +30,20 @@ import type { SpotifyStatsResult } from '@/types/spotify';
 function stripEmbeddedSpotifyPlayers(content: string) {
     return content
         .replace(
-            /<(p|div)[^>]*>\s*<iframe[^>]*src="https:\/\/open\.spotify\.com\/embed\/[^"]*"[\s\S]*?<\/iframe>\s*<\/\1>/gi,
+            /<(p|div|figure|section)[^>]*>\s*<iframe[^>]*src=['"][^'"]*open\.spotify\.com\/embed\/[^'"]*['"][\s\S]*?<\/iframe>\s*<\/\1>/gi,
             '',
         )
         .replace(
-            /<iframe[^>]*src="https:\/\/open\.spotify\.com\/embed\/[^"]*"[\s\S]*?<\/iframe>/gi,
+            /<iframe[^>]*src=['"][^'"]*open\.spotify\.com\/embed\/[^'"]*['"][\s\S]*?<\/iframe>/gi,
             '',
         )
         .replace(
-            /<(p|div)[^>]*>\s*(?:<a[^>]*href="https:\/\/open\.spotify\.com\/[^"]*"[\s\S]*?<\/a>|https:\/\/open\.spotify\.com\/[^<\s]+)\s*<\/\1>/gi,
+            /<(p|div|figure|section)[^>]*>\s*(?:<a[^>]*href=['"][^'"]*open\.spotify\.com\/[^'"]*['"][\s\S]*?<\/a>|https:\/\/open\.spotify\.com\/[^<\s]+)\s*<\/\1>/gi,
             '',
         )
+        .replace(/<a[^>]*href=['"][^'"]*open\.spotify\.com\/[^'"]*['"][\s\S]*?<\/a>/gi, '')
+        .replace(/https:\/\/open\.spotify\.com\/[^\s<]+/gi, '')
+        .replace(/<(p|div|figure|section)[^>]*>\s*(?:&nbsp;|\s|<br\s*\/?>)*<\/\1>/gi, '')
         .trim();
 }
 
@@ -267,8 +270,6 @@ export default async function PostDetail({
 
             <section className="mx-auto grid max-w-7xl grid-cols-1 gap-x-24 gap-y-20 px-4 py-20 md:px-12 lg:grid-cols-12">
                 <div className="lg:col-span-8">
-                    <PostTableOfContents mode="mobile" />
-
                     <div className="mb-10 grid gap-3 border border-white/10 bg-white/[0.02] p-5 md:hidden">
                         <div className="grid grid-cols-2 gap-3">
                             <div className="border border-white/5 bg-black/30 p-4">
@@ -309,13 +310,11 @@ export default async function PostDetail({
                         />
 
                         {post.spotify_uri ? (
-                            <SpotifyEmbed
+                            <BottomSpotifyPlayback
                                 uri={post.spotify_uri}
-                                autoPlayOnLoad
                                 title={post.title}
                                 artistName={post.artist_name || undefined}
                                 artworkUrl={post.cover_image || undefined}
-                                categoryName={post.categories?.name || undefined}
                             />
                         ) : null}
                     </article>

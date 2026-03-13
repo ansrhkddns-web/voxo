@@ -12,7 +12,7 @@ export interface CategoryEditorialProfile {
     endingDirective: string;
 }
 
-const categoryProfiles: CategoryEditorialProfile[] = [
+export const categoryProfiles: CategoryEditorialProfile[] = [
     {
         id: 'archives',
         label: 'Archives',

@@ -1,4 +1,8 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import {
+    FinishReason,
+    GoogleGenerativeAI,
+    type GenerateContentResult,
+} from '@google/generative-ai';
 import { getArtistStats } from '@/app/actions/spotifyActions';
 import { hasValidDefaultAdminSession } from '@/lib/admin-auth-server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -15,13 +19,20 @@ import {
 } from '@/features/admin-editor/utils';
 import { injectManagedArticleMedia } from '@/features/admin-editor/artist-image';
 import {
-    buildCurationPromptBlock,
     defaultArticleLengthId,
     defaultCurationProfileId,
-    getArticleLengthPreset,
-    getCurationProfile,
 } from '@/features/admin-ai-desk/curation-profiles';
-import { buildCategoryPromptBlock } from '@/features/admin-ai-desk/category-profiles';
+import {
+    AI_PROMPT_SETTING_KEYS,
+    applyPromptVariables,
+    buildCategoryPromptBlockFromConfig,
+    buildCurationPromptBlockFromConfig,
+    buildResolvedPromptManagerConfig,
+    normalizePromptTemplates,
+    resolveManagedArticleLength,
+    resolveManagedCategoryPrompt,
+    resolveManagedCurationProfile,
+} from '@/lib/ai/prompt-manager';
 import type { SpotifyErrorResult, SpotifyStatsResult } from '@/types/spotify';
 
 export type DraftAgent = 'research' | 'write' | 'refine' | 'seo' | 'media' | 'done';
@@ -44,14 +55,36 @@ export interface DraftGenerationResult {
     handoff: AIDraftHandoff;
     editorTarget: string;
     savedToDatabase: boolean;
+    usage: DraftUsageSummary;
 }
 
 interface DraftCallbacks {
     onLog?: (message: string) => void;
     onState?: (agent: DraftAgent, progress: number) => void;
+    onUsage?: (usage: DraftUsageSummary) => void;
 }
 
-interface SettingRow {
+export interface DraftUsageStage {
+    stage: 'research' | 'write' | 'refine';
+    promptTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    estimatedCostUsd: number;
+}
+
+export interface DraftUsageSummary {
+    model: string;
+    pricingLabel: string;
+    pricingSourceUrl: string;
+    promptTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    estimatedCostUsd: number;
+    stages: DraftUsageStage[];
+}
+
+interface SettingMapRow {
+    setting_key: string;
     setting_value: string | null;
 }
 
@@ -75,6 +108,13 @@ interface SupabaseErrorLike {
     message?: string;
 }
 
+const GEMINI_MODEL_NAME = 'Gemini 2.5 Flash';
+const GEMINI_PRICING_LABEL = 'Gemini 2.5 Flash standard paid tier';
+const GEMINI_PRICING_SOURCE_URL = 'https://ai.google.dev/gemini-api/docs/pricing';
+// Update these rates if Google's official Gemini 2.5 Flash pricing changes.
+const GEMINI_INPUT_USD_PER_MILLION_TOKENS = 0.3;
+const GEMINI_OUTPUT_USD_PER_MILLION_TOKENS = 2.5;
+
 function createLogger(callbacks?: DraftCallbacks) {
     return {
         log(message: string) {
@@ -82,6 +122,9 @@ function createLogger(callbacks?: DraftCallbacks) {
         },
         state(agent: DraftAgent, progress: number) {
             callbacks?.onState?.(agent, progress);
+        },
+        usage(usage: DraftUsageSummary) {
+            callbacks?.onUsage?.(usage);
         },
     };
 }
@@ -170,127 +213,6 @@ function buildMetadataDiv(params: {
     const safeAlbumTitle = params.albumTitle.replace(/"/g, '&quot;');
 
     return `<div id="voxo-metadata" data-excerpt="${safeExcerpt}" data-intro="${safeIntro}" data-seo="${safeSeo}" data-share="${safeShare}" data-album="${safeAlbumTitle}"></div>`;
-}
-
-function buildResearchPrompt(artistName: string, songTitle: string) {
-    return [
-        `You are researching the artist "${artistName}" and the song "${songTitle}".`,
-        'Return concise bullet points only.',
-        'Include artist background, release context, production details, lyrical themes, and notable trivia when available.',
-        'Do not write a review yet.',
-    ].join('\n');
-}
-
-function buildWritingPrompt(params: {
-    facts: string;
-    concept: string;
-    language: string;
-    categoryName: string;
-    categorySlug?: string;
-    tone: string;
-    curationProfileId: string;
-    articleLengthId: string;
-}) {
-    const {
-        facts,
-        concept,
-        language,
-        categoryName,
-        categorySlug,
-        tone,
-        curationProfileId,
-        articleLengthId,
-    } = params;
-    const curationBlock = buildCurationPromptBlock(curationProfileId, articleLengthId);
-    const categoryBlock = buildCategoryPromptBlock({ name: categoryName, slug: categorySlug });
-    const profile = getCurationProfile(curationProfileId);
-    const lengthPreset = getArticleLengthPreset(articleLengthId);
-
-    return [
-        'You are the lead editor for Voxo, a polished music culture magazine.',
-        `Write the full article in ${language}.`,
-        `Category context: ${categoryName}.`,
-        `Preferred tone: ${tone}.`,
-        `Primary curation profile: ${profile.label}.`,
-        `Creative direction: ${concept}`,
-        '',
-        curationBlock,
-        '',
-        categoryBlock,
-        '',
-        'Use the research notes below as factual grounding:',
-        facts,
-        '',
-        'Output rules:',
-        '1. Start with one line in the format "Title: ...". The title must obey the category title directive.',
-        '2. Add one line in the format "Intro: ...". This intro line will be used as the hero excerpt seed, so it must obey the hero excerpt directive.',
-        '3. Then write the article body in plain Markdown-style paragraphs.',
-        `4. Aim for a rich but readable feature article with clear structure and a final volume around ${lengthPreset.wordRangeLabel}.`,
-        '5. Do not return HTML.',
-        '6. Do not include image placeholders such as IMAGE_URL, SECOND_IMAGE_URL, or markdown image syntax.',
-        '7. Do not include raw YouTube, Spotify, or other external URLs inside the article body.',
-        '8. The system will add one official video embed and two article images separately.',
-        '9. Write in polished magazine prose, not listicle language.',
-        '10. Make the emotional argument concrete by pointing to vocals, lyrics, production, arrangement, or performance details.',
-        '11. Follow the category opening directive for the first paragraph and the category ending directive for the final paragraph.',
-        '12. Use the category middle-paragraph flow to determine how the core body develops from paragraph to paragraph.',
-        '13. Keep the title and intro distinct: the title should be compact and magnetic, while the intro should feel like the clickable emotional summary.',
-        '14. Write enough paragraph volume for a feature structure: opening text, mid-article text expansion, late-article text before the official video embed, and one final closing paragraph after the video.',
-        '15. Aim for at least 6 substantial paragraphs so the article can hold two image beats and one late video beat without feeling empty.',
-    ].join('\n');
-}
-
-function buildRefinementPrompt(params: {
-    draftText: string;
-    concept: string;
-    language: string;
-    categoryName: string;
-    categorySlug?: string;
-    tone: string;
-    curationProfileId: string;
-    articleLengthId: string;
-}) {
-    const {
-        draftText,
-        concept,
-        language,
-        categoryName,
-        categorySlug,
-        tone,
-        curationProfileId,
-        articleLengthId,
-    } = params;
-    const curationBlock = buildCurationPromptBlock(curationProfileId, articleLengthId);
-    const categoryBlock = buildCategoryPromptBlock({ name: categoryName, slug: categorySlug });
-
-    return [
-        'You are now the senior rewrite editor for Voxo.',
-        `Refine the following draft in ${language}.`,
-        `Keep the same song and factual claims, but improve the execution.`,
-        `Preferred tone: ${tone}.`,
-        `Creative direction: ${concept}`,
-        '',
-        curationBlock,
-        '',
-        categoryBlock,
-        '',
-        'Rewrite goals:',
-        '1. Strengthen the title so it matches the category title directive.',
-        '2. Strengthen the intro so it works as a clickable hero excerpt and follows the hero excerpt directive.',
-        '3. Improve paragraph-to-paragraph flow using the category middle-paragraph guidance.',
-        '4. Make the opening paragraph and closing paragraph obey the category opening and ending directives.',
-        '5. Remove vague praise, repetition, weak filler, and generic wording.',
-        '6. Keep the prose magazine-quality, emotionally vivid, and grounded in musical evidence.',
-        '7. Preserve the output format exactly:',
-        '   - one line: "Title: ..."',
-        '   - one line: "Intro: ..."',
-        '   - then the body in plain Markdown-style paragraphs',
-        '8. Do not add HTML, image placeholders, markdown images, or raw external URLs.',
-        '9. Maintain enough paragraph volume so the final article can support this layout: text, image, text, image, text, video, closing text.',
-        '',
-        'Draft to refine:',
-        draftText,
-    ].join('\n');
 }
 
 function sanitizeGeneratedArticleBody(content: string) {
@@ -522,24 +444,177 @@ function parseArticle(articleText: string, artistName: string, songTitle: string
     };
 }
 
+function getArticleMetrics(content: string) {
+    const paragraphs = content
+        .split(/\n\s*\n/)
+        .map((paragraph) => paragraph.trim())
+        .filter(Boolean);
+    const substantialParagraphs = paragraphs.filter(
+        (paragraph) => paragraph.replace(/\s+/g, '').length >= 120
+    );
+
+    return {
+        paragraphs,
+        substantialParagraphs,
+        nonWhitespaceLength: content.replace(/\s+/g, '').length,
+    };
+}
+
+function getMinimumDraftLength(articleLengthId?: string) {
+    switch (articleLengthId) {
+        case 'longform':
+            return { minParagraphs: 5, minCharacters: 2600 };
+        case 'standard':
+            return { minParagraphs: 4, minCharacters: 1600 };
+        case 'feature':
+        default:
+            return { minParagraphs: 4, minCharacters: 2100 };
+    }
+}
+
+function calculateEstimatedCostUsd(promptTokens: number, outputTokens: number) {
+    return (
+        (promptTokens / 1_000_000) * GEMINI_INPUT_USD_PER_MILLION_TOKENS +
+        (outputTokens / 1_000_000) * GEMINI_OUTPUT_USD_PER_MILLION_TOKENS
+    );
+}
+
+function createEmptyUsageSummary(): DraftUsageSummary {
+    return {
+        model: GEMINI_MODEL_NAME,
+        pricingLabel: GEMINI_PRICING_LABEL,
+        pricingSourceUrl: GEMINI_PRICING_SOURCE_URL,
+        promptTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        estimatedCostUsd: 0,
+        stages: [],
+    };
+}
+
+function updateUsageSummaryFromResult(
+    current: DraftUsageSummary,
+    stage: DraftUsageStage['stage'],
+    result: GenerateContentResult
+) {
+    const usageMetadata = result.response.usageMetadata;
+    const stageUsage: DraftUsageStage = {
+        stage,
+        promptTokens: usageMetadata?.promptTokenCount ?? 0,
+        outputTokens: usageMetadata?.candidatesTokenCount ?? 0,
+        totalTokens: usageMetadata?.totalTokenCount ?? 0,
+        estimatedCostUsd: calculateEstimatedCostUsd(
+            usageMetadata?.promptTokenCount ?? 0,
+            usageMetadata?.candidatesTokenCount ?? 0
+        ),
+    };
+    const stages = current.stages.filter((entry) => entry.stage !== stage).concat(stageUsage);
+    const promptTokens = stages.reduce((sum, entry) => sum + entry.promptTokens, 0);
+    const outputTokens = stages.reduce((sum, entry) => sum + entry.outputTokens, 0);
+    const totalTokens = stages.reduce((sum, entry) => sum + entry.totalTokens, 0);
+    const estimatedCostUsd = stages.reduce((sum, entry) => sum + entry.estimatedCostUsd, 0);
+
+    return {
+        ...current,
+        promptTokens,
+        outputTokens,
+        totalTokens,
+        estimatedCostUsd,
+        stages,
+    };
+}
+
+function formatUsageLog(stageUsage: DraftUsageStage) {
+    const stageLabel = `${stageUsage.stage.charAt(0).toUpperCase()}${stageUsage.stage.slice(1)}`;
+    return `${stageLabel} tokens: in ${stageUsage.promptTokens.toLocaleString('en-US')} / out ${stageUsage.outputTokens.toLocaleString('en-US')} / total ${stageUsage.totalTokens.toLocaleString('en-US')} / est. $${stageUsage.estimatedCostUsd.toFixed(6)}`;
+}
+
+function assertDraftShape(params: {
+    stage: 'write' | 'refine';
+    text: string;
+    artistName: string;
+    songTitle: string;
+    articleLengthId?: string;
+}) {
+    const { stage, text, artistName, songTitle, articleLengthId } = params;
+    const hasTitle = Boolean(extractLabelValue(text, ['Title', 'TITLE', '제목']));
+    const withoutTitle = removeLabelLine(text, ['Title', 'TITLE', '제목']);
+    const hasIntro = Boolean(extractLabelValue(withoutTitle, ['Intro', 'INTRO', '서두', '도입문']));
+    const parsed = parseArticle(text, artistName, songTitle);
+    const cleanedBody = sanitizeGeneratedArticleBody(parsed.content);
+    const metrics = getArticleMetrics(cleanedBody);
+    const minimum = getMinimumDraftLength(articleLengthId);
+
+    if (!hasTitle || !hasIntro) {
+        throw new Error(
+            `${stage === 'write' ? '초안' : '다듬기'} 결과에 Title 또는 Intro 형식이 빠져 있어 저장을 중단했습니다.`
+        );
+    }
+
+    if (
+        metrics.substantialParagraphs.length < minimum.minParagraphs ||
+        metrics.nonWhitespaceLength < minimum.minCharacters
+    ) {
+        throw new Error(
+            'AI가 본문을 충분히 완성하지 못해 저장을 중단했습니다. 글자 수를 낮추거나 프롬프트를 조금 더 간결하게 조정해 주세요.'
+        );
+    }
+}
+
 function isSpotifyErrorResult(result: SpotifyStatsResult): result is SpotifyErrorResult {
     return Boolean(result && typeof result === 'object' && 'error' in result);
 }
 
-async function fetchSetting(settingKey: string) {
+async function fetchSettingsMap(settingKeys: string[]) {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from('site_settings')
-        .select('setting_value')
-        .eq('setting_key', settingKey)
-        .maybeSingle<SettingRow>();
+        .select('setting_key, setting_value')
+        .in('setting_key', settingKeys);
 
     if (error) {
-        console.error(`Failed to load setting: ${settingKey}`, error);
-        return null;
+        console.error('Failed to load AI prompt settings', error);
+        return new Map<string, string | null>();
     }
 
-    return data?.setting_value ?? null;
+    return new Map<string, string | null>(
+        ((data ?? []) as SettingMapRow[]).map((row) => [row.setting_key, row.setting_value])
+    );
+}
+
+function readModelText(
+    result: GenerateContentResult,
+    stage: 'research' | 'write' | 'refine'
+) {
+    const response = result.response;
+    const candidate = response.candidates?.[0];
+    const text = response.text().trim();
+    const finishReason = candidate?.finishReason;
+    const finishMessage = candidate?.finishMessage?.trim();
+
+    if (!text) {
+        throw new Error(`AI ${stage} 응답이 비어 있습니다.`);
+    }
+
+    if (
+        finishReason &&
+        finishReason !== FinishReason.STOP &&
+        finishReason !== FinishReason.FINISH_REASON_UNSPECIFIED
+    ) {
+        if (finishReason === FinishReason.MAX_TOKENS) {
+            throw new Error(
+                'AI 응답이 길이 제한에 걸려 중간에서 잘렸습니다. 글자 수를 줄이거나 프롬프트를 더 간결하게 조정해 주세요.'
+            );
+        }
+
+        throw new Error(
+            `AI ${stage} 단계가 정상 종료되지 않았습니다 (${finishReason})${
+                finishMessage ? `: ${finishMessage}` : '.'
+            }`
+        );
+    }
+
+    return text;
 }
 
 async function fetchYoutubeEmbed(artistName: string, songTitle: string) {
@@ -588,7 +663,7 @@ export async function createGeneratedDraftPost(
     input: DraftGenerationInput,
     callbacks?: DraftCallbacks
 ): Promise<DraftGenerationResult> {
-    const { log, state } = createLogger(callbacks);
+    const { log, state, usage: publishUsage } = createLogger(callbacks);
     const artistName = input.artistName?.trim();
     const songTitle = input.songTitle?.trim();
     const language = normalizeLanguage(input.language);
@@ -597,12 +672,22 @@ export async function createGeneratedDraftPost(
     const tone = normalizeTone(input.tone);
     const imageStyle = normalizeImageStyle(input.imageStyle);
     const linkPriority = normalizeLinkPriority(input.linkPriority);
+    let usageSummary = createEmptyUsageSummary();
 
     if (!artistName || !songTitle) {
         throw new Error('아티스트명과 곡 제목을 입력해 주세요.');
     }
 
-    const apiKey = (await fetchSetting('gemini_api_key')) || process.env.GEMINI_API_KEY;
+    const settings = await fetchSettingsMap([
+        'gemini_api_key',
+        AI_PROMPT_SETTING_KEYS.concept,
+        AI_PROMPT_SETTING_KEYS.research,
+        AI_PROMPT_SETTING_KEYS.write,
+        AI_PROMPT_SETTING_KEYS.refine,
+        AI_PROMPT_SETTING_KEYS.seo,
+        AI_PROMPT_SETTING_KEYS.matrix,
+    ]);
+    const apiKey = settings.get('gemini_api_key') || process.env.GEMINI_API_KEY;
     if (!apiKey) {
         throw new Error('Gemini API 키가 설정되지 않았습니다. 관리자 설정에서 API 키를 먼저 등록해 주세요.');
     }
@@ -632,59 +717,102 @@ export async function createGeneratedDraftPost(
         }
     }
 
+    const managedPromptConfig = buildResolvedPromptManagerConfig(
+        settings.get(AI_PROMPT_SETTING_KEYS.matrix) ?? null
+    );
+    const promptTemplates = normalizePromptTemplates({
+        concept: settings.get(AI_PROMPT_SETTING_KEYS.concept) ?? undefined,
+        research: settings.get(AI_PROMPT_SETTING_KEYS.research) ?? undefined,
+        write: settings.get(AI_PROMPT_SETTING_KEYS.write) ?? undefined,
+        refine: settings.get(AI_PROMPT_SETTING_KEYS.refine) ?? undefined,
+        seo: settings.get(AI_PROMPT_SETTING_KEYS.seo) ?? undefined,
+    });
+    const profile = resolveManagedCurationProfile(managedPromptConfig, curationProfileId);
+    const lengthPreset = resolveManagedArticleLength(managedPromptConfig, articleLengthId);
+    const categoryPromptProfile = resolveManagedCategoryPrompt(managedPromptConfig, {
+        name: categoryName,
+        slug: categorySlug,
+    });
+    const finalConcept = normalizeConcept(
+        input.concept,
+        settings.get(AI_PROMPT_SETTING_KEYS.concept) || profile.defaultConcept
+    );
+    const curationPromptBlock = buildCurationPromptBlockFromConfig(profile, lengthPreset);
+    const categoryPromptBlock = buildCategoryPromptBlockFromConfig(categoryPromptProfile);
+    const promptCategoryName = categoryPromptProfile.displayName || categoryName;
+    const basePromptVariables = {
+        artistName,
+        songTitle,
+        language,
+        categoryName: promptCategoryName,
+        categorySlug,
+        tone,
+        concept: finalConcept,
+        curationProfileLabel: profile.label,
+        curationProfileSummary: profile.longDescription,
+        articleLengthLabel: lengthPreset.label,
+        articleWordRange: lengthPreset.wordRangeLabel,
+        lengthGuidance: lengthPreset.guidance,
+        curationPromptBlock,
+        categoryPromptBlock,
+    };
+
     state('research', 20);
     log(`Researching ${artistName} - ${songTitle}`);
-    const researchPrompt =
-        (await fetchSetting('ai_prompt_research'))
-            ?.replace(/{artistName}/g, artistName)
-            .replace(/{songTitle}/g, songTitle) ||
-        buildResearchPrompt(artistName, songTitle);
+    const researchPrompt = applyPromptVariables(promptTemplates.research, basePromptVariables);
     const researchResult = await model.generateContent(researchPrompt);
-    const facts = researchResult.response.text();
+    usageSummary = updateUsageSummaryFromResult(usageSummary, 'research', researchResult);
+    publishUsage(usageSummary);
+    log(formatUsageLog(usageSummary.stages.find((entry) => entry.stage === 'research')!));
+    const facts = readModelText(researchResult, 'research');
 
     state('write', 50);
     log('Writing the Voxo draft');
-    const conceptSetting = await fetchSetting('ai_prompt_concept');
-    const writePromptTemplate = await fetchSetting('ai_prompt_write');
-    const profile = getCurationProfile(curationProfileId);
-    const finalConcept = normalizeConcept(input.concept, conceptSetting || profile.defaultConcept);
-    const writePrompt =
-        writePromptTemplate
-            ?.replace(/{facts}/g, facts)
-            .replace(/{concept}/g, finalConcept)
-            .replace(/{language}/g, language)
-            .replace(/{categoryName}/g, categoryName) ||
-        buildWritingPrompt({
-            facts,
-            concept: finalConcept,
-            language,
-            categoryName,
-            categorySlug,
-            tone,
-            curationProfileId,
-            articleLengthId,
-        });
+    const writePrompt = applyPromptVariables(promptTemplates.write, {
+        ...basePromptVariables,
+        facts,
+        draftText: '',
+        articleText: '',
+        existingTags: '',
+    });
     const writeResult = await model.generateContent(writePrompt);
-    const articleText = writeResult.response.text();
+    usageSummary = updateUsageSummaryFromResult(usageSummary, 'write', writeResult);
+    publishUsage(usageSummary);
+    log(formatUsageLog(usageSummary.stages.find((entry) => entry.stage === 'write')!));
+    const articleText = readModelText(writeResult, 'write');
+    assertDraftShape({
+        stage: 'write',
+        text: articleText,
+        artistName,
+        songTitle,
+        articleLengthId,
+    });
 
     state('refine', 66);
     log('Refining title, hero excerpt, and paragraph flow');
     let refinedArticleText = articleText;
 
     try {
-        const refinePrompt = buildRefinementPrompt({
+        const refinePrompt = applyPromptVariables(promptTemplates.refine, {
+            ...basePromptVariables,
+            facts,
             draftText: articleText,
-            concept: finalConcept,
-            language,
-            categoryName,
-            categorySlug,
-            tone,
-            curationProfileId,
-            articleLengthId,
+            articleText,
+            existingTags: '',
         });
         const refineResult = await model.generateContent(refinePrompt);
-        const nextDraft = refineResult.response.text().trim();
+        usageSummary = updateUsageSummaryFromResult(usageSummary, 'refine', refineResult);
+        publishUsage(usageSummary);
+        log(formatUsageLog(usageSummary.stages.find((entry) => entry.stage === 'refine')!));
+        const nextDraft = readModelText(refineResult, 'refine');
         if (nextDraft) {
+            assertDraftShape({
+                stage: 'refine',
+                text: nextDraft,
+                artistName,
+                songTitle,
+                articleLengthId,
+            });
             refinedArticleText = nextDraft;
         }
     } catch (error) {
@@ -808,6 +936,7 @@ export async function createGeneratedDraftPost(
                 postId: tempDraftId,
                 editorTarget: `/admin/editor?draft=${tempDraftId}`,
                 savedToDatabase: false,
+                usage: usageSummary,
                 handoff: {
                     artistName,
                     songTitle,
@@ -862,6 +991,7 @@ export async function createGeneratedDraftPost(
         postId: post.id,
         editorTarget: `/admin/editor?id=${post.id}`,
         savedToDatabase: true,
+        usage: usageSummary,
         handoff: {
             artistName,
             songTitle,

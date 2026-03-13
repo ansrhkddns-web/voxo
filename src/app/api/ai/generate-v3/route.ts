@@ -1,5 +1,9 @@
 import { NextRequest } from 'next/server';
-import type { DraftAgent, DraftGenerationInput } from '@/lib/ai/generateDraft';
+import type {
+    DraftAgent,
+    DraftGenerationInput,
+    DraftUsageSummary,
+} from '@/lib/ai/generateDraft';
 import {
     createGeneratedDraftPost,
     toDraftErrorMessage,
@@ -7,12 +11,19 @@ import {
 import type { AIDraftHandoff } from '@/features/admin-editor/ai-handoff';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 180;
 
 type StreamPayload =
     | { message: string }
     | { currentAgent: DraftAgent; progress: number }
-    | { postId: string; handoff: AIDraftHandoff; editorTarget: string; savedToDatabase: boolean };
+    | { usage: DraftUsageSummary }
+    | {
+          postId: string;
+          handoff: AIDraftHandoff;
+          editorTarget: string;
+          savedToDatabase: boolean;
+          usage: DraftUsageSummary;
+      };
 
 function encodeSseEvent(event: string, payload: StreamPayload) {
     return `event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`;
@@ -63,6 +74,9 @@ export async function POST(req: NextRequest) {
                     onState(currentAgent, progress) {
                         sendEvent('state', { currentAgent, progress });
                     },
+                    onUsage(usage) {
+                        sendEvent('usage', { usage });
+                    },
                 });
 
                 sendEvent('complete', {
@@ -70,6 +84,7 @@ export async function POST(req: NextRequest) {
                     handoff: result.handoff,
                     editorTarget: result.editorTarget,
                     savedToDatabase: result.savedToDatabase,
+                    usage: result.usage,
                 });
             } catch (error: unknown) {
                 console.error('AI draft pipeline error:', error);

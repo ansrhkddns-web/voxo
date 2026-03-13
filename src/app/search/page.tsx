@@ -218,7 +218,7 @@ export default async function SearchPage({
                 ) : null}
 
                 {query && featuredResult ? (
-                    <div className="mb-14 grid gap-6 border border-white/10 bg-white/[0.02] p-6 lg:grid-cols-[1.7fr_1fr]">
+                    <div className="mb-14 border border-white/10 bg-white/[0.02] p-6">
                         <div className="space-y-4">
                             <p className="font-display text-[9px] uppercase tracking-[0.24em] text-accent-green">
                                 대표 결과
@@ -242,7 +242,7 @@ export default async function SearchPage({
                             </Link>
                         </div>
 
-                        <div className="border border-white/5 bg-black/30 p-5">
+                        <div className="hidden border border-white/5 bg-black/30 p-5">
                             <p className="font-display text-[9px] uppercase tracking-[0.22em] text-gray-500">
                                 검색 팁
                             </p>

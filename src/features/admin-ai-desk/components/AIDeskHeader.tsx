@@ -1,13 +1,34 @@
 import React from 'react';
 import { Sparkles } from 'lucide-react';
+import type { AIDeskUsageSummary } from '../types';
 
 interface AIDeskHeaderProps {
     progress: number;
     completionMode?: 'database' | 'local' | null;
+    usage?: AIDeskUsageSummary | null;
     compact?: boolean;
 }
 
-export function AIDeskHeader({ progress, completionMode = null, compact = false }: AIDeskHeaderProps) {
+function formatTokenCount(value: number) {
+    return new Intl.NumberFormat('en-US').format(value);
+}
+
+function formatUsd(value: number) {
+    const digits = value > 0 && value < 0.01 ? 6 : 4;
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+    }).format(value);
+}
+
+export function AIDeskHeader({
+    progress,
+    completionMode = null,
+    usage = null,
+    compact = false,
+}: AIDeskHeaderProps) {
     return (
         <header className={compact ? 'border-b border-white/5 pb-3' : 'mb-12 border-b border-white/5 pb-6'}>
             <div className={`flex flex-col ${compact ? 'gap-4 md:flex-row md:items-center md:justify-between' : 'gap-6 md:flex-row md:items-center md:justify-between'}`}>
@@ -40,6 +61,24 @@ export function AIDeskHeader({ progress, completionMode = null, compact = false 
                             {progress}%
                         </span>
                     </div>
+                    <div className={compact ? 'rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-left' : 'text-left md:text-right'}>
+                        <span className="block text-[10px] uppercase tracking-widest text-gray-500">Consumed tokens</span>
+                        <span className={`${compact ? 'text-lg' : 'text-2xl'} font-light tracking-wider text-white`}>
+                            {formatTokenCount(usage?.totalTokens ?? 0)}
+                        </span>
+                        <span className="mt-1 block text-[10px] uppercase tracking-[0.18em] text-gray-600">
+                            In {formatTokenCount(usage?.promptTokens ?? 0)} / Out {formatTokenCount(usage?.outputTokens ?? 0)}
+                        </span>
+                    </div>
+                    <div className={compact ? 'rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-left' : 'text-left md:text-right'}>
+                        <span className="block text-[10px] uppercase tracking-widest text-gray-500">Estimated cost</span>
+                        <span className={`${compact ? 'text-lg' : 'text-2xl'} font-light tracking-wider text-accent-green`}>
+                            {formatUsd(usage?.estimatedCostUsd ?? 0)}
+                        </span>
+                        <span className="mt-1 block text-[10px] uppercase tracking-[0.18em] text-gray-600">
+                            {usage?.pricingLabel ?? 'Gemini 2.5 Flash estimate'}
+                        </span>
+                    </div>
 
                     {completionMode ? (
                         <div
@@ -59,6 +98,20 @@ export function AIDeskHeader({ progress, completionMode = null, compact = false 
                     ) : null}
                 </div>
             </div>
+
+            {usage ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-gray-600">
+                    <span>Pricing basis: {usage.pricingLabel}</span>
+                    <a
+                        href={usage.pricingSourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-gray-500 underline decoration-white/10 underline-offset-4 transition-colors hover:text-accent-green"
+                    >
+                        Source
+                    </a>
+                </div>
+            ) : null}
 
             {!compact && completionMode ? (
                 <div

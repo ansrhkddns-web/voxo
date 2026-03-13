@@ -1,5 +1,6 @@
 import { Bell, Bot, Database, Globe, Lock, type LucideIcon } from 'lucide-react';
 import { getAdminCredentialHint } from '@/lib/admin-auth';
+import { DEFAULT_AI_PROMPT_TEMPLATES } from '@/lib/ai/prompt-manager';
 import type { AdminSecurityState, AdminSettingsCopy, AdminSettingsState, AdminSettingsTabId } from './types';
 
 export const DEFAULT_ADMIN_CREDENTIAL = getAdminCredentialHint();
@@ -15,10 +16,10 @@ export const DEFAULT_ADMIN_SETTINGS: AdminSettingsState = {
     maintenanceMessage: '현재 사이트 점검을 진행하고 있습니다. 더 안정적인 서비스와 콘텐츠 경험을 위해 잠시 공개 화면을 닫아두었습니다. 작업이 끝나면 다시 정상적으로 접속하실 수 있습니다.',
     maintenanceEta: '',
     maintenanceNoticeUrl: '',
-    aiPromptResearch: 'Research the artist "{artistName}" and the song "{songTitle}". Return concise factual bullet points only.',
-    aiPromptWrite: 'Write the article in {language} using {facts}. Follow this direction: {concept}. Use category context {categoryName}. Start with "Title:" and "Intro:".',
-    aiPromptSeo: 'Create comma-separated SEO tags from {articleText}. Prefer existing tags from {existingTags}.',
-    aiPromptConcept: 'Focus on mood, production detail, and why the song matters.',
+    aiPromptResearch: DEFAULT_AI_PROMPT_TEMPLATES.research,
+    aiPromptWrite: DEFAULT_AI_PROMPT_TEMPLATES.write,
+    aiPromptSeo: DEFAULT_AI_PROMPT_TEMPLATES.seo,
+    aiPromptConcept: DEFAULT_AI_PROMPT_TEMPLATES.concept,
 };
 
 export const DEFAULT_ADMIN_SECURITY: AdminSecurityState = {

@@ -6,7 +6,7 @@ interface AIDeskLogPanelProps {
     logs: LogEntry[];
     isLoading: boolean;
     currentAgent: AgentStatus;
-    logsEndRef: React.RefObject<HTMLDivElement | null>;
+    scrollContainerRef: React.RefObject<HTMLDivElement | null>;
     compact?: boolean;
 }
 
@@ -14,7 +14,7 @@ export function AIDeskLogPanel({
     logs,
     isLoading,
     currentAgent,
-    logsEndRef,
+    scrollContainerRef,
     compact = false,
 }: AIDeskLogPanelProps) {
     return (
@@ -35,7 +35,10 @@ export function AIDeskLogPanel({
                 </div>
             </div>
 
-            <div className={`custom-scrollbar flex-1 space-y-3 overflow-y-auto ${compact ? 'p-3' : 'p-4'}`}>
+            <div
+                ref={scrollContainerRef}
+                className={`custom-scrollbar flex-1 space-y-3 overflow-y-auto ${compact ? 'p-3' : 'p-4'}`}
+            >
                 {logs.length === 0 ? (
                     <div className="leading-relaxed text-gray-600">
                         No logs yet. Start a draft session below to stream the progress here.
@@ -55,8 +58,6 @@ export function AIDeskLogPanel({
                         <span>Pipeline is streaming...</span>
                     </div>
                 ) : null}
-
-                <div ref={logsEndRef} />
             </div>
         </div>
     );

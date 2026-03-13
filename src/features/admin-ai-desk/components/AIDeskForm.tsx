@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import {
     Activity,
     Database,
@@ -18,12 +19,10 @@ import {
     aiDeskToneOptions,
 } from '../constants';
 import {
-    articleLengthPresets,
-    curationProfiles,
-    getArticleLengthPreset,
-    getCurationProfile,
-} from '../curation-profiles';
-import { getCategoryEditorialProfile } from '../category-profiles';
+    resolveManagedArticleLength,
+    resolveManagedCategoryPrompt,
+    resolveManagedCurationProfile,
+} from '@/lib/ai/prompt-manager';
 import type { AIDeskFormProps } from '../types';
 
 function SectionTitle({ title, description }: { title: string; description: string }) {
@@ -37,11 +36,18 @@ function SectionTitle({ title, description }: { title: string; description: stri
     );
 }
 
-export function AIDeskForm({ formData, categories, isLoading, onInputChange, onSubmit }: AIDeskFormProps) {
-    const selectedProfile = getCurationProfile(formData.curationProfileId);
-    const selectedLength = getArticleLengthPreset(formData.articleLengthId);
+export function AIDeskForm({
+    formData,
+    categories,
+    promptConfig,
+    isLoading,
+    onInputChange,
+    onSubmit,
+}: AIDeskFormProps) {
+    const selectedProfile = resolveManagedCurationProfile(promptConfig, formData.curationProfileId);
+    const selectedLength = resolveManagedArticleLength(promptConfig, formData.articleLengthId);
     const selectedCategory = categories.find((category) => category.id === formData.categoryId);
-    const categoryProfile = getCategoryEditorialProfile(selectedCategory);
+    const categoryProfile = resolveManagedCategoryPrompt(promptConfig, selectedCategory);
 
     return (
         <form onSubmit={onSubmit} className="mx-auto max-w-5xl space-y-8 animate-fade-in-up">
@@ -140,7 +146,7 @@ export function AIDeskForm({ formData, categories, isLoading, onInputChange, onS
                             onChange={onInputChange}
                             className="w-full appearance-none border border-white/10 bg-black/40 px-4 py-4 text-sm text-white transition-colors focus:border-accent-green focus:outline-none"
                         >
-                            {curationProfiles.map((profile) => (
+                            {promptConfig.curationProfiles.map((profile) => (
                                 <option key={profile.id} value={profile.id} className="bg-black">
                                     {profile.label} - {profile.shortDescription}
                                 </option>
@@ -158,7 +164,7 @@ export function AIDeskForm({ formData, categories, isLoading, onInputChange, onS
                             onChange={onInputChange}
                             className="w-full appearance-none border border-white/10 bg-black/40 px-4 py-4 text-sm text-white transition-colors focus:border-accent-green focus:outline-none"
                         >
-                            {articleLengthPresets.map((preset) => (
+                            {promptConfig.articleLengths.map((preset) => (
                                 <option key={preset.id} value={preset.id} className="bg-black">
                                     {preset.label} - {preset.wordRangeLabel}
                                 </option>
@@ -178,6 +184,12 @@ export function AIDeskForm({ formData, categories, isLoading, onInputChange, onS
                         <p className="text-sm leading-relaxed text-gray-400">
                             Reader promise: {selectedProfile.readerPromise}
                         </p>
+                        <Link
+                            href="/admin/ai-prompts"
+                            className="inline-flex items-center gap-2 border border-accent-green/30 px-3 py-2 font-display text-[10px] uppercase tracking-[0.24em] text-accent-green transition-colors hover:border-accent-green hover:bg-accent-green/10"
+                        >
+                            Manage Prompt Rules
+                        </Link>
                     </div>
 
                     <div className="space-y-3">

@@ -14,6 +14,7 @@ export const SPOTIFY_PENDING_TRACK_COOKIE = 'voxo_spotify_pending_track_uri';
 const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI;
+const DEFAULT_PRODUCTION_SITE_URL = 'https://voxo-omega.vercel.app';
 const SITE_URL =
     process.env.NEXT_PUBLIC_SITE_URL ||
     process.env.SITE_URL ||
@@ -63,14 +64,25 @@ export function parseTrackId(uriOrUrl: string) {
 
 export function getSpotifyRedirectUri(request: NextRequest) {
     if (REDIRECT_URI) {
-        return REDIRECT_URI;
+        return REDIRECT_URI.trim();
     }
 
     if (SITE_URL) {
         return new URL('/api/spotify/callback', normalizeOrigin(SITE_URL)).toString();
     }
 
-    return new URL('/api/spotify/callback', request.url).toString();
+    const forwardedProto = request.headers.get('x-forwarded-proto');
+    const forwardedHost = request.headers.get('x-forwarded-host');
+    if (forwardedProto && forwardedHost) {
+        return new URL('/api/spotify/callback', `${forwardedProto}://${forwardedHost}`).toString();
+    }
+
+    const host = request.headers.get('host') || request.nextUrl.host;
+    if (host?.includes('localhost') || host?.startsWith('127.0.0.1')) {
+        return new URL('/api/spotify/callback', `http://${host}`).toString();
+    }
+
+    return new URL('/api/spotify/callback', DEFAULT_PRODUCTION_SITE_URL).toString();
 }
 
 export function buildSpotifyAuthorizeUrl(

@@ -1,16 +1,14 @@
 'use client';
 
 import Image from 'next/image';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Disc3, Pause, Play } from 'lucide-react';
 
-interface SpotifyEmbedProps {
+interface BottomSpotifyPlaybackProps {
     uri?: string;
-    autoPlayOnLoad?: boolean;
     title?: string;
     artistName?: string;
     artworkUrl?: string;
-    categoryName?: string;
 }
 
 interface SpotifyPlaybackState {
@@ -46,7 +44,6 @@ declare global {
     }
 }
 
-const AUTOPLAY_STORAGE_KEY = 'voxo-post-spotify-autoplay';
 const PLAYER_OFFSET_VAR = '--voxo-player-offset';
 
 let spotifyIframeApiPromise: Promise<SpotifyIframeApi> | null = null;
@@ -112,6 +109,10 @@ function resolveSpotifyTarget(uri: string) {
 }
 
 function formatRemaining(duration: number, position: number) {
+    if (duration <= 0) {
+        return '--:--';
+    }
+
     const remaining = Math.max(duration - position, 0);
     const totalSeconds = Math.floor(remaining / 1000);
     const minutes = Math.floor(totalSeconds / 60);
@@ -119,44 +120,33 @@ function formatRemaining(duration: number, position: number) {
     return `-${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
-export default function SpotifyEmbed({
+function normalizeText(value: string | null | undefined) {
+    return (value || '').replace(/\s+/g, ' ').trim();
+}
+
+export default function BottomSpotifyPlayback({
     uri = 'spotify:track:0VjIj9H9tPjS9SqmAtvEnl',
-    autoPlayOnLoad = false,
     title,
     artistName,
     artworkUrl,
-}: SpotifyEmbedProps) {
+}: BottomSpotifyPlaybackProps) {
     const { type, id } = resolveSpotifyTarget(uri);
-    const [autoplayEnabled, setAutoplayEnabled] = useState(autoPlayOnLoad);
     const [playbackState, setPlaybackState] = useState<SpotifyPlaybackState>({
         isPaused: true,
         position: 0,
-        duration: 1,
+        duration: 0,
     });
+    const [isPlayerReady, setIsPlayerReady] = useState(false);
 
     const controllerHostRef = useRef<HTMLDivElement>(null);
     const controllerRef = useRef<SpotifyIframeController | null>(null);
-    const playerReadyRef = useRef(false);
-
-    useEffect(() => {
-        const frame = window.requestAnimationFrame(() => {
-            const storedAutoplay = window.localStorage.getItem(AUTOPLAY_STORAGE_KEY);
-            if (storedAutoplay === 'true' || storedAutoplay === 'false') {
-                setAutoplayEnabled(storedAutoplay === 'true');
-            }
-        });
-
-        return () => window.cancelAnimationFrame(frame);
-    }, []);
-
-    useEffect(() => {
-        window.localStorage.setItem(AUTOPLAY_STORAGE_KEY, String(autoplayEnabled));
-    }, [autoplayEnabled]);
+    const readyRef = useRef(false);
+    const pendingResumeRef = useRef(false);
 
     useEffect(() => {
         document.documentElement.style.setProperty(
             PLAYER_OFFSET_VAR,
-            type && id ? '4.25rem' : '0px',
+            type && id ? '3.25rem' : '0px',
         );
 
         return () => {
@@ -170,8 +160,32 @@ export default function SpotifyEmbed({
             return;
         }
 
-        article.querySelectorAll('iframe[src*="open.spotify.com"]').forEach((node) => node.remove());
-        article.querySelectorAll('a[href*="open.spotify.com"]').forEach((node) => node.remove());
+        article.querySelectorAll('iframe[src*="open.spotify.com"], a[href*="open.spotify.com"]').forEach((node) => {
+            const block = node.closest('figure, section, aside, div, p');
+            if (block && block !== article) {
+                block.remove();
+                return;
+            }
+
+            node.remove();
+        });
+
+        const legacyRoots = Array.from(
+            article.querySelectorAll<HTMLElement>('div, section, figure, aside, article, p'),
+        ).filter((element) => {
+            const text = normalizeText(element.textContent);
+            return text.includes('SPOTIFY WIDGET') || text.includes('Saved on Spotify');
+        });
+
+        const outermostRoots = legacyRoots.filter(
+            (element) => !legacyRoots.some((other) => other !== element && other.contains(element)),
+        );
+
+        outermostRoots.forEach((element) => {
+            if (element !== article) {
+                element.remove();
+            }
+        });
     }, []);
 
     useEffect(() => {
@@ -180,7 +194,10 @@ export default function SpotifyEmbed({
         }
 
         let destroyed = false;
-        const playbackListener = (event: { data?: { isPaused?: boolean; position?: number; duration?: number } }) => {
+
+        const playbackListener = (event: {
+            data?: { isPaused?: boolean; position?: number; duration?: number };
+        }) => {
             const nextData = event.data;
             if (!nextData) {
                 return;
@@ -205,22 +222,43 @@ export default function SpotifyEmbed({
                         uri,
                         theme: 'dark',
                         width: '420',
-                        height: type === 'track' ? '152' : '220',
+                        height: '152',
                     },
                     (controller) => {
                         if (destroyed) {
                             return;
                         }
 
-                        controllerRef.current = controller;
-                        controller.addListener('playback_update', playbackListener);
-                        playerReadyRef.current = true;
+                        const markPlayerReady = () => {
+                            if (destroyed) {
+                                return;
+                            }
 
-                        if (autoplayEnabled) {
-                            window.setTimeout(() => {
-                                controller.play();
-                            }, 250);
-                        }
+                            readyRef.current = true;
+                            setIsPlayerReady(true);
+
+                            if (pendingResumeRef.current) {
+                                pendingResumeRef.current = false;
+                                window.setTimeout(() => {
+                                    controller.resume();
+                                }, 150);
+                            }
+                        };
+
+                        controllerRef.current = controller;
+                        markPlayerReady();
+                        controller.addListener('ready', markPlayerReady);
+                        controller.addListener('playback_update', playbackListener);
+                        controller.addListener('playback_started', () => {
+                            if (destroyed) {
+                                return;
+                            }
+
+                            setPlaybackState((current) => ({
+                                ...current,
+                                isPaused: false,
+                            }));
+                        });
                     },
                 );
             })
@@ -230,44 +268,53 @@ export default function SpotifyEmbed({
 
         return () => {
             destroyed = true;
+            readyRef.current = false;
+            pendingResumeRef.current = false;
+            setIsPlayerReady(false);
             controllerRef.current?.destroy?.();
             controllerRef.current = null;
         };
-    }, [autoplayEnabled, id, type, uri]);
+    }, [id, type, uri]);
 
     useEffect(() => {
-        if (!controllerRef.current || !playerReadyRef.current) {
+        if (!controllerRef.current || !readyRef.current) {
             return;
         }
 
         controllerRef.current.loadUri(uri);
+
         const frame = window.requestAnimationFrame(() => {
             setPlaybackState({
                 isPaused: true,
                 position: 0,
-                duration: 1,
+                duration: 0,
             });
         });
 
-        if (autoplayEnabled) {
+        if (pendingResumeRef.current) {
+            pendingResumeRef.current = false;
             window.setTimeout(() => {
-                controllerRef.current?.play();
-            }, 250);
+                controllerRef.current?.resume();
+            }, 150);
         }
 
         return () => window.cancelAnimationFrame(frame);
-    }, [autoplayEnabled, uri]);
+    }, [uri]);
 
     const progressRatio = Math.min(
         100,
-        Math.max(0, (playbackState.position / Math.max(playbackState.duration, 1)) * 100),
+        Math.max(
+            0,
+            playbackState.duration > 0 ? (playbackState.position / playbackState.duration) * 100 : 0,
+        ),
     );
 
-    const cardTitle = useMemo(() => title || 'Spotify Track', [title]);
-    const cardArtist = useMemo(() => artistName || 'VOXO article soundtrack', [artistName]);
+    const cardTitle = title || 'Spotify Track';
+    const cardArtist = artistName || 'VOXO article soundtrack';
 
     const handleTogglePlayback = () => {
-        if (!controllerRef.current) {
+        if (!controllerRef.current || !readyRef.current) {
+            pendingResumeRef.current = true;
             return;
         }
 
@@ -285,13 +332,14 @@ export default function SpotifyEmbed({
     return (
         <>
             <div
-                ref={controllerHostRef}
-                className="pointer-events-none fixed left-[-9999px] top-[-9999px] h-[220px] w-[420px] opacity-0"
+                className="pointer-events-none fixed bottom-0 left-0 h-px w-px overflow-hidden opacity-0"
                 aria-hidden="true"
-            />
+            >
+                <div ref={controllerHostRef} />
+            </div>
 
             <div
-                className="fixed inset-x-0 bottom-0 z-[100] border-t border-white/10 bg-[#050505]/96 shadow-[0_-18px_40px_rgba(0,0,0,0.38)] backdrop-blur-2xl animate-fade-in-up"
+                className="fixed inset-x-0 bottom-0 z-[100] border-t border-white/10 bg-[#050505]/96 shadow-[0_-18px_40px_rgba(0,0,0,0.38)] backdrop-blur-2xl"
                 style={{ bottom: 'env(safe-area-inset-bottom)' }}
             >
                 <div className="mx-auto flex w-full max-w-[1800px] items-center gap-4 px-4 py-2 md:px-6">
@@ -324,7 +372,7 @@ export default function SpotifyEmbed({
                         <div className="h-1 overflow-hidden rounded-full bg-white/15">
                             <div
                                 className="h-full rounded-full bg-white transition-all duration-300"
-                                style={{ width: `${progressRatio || (playbackState.isPaused ? 14 : 32)}%` }}
+                                style={{ width: `${progressRatio}%` }}
                             />
                         </div>
                     </div>
@@ -335,18 +383,10 @@ export default function SpotifyEmbed({
 
                     <button
                         type="button"
-                        onClick={() => setAutoplayEnabled((current) => !current)}
-                        className="hidden rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-white/65 transition hover:text-white md:inline-flex"
-                        title="자동 재생 설정"
-                    >
-                        {autoplayEnabled ? 'Autoplay On' : 'Autoplay Off'}
-                    </button>
-
-                    <button
-                        type="button"
                         onClick={handleTogglePlayback}
                         className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white text-black transition hover:opacity-90"
-                        title={playbackState.isPaused ? 'Play' : 'Pause'}
+                        title={isPlayerReady ? (playbackState.isPaused ? 'Play' : 'Pause') : 'Preparing player'}
+                        aria-busy={!isPlayerReady}
                     >
                         {playbackState.isPaused ? (
                             <Play size={16} className="translate-x-[1px]" />

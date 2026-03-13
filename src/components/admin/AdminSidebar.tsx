@@ -14,7 +14,8 @@ import {
     Users,
     Mail,
     Tag,
-    Sparkles
+    Sparkles,
+    SlidersHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAdminLanguage } from '@/providers/AdminLanguageProvider';
@@ -29,6 +30,7 @@ const NAV_ITEMS_DATA = [
     { id: 'tags', href: '/admin/tags', icon: Tag },
     { id: 'subscribers', href: '/admin/subscribers', icon: Users },
     { id: 'newsletter', href: '/admin/newsletter', icon: Mail },
+    { id: 'aiPrompts', href: '/admin/ai-prompts', icon: SlidersHorizontal },
     { id: 'settings', href: '/admin/settings', icon: Settings },
 ];
 

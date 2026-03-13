@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/components/admin/AdminSidebar';
-import { getCategories } from '@/app/actions/categoryActions';
+import { getAiPromptManagerData } from '@/app/actions/aiPromptActions';
 import { AIDeskHeader } from '@/features/admin-ai-desk/components/AIDeskHeader';
 import { AIDeskWorkflow } from '@/features/admin-ai-desk/components/AIDeskWorkflow';
 import { AIDeskLogPanel } from '@/features/admin-ai-desk/components/AIDeskLogPanel';
@@ -11,6 +11,7 @@ import { AIDeskForm } from '@/features/admin-ai-desk/components/AIDeskForm';
 import { DEFAULT_AI_DESK_FORM } from '@/features/admin-ai-desk/constants';
 import { buildAIDraftHandoffKey } from '@/features/admin-editor/ai-handoff';
 import { getTimeLabel, isAgentStatus } from '@/features/admin-ai-desk/utils';
+import { buildResolvedPromptManagerConfig, type AIPromptManagerConfig } from '@/lib/ai/prompt-manager';
 import type {
     AgentStatus,
     AIDeskCompletePayload,
@@ -25,7 +26,7 @@ import type { CategoryRecord } from '@/types/content';
 
 export default function AIDeskPage() {
     const router = useRouter();
-    const logsEndRef = useRef<HTMLDivElement>(null);
+    const logScrollContainerRef = useRef<HTMLDivElement>(null);
     const [step, setStep] = useState<DashboardStep>('form');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -35,13 +36,18 @@ export default function AIDeskPage() {
     const [categories, setCategories] = useState<CategoryRecord[]>([]);
     const [formData, setFormData] = useState<AIDeskFormState>(DEFAULT_AI_DESK_FORM);
     const [completionMode, setCompletionMode] = useState<'database' | 'local' | null>(null);
+    const [usageSummary, setUsageSummary] = useState<AIDeskCompletePayload['usage'] | null>(null);
+    const [promptConfig, setPromptConfig] = useState<AIPromptManagerConfig>(
+        buildResolvedPromptManagerConfig(null)
+    );
 
     useEffect(() => {
-        const fetchCategories = async () => {
+        const fetchDeskData = async () => {
             try {
-                const data = (await getCategories()) as CategoryRecord[] | null;
-                const nextCategories = data || [];
+                const data = await getAiPromptManagerData();
+                const nextCategories = data.categories || [];
                 setCategories(nextCategories);
+                setPromptConfig(buildResolvedPromptManagerConfig(data.managerConfigRaw, nextCategories));
 
                 if (nextCategories[0]?.id) {
                     setFormData((prev) => ({
@@ -50,16 +56,24 @@ export default function AIDeskPage() {
                     }));
                 }
             } catch (fetchError) {
-                console.error('Failed to fetch categories', fetchError);
+                console.error('Failed to fetch AI desk data', fetchError);
             }
         };
 
-        void fetchCategories();
+        void fetchDeskData();
     }, []);
 
     useEffect(() => {
         if (step === 'dashboard') {
-            logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            const container = logScrollContainerRef.current;
+            if (!container) {
+                return;
+            }
+
+            container.scrollTo({
+                top: container.scrollHeight,
+                behavior: 'smooth',
+            });
         }
     }, [logs, step]);
 
@@ -79,6 +93,7 @@ export default function AIDeskPage() {
         setProgress(0);
         setCurrentAgent('idle');
         setCompletionMode(null);
+        setUsageSummary(null);
 
         try {
             const response = await fetch(`/api/ai/generate-v3?t=${Date.now()}`, {
@@ -105,6 +120,7 @@ export default function AIDeskPage() {
             const decoder = new TextDecoder();
             let buffer = '';
             let finished = false;
+            let receivedComplete = false;
 
             while (!finished) {
                 const { value, done } = await reader.read();
@@ -130,7 +146,7 @@ export default function AIDeskPage() {
                         continue;
                     }
 
-                    const payload = JSON.parse(payloadText) as AIDeskLogPayload | AIDeskStatePayload | AIDeskCompletePayload | AIDeskErrorPayload;
+                    const payload = JSON.parse(payloadText) as AIDeskLogPayload | AIDeskStatePayload | AIDeskCompletePayload | AIDeskErrorPayload | { usage: AIDeskCompletePayload['usage'] };
 
                     if (eventName === 'log') {
                         const logPayload = payload as AIDeskLogPayload;
@@ -149,9 +165,11 @@ export default function AIDeskPage() {
 
                     if (eventName === 'complete') {
                         const completePayload = payload as AIDeskCompletePayload;
+                        receivedComplete = true;
                         setCurrentAgent('done');
                         setProgress(100);
                         setCompletionMode(completePayload.savedToDatabase ? 'database' : 'local');
+                        setUsageSummary(completePayload.usage);
                         if (typeof window !== 'undefined') {
                             window.localStorage.setItem(
                                 buildAIDraftHandoffKey(completePayload.postId),
@@ -173,11 +191,20 @@ export default function AIDeskPage() {
                         continue;
                     }
 
+                    if (eventName === 'usage') {
+                        setUsageSummary((payload as { usage: AIDeskCompletePayload['usage'] }).usage);
+                        continue;
+                    }
+
                     if (eventName === 'error') {
                         const errorPayload = payload as AIDeskErrorPayload;
                         throw new Error(errorPayload.message);
                     }
                 }
+            }
+
+            if (!receivedComplete) {
+                throw new Error('AI 생성 스트림이 완료 신호 없이 중단되었습니다. 프롬프트 길이나 서버 시간을 확인해 주세요.');
             }
         } catch (submitError: unknown) {
             setError(submitError instanceof Error ? submitError.message : 'A server communication error occurred.');
@@ -194,7 +221,12 @@ export default function AIDeskPage() {
             <main className="flex-1 overflow-y-auto">
                 <div className="mx-auto max-w-7xl p-5 font-display sm:p-8 md:p-10 lg:p-12">
                     <div className="sticky top-0 z-30 -mx-5 border-b border-white/10 bg-[#050505]/95 px-5 pb-5 pt-4 shadow-[0_14px_40px_rgba(0,0,0,0.35)] backdrop-blur-md sm:-mx-8 sm:px-8 md:-mx-10 md:px-10 lg:-mx-12 lg:px-12">
-                        <AIDeskHeader progress={progress} completionMode={completionMode} compact />
+                        <AIDeskHeader
+                            progress={progress}
+                            completionMode={completionMode}
+                            usage={usageSummary}
+                            compact
+                        />
 
                         {error ? (
                             <div className="mb-4 flex items-center gap-3 border border-red-500/20 bg-red-500/10 p-4 text-xs tracking-wider text-red-400">
@@ -215,7 +247,7 @@ export default function AIDeskPage() {
                                 logs={logs}
                                 isLoading={isLoading}
                                 currentAgent={currentAgent}
-                                logsEndRef={logsEndRef}
+                                scrollContainerRef={logScrollContainerRef}
                                 compact
                             />
                         </div>
@@ -225,6 +257,7 @@ export default function AIDeskPage() {
                         <AIDeskForm
                             formData={formData}
                             categories={categories}
+                            promptConfig={promptConfig}
                             isLoading={isLoading}
                             onInputChange={handleInputChange}
                             onSubmit={handleSubmit}
